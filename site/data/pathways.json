@@ -1,0 +1,175 @@
+{
+  "_comment": "Grouping and icons for the Pathways view. Lives in data, not in app.js, for the same reason county names do: these are editorial choices the project lead should be able to change without touching code. The 20 schema categories collapse into 9 plain-language groups per CLAUDE.md's tone rule — 'Help learning to get around safely' beats 'Orientation & Mobility Services'. The schema's `housing` category is deliberately absent: no record uses it, and an empty district would imply we have housing services when we have none.",
+  "unassigned_group": "other_help",
+  "groups": [
+    {
+      "id": "living_with_sight_loss",
+      "label": "Learning to live with sight loss",
+      "blurb": "Rehabilitation, daily living skills, and learning to travel safely.",
+      "categories": [
+        "vision_rehab",
+        "orientation_mobility"
+      ],
+      "icon": "M4 18 L12 6 L20 18 M8 14 h8",
+      "match_priority": 5
+    },
+    {
+      "id": "eye_care",
+      "label": "Eye exams and clinics",
+      "blurb": "Getting an eye report, low vision evaluations, and help paying for an exam.",
+      "categories": [
+        "low_vision_clinic",
+        "eye_care_access",
+        "condition_specific"
+      ],
+      "icon": "M2 12 C6 5 18 5 22 12 C18 19 6 19 2 12 Z M12 9 a3 3 0 1 0 0 6 a3 3 0 1 0 0 -6",
+      "match_priority": 4
+    },
+    {
+      "id": "technology",
+      "label": "Technology and getting online",
+      "blurb": "Devices to try or borrow, training, and help getting connected.",
+      "categories": [
+        "assistive_technology"
+      ],
+      "icon": "M3 5 h18 v11 h-18 Z M9 20 h6 M12 16 v4",
+      "match_priority": 2
+    },
+    {
+      "id": "work_school_money",
+      "label": "Work, school and money",
+      "blurb": "Finding or keeping a job, school support, and financial help.",
+      "categories": [
+        "employment",
+        "education",
+        "financial_assistance"
+      ],
+      "icon": "M4 8 h16 v11 h-16 Z M9 8 V5 h6 v3 M4 13 h16",
+      "match_priority": 2
+    },
+    {
+      "id": "getting_around",
+      "label": "Getting around",
+      "blurb": "Rides, paratransit, and guide dogs.",
+      "categories": [
+        "transportation",
+        "guide_dogs"
+      ],
+      "icon": "M5 17 a2 2 0 1 0 0.01 0 M17 17 a2 2 0 1 0 0.01 0 M3 17 V9 h13 l4 4 v4 M7 17 h8",
+      "match_priority": 2
+    },
+    {
+      "id": "people_and_activities",
+      "label": "People and activities",
+      "blurb": "Peer groups, sport, and things to do with others.",
+      "categories": [
+        "peer_support",
+        "recreation"
+      ],
+      "icon": "M8 10 a3 3 0 1 0 0-0.01 M16 10 a3 3 0 1 0 0-0.01 M3 20 c0-3 3-5 5-5 M13 20 c0-3 3-5 5-5",
+      "match_priority": 3
+    },
+    {
+      "id": "reading",
+      "label": "Reading and audio",
+      "blurb": "Talking books, braille, large print, and news by phone.",
+      "categories": [
+        "library_reading"
+      ],
+      "icon": "M4 5 h7 v14 h-7 Z M13 5 h7 v14 h-7 Z",
+      "match_priority": 2
+    },
+    {
+      "id": "veterans",
+      "label": "Veterans",
+      "blurb": "The VA blind rehabilitation system and the organizations that help veterans reach it.",
+      "categories": [
+        "veterans"
+      ],
+      "icon": "M12 3 L20 6 v6 c0 5-4 8-8 9 c-4-1-8-4-8-9 V6 Z",
+      "match_priority": 1
+    },
+    {
+      "id": "other_help",
+      "label": "Family, rights and specialist needs",
+      "blurb": "Support for families, legal advocacy, deaf-blind services, and everything else.",
+      "categories": [
+        "caregiver_support",
+        "legal_advocacy",
+        "deafblind",
+        "other"
+      ],
+      "icon": "M12 4 v16 M4 12 h16",
+      "match_priority": 9
+    }
+  ],
+  "county_map": {
+    "_comment": "A schematic cartogram, NOT a projection. Twelve tiles on a small grid, arranged to approximate relative position with Mecklenburg central. Deliberately not real boundaries: real polygons would be a large committed asset, would need a source, and would be illegible at 150% text. The caption on the page says it is schematic so nobody reads it as a real map. Columns and rows are grid cells, origin top-left.",
+    "caption": "Schematic — relative position, not to scale, and not a real map.",
+    "cols": 5,
+    "rows": 4,
+    "tiles": [
+      {
+        "county": "Iredell",
+        "col": 2,
+        "row": 0
+      },
+      {
+        "county": "Catawba",
+        "col": 1,
+        "row": 0
+      },
+      {
+        "county": "Rowan",
+        "col": 3,
+        "row": 0
+      },
+      {
+        "county": "Lincoln",
+        "col": 1,
+        "row": 1
+      },
+      {
+        "county": "Cabarrus",
+        "col": 3,
+        "row": 1
+      },
+      {
+        "county": "Stanly",
+        "col": 4,
+        "row": 1
+      },
+      {
+        "county": "Gaston",
+        "col": 1,
+        "row": 2
+      },
+      {
+        "county": "Mecklenburg",
+        "col": 2,
+        "row": 2
+      },
+      {
+        "county": "Union",
+        "col": 3,
+        "row": 2
+      },
+      {
+        "county": "Cleveland",
+        "col": 0,
+        "row": 2
+      },
+      {
+        "county": "York",
+        "col": 2,
+        "row": 3
+      },
+      {
+        "county": "Lancaster",
+        "col": 3,
+        "row": 3
+      }
+    ]
+  },
+  "_match_note": "Records carry several categories, so a record is filed under the group with the LOWEST match_priority it matches, not the first in display order. Without this, the 17 records tagged veterans mostly also carry a rehabilitation category and would file under 'Learning to live with sight loss', leaving a veteran who opens the Veterans group to find almost nothing."
+}

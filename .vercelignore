@@ -1,0 +1,26 @@
+# Defence in depth behind vercel.json's outputDirectory: "site".
+#
+# A CLI deploy uploads the working directory, not the git tree, so .gitignore
+# does not protect anything here. If outputDirectory were ever wrong or absent,
+# these are the files that would become publicly fetchable.
+#
+# LEADING SLASH MATTERS. These patterns follow .gitignore semantics, where an
+# unanchored "data/" would match site/data/ as well and take the deployed JSON
+# with it. "/data/" matches only the repo-root working directory.
+# site/ and everything in it — including site/data/organizations.json and
+# site/robots.txt — is deliberately NOT listed here.
+
+/source-reports/
+/data/
+/qa/
+/prompts/
+/docs/
+/schema/
+/scripts/
+/.claude/
+/CLAUDE.md
+/README-START-HERE.md
+
+# .env.local holds a live VERCEL_OIDC_TOKEN. Git ignores it; Vercel would not.
+.env
+.env.*

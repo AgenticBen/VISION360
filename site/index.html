@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" data-textsize="100" data-contrast="normal">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Working referral directory of organizations serving people who are blind, low vision, or losing their sight in the greater Charlotte, NC area.">
+<title>Vision loss services — greater Charlotte, NC</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip-link" href="#views">Skip to the three views</a>
+<a class="skip-link" href="#results">Skip to the organization list</a>
+<a class="skip-link" href="#filters">Skip to filters</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div class="header-titles">
+      <h1>Vision loss services — greater Charlotte, NC</h1>
+      <p class="maintainer">
+        Compiled and maintained by <b>Lions Services, Inc.</b>
+        <span class="tagline">Helping the Blind Help Themselves since 1935.</span>
+      </p>
+      <p class="lede">
+        A working referral directory. Every record is rendered from
+        <code>data/organizations.json</code>. Fields that read
+        <span class="gap-inline"><span class="gap-mark" aria-hidden="true">!</span>Not published — verification call required</span>
+        are gaps we have not closed yet, shown on purpose so you know what to ask.
+      </p>
+    </div>
+
+    <div class="display-controls">
+      <fieldset class="textsize">
+        <legend>Text size</legend>
+        <div class="segmented" id="textsize-group">
+          <button type="button" class="seg-btn" data-size="100" aria-pressed="true">100%</button>
+          <button type="button" class="seg-btn" data-size="125" aria-pressed="false">125%</button>
+          <button type="button" class="seg-btn" data-size="150" aria-pressed="false">150%</button>
+        </div>
+      </fieldset>
+      <button type="button" id="contrast-toggle" class="btn btn-quiet" aria-pressed="false">
+        <span class="ct-icon" aria-hidden="true">◐</span> High contrast
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ======================= VIEWS ======================= -->
+  <div class="wrap">
+    <!-- A real tablist, not aria-pressed toggles: these are three views OF one
+         dataset, and a screen reader should hear "2 of 3, selected" rather than
+         three unrelated buttons. Arrow-key handling lives in app.js and is
+         deliberately the only keydown listener in the file. -->
+    <div class="tabs" id="views" role="tablist" aria-label="Views of this directory">
+      <button type="button" class="tab" role="tab" id="tab-directory"
+              aria-controls="panel-directory" aria-selected="true" tabindex="0">
+        <span class="tab-icon" aria-hidden="true">▤</span> Directory
+      </button>
+      <button type="button" class="tab" role="tab" id="tab-pathways"
+              aria-controls="panel-pathways" aria-selected="false" tabindex="-1">
+        <span class="tab-icon" aria-hidden="true">◈</span> Pathways
+      </button>
+      <button type="button" class="tab" role="tab" id="tab-quiz"
+              aria-controls="panel-quiz" aria-selected="false" tabindex="-1">
+        <span class="tab-icon" aria-hidden="true">◇</span> Find services
+      </button>
+    </div>
+  </div>
+
+  <!-- Panels are labelled by their tab button and carry NO heading of their own,
+       so the one-h1 / no-skipped-levels structure is untouched. -->
+  <div id="panel-directory" role="tabpanel" aria-labelledby="tab-directory" tabindex="-1">
+  <div class="wrap layout">
+
+  <!-- ======================= FILTER RAIL ======================= -->
+  <form class="filters" id="filters" role="search" aria-labelledby="filters-heading" tabindex="-1">
+    <div class="filters-head">
+      <h2 id="filters-heading">Filters</h2>
+      <button type="button" class="btn btn-quiet btn-sm" id="clear-all">Clear all</button>
+    </div>
+
+    <div class="field">
+      <label for="q">Search</label>
+      <input type="search" id="q" name="q" autocomplete="off" spellcheck="false"
+             aria-describedby="q-hint"
+             placeholder="Name, other names, services">
+      <p class="hint" id="q-hint">Searches name, other names, one-line summary and service descriptions.</p>
+    </div>
+
+    <fieldset class="field">
+      <legend>Category</legend>
+      <div class="checks" id="f-categories"></div>
+    </fieldset>
+
+    <fieldset class="field">
+      <legend>Service area</legend>
+      <p class="hint">Geography sorts, it never excludes. With nothing ticked, every record is shown.</p>
+      <div class="checks" id="f-areas"></div>
+    </fieldset>
+
+    <fieldset class="field">
+      <legend>Record strength</legend>
+      <div class="checks" id="f-confidence"></div>
+    </fieldset>
+
+    <fieldset class="field">
+      <legend>Quick filters</legend>
+      <div class="checks" id="f-toggles"></div>
+    </fieldset>
+  </form>
+
+  <!-- ======================= RESULTS ======================= -->
+  <section id="results" aria-labelledby="results-heading" tabindex="-1">
+    <div class="results-head">
+      <h2 id="results-heading">Organizations</h2>
+      <div class="results-tools">
+        <label class="inline-label" for="sort">Sort</label>
+        <select id="sort">
+          <option value="meck">Mecklenburg first</option>
+          <option value="name">Name (A–Z)</option>
+          <option value="confidence">Weakest records first</option>
+          <option value="questions">Most open questions first</option>
+          <option value="area">Closest service area first</option>
+        </select>
+        <button type="button" class="btn btn-quiet btn-sm" id="collapse-all">Collapse all open</button>
+      </div>
+    </div>
+
+    <p class="status" id="result-status" role="status" aria-live="polite" aria-atomic="true">Loading the directory…</p>
+    <p class="announce visually-hidden" id="announce" role="status" aria-live="polite" aria-atomic="true"></p>
+
+    <!-- role="group" not a bare div: aria-label is discarded on role="generic". -->
+    <div id="active-chips" class="chips" role="group" aria-label="Active filters"></div>
+
+    <div id="error-region"></div>
+
+    <!-- role="list" is load-bearing: list-style:none strips list semantics in
+         Safari/VoiceOver, and the umbrella/programme nesting is carried by it. -->
+    <ol class="org-list" id="org-list" role="list"></ol>
+  </section>
+  </div>
+  </div>
+
+  <!-- ======================= PATHWAYS ======================= -->
+  <div id="panel-pathways" role="tabpanel" aria-labelledby="tab-pathways" tabindex="-1" hidden>
+    <div class="wrap panel-body">
+      <div id="pathways-root"></div>
+    </div>
+  </div>
+
+  <!-- ======================= FIND SERVICES ======================= -->
+  <div id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz" tabindex="-1" hidden>
+    <div class="wrap panel-body">
+      <div id="quiz-root"></div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer wrap">
+  <p>
+    Unlisted working document for record verification. Not a public directory and not the
+    journey map. Data corrections belong in <code>data/organizations.json</code>, never in this page.
+  </p>
+</footer>
+
+<!-- The engine loads first and only attaches globalThis.VisionAssessment. It is
+     a separate file so the same logic can run under node for the voice agent. -->
+<script src="quiz-engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,3600 @@
+{
+  "version": 1,
+  "_comment": "Question set and routing logic for the Find services assessment. Pure data: the web page and the future voice agent both read this file, so neither may hold logic the other does not. Every scoring effect carries evidence.branch_condition, which is the verbatim condition string of a human-verified branch in data/organizations.json, and evidence.org_id, the organisation whose access_path that branch lives in. If an effect cannot point at a real branch, the effect does not exist. Weights: org effects 20-40, category effects 5-15. suppress uses a negative weight and demotes only; nothing is ever excluded from results.",
+  "privacy_notice": "Nothing you enter here is saved or sent anywhere. The answers stay in this browser, they are not written to a file or a database, and closing the page loses them. We never ask for a name, a date of birth, an address or any policy or benefit number, and you can skip any question.",
+  "intro": "A few questions to work out which of the organisations in this directory are likely to be useful, and in what order. Nothing is ever ruled out — answers move things up and down the list, they do not remove them. Where we have nothing to offer, we will say so instead of guessing. It takes about five minutes, and you can skip anything.",
+  "blocks": [
+    {
+      "id": "framing",
+      "title": "Who this is for",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "actor",
+        "county"
+      ]
+    },
+    {
+      "id": "situation",
+      "title": "What is going on",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "goals",
+        "age_band",
+        "hearing_loss"
+      ]
+    },
+    {
+      "id": "eye_care",
+      "title": "Eye care",
+      "skippable_as_block": false,
+      "preamble": "Most of the rehabilitation services in here need a report from an eye doctor before they can start. These three questions are the ones that unblock the most people.",
+      "questions": [
+        "eye_doctor",
+        "eye_exam_recency",
+        "insurance"
+      ]
+    },
+    {
+      "id": "military",
+      "title": "Military service",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "veteran",
+        "va_enrolled",
+        "discharge"
+      ]
+    },
+    {
+      "id": "everyday",
+      "title": "Everyday life",
+      "skippable_as_block": true,
+      "preamble": "The next few questions are about things other than sight. We ask them because they usually decide whether any of the rest actually works — a rehabilitation plan is hard to start from an unsteady home, and none of it helps if there is no way to get there. Be warned: for several of these, this directory has nothing to offer, and it will say so plainly instead of inventing a referral. You can skip this whole section.",
+      "questions": [
+        "housing_stable",
+        "food_worry",
+        "utilities",
+        "transport_barrier",
+        "legal_matter",
+        "loneliness",
+        "broadband",
+        "devices"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "actor",
+      "domain": "framing",
+      "type": "single",
+      "prompt_screen": "Who are you answering for?",
+      "prompt_voice": "First, are you looking for yourself, or for someone else?",
+      "help": "Some organisations take a referral from a family member or a professional. A few ask the person to sign up themselves. This helps us say which is which.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "self",
+          "label_screen": "Myself",
+          "label_voice": "myself",
+          "aliases": [
+            "me",
+            "for me",
+            "i am",
+            "myself"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "mecklenburg-county-just1call",
+              "weight": 25,
+              "because": "You said you are doing this for yourself. Some free eye-exam programmes need a caseworker to apply on your behalf, and this county line can connect you to one.",
+              "evidence": {
+                "org_id": "vision-nc",
+                "branch_condition": "The person has no caseworker and no agency connection"
+              }
+            }
+          ]
+        },
+        {
+          "value": "family_friend",
+          "label_screen": "A family member or friend",
+          "label_voice": "a family member or friend",
+          "aliases": [
+            "my mother",
+            "my father",
+            "my husband",
+            "my wife",
+            "a friend",
+            "my neighbour",
+            "my neighbor",
+            "my parent",
+            "my son",
+            "my daughter"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "lions-services-lionsdenn",
+              "weight": 25,
+              "because": "You said you are answering for a family member or friend. This programme's own form asks whether you are completing it for someone else, so a referral from you is accepted.",
+              "evidence": {
+                "org_id": "lions-services-lionsdenn",
+                "branch_condition": "A family member, case manager or other professional is completing the form for someone else"
+              }
+            }
+          ]
+        },
+        {
+          "value": "professional",
+          "label_screen": "A professional making a referral",
+          "label_voice": "a professional making a referral",
+          "aliases": [
+            "case manager",
+            "social worker",
+            "i'm a professional",
+            "caseworker",
+            "on behalf of a client",
+            "i work with them"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "lions-services-lionsdenn",
+              "weight": 25,
+              "because": "You said you are making a referral as a professional. This programme's own form asks whether you are completing it for a client or someone you support professionally.",
+              "evidence": {
+                "org_id": "lions-services-lionsdenn",
+                "branch_condition": "A family member, case manager or other professional is completing the form for someone else"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "achilles-international-charlotte",
+              "weight": -20,
+              "because": "You said you are making the referral. This group's published pages describe the athlete creating their own account, and third-party sign-up is not published, so we have ranked it lower rather than ruled it out.",
+              "evidence": {
+                "org_id": "achilles-international-charlotte",
+                "branch_condition": "A case manager, family member or professional wants to sign someone up"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "county",
+      "domain": "geography",
+      "type": "single",
+      "prompt_screen": "Where does the person live?",
+      "prompt_voice": "Roughly where does the person live?",
+      "help": "Distance changes the order we show things in. It never removes anything from your results.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "mecklenburg",
+          "label_screen": "Mecklenburg County (Charlotte)",
+          "label_voice": "Mecklenburg County",
+          "aliases": [
+            "charlotte",
+            "meck",
+            "mecklenburg",
+            "matthews",
+            "huntersville",
+            "pineville"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "disability-rights-and-resources",
+              "weight": 25,
+              "because": "You said Mecklenburg County, which is inside this centre's published service area.",
+              "evidence": {
+                "org_id": "disability-rights-and-resources",
+                "branch_condition": "Person lives outside Mecklenburg, Gaston, Union or Cabarrus county"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "cms-exceptional-children-visual-impairment",
+              "weight": 20,
+              "because": "You said Mecklenburg County, which is the school district this service covers.",
+              "evidence": {
+                "org_id": "cms-exceptional-children-visual-impairment",
+                "branch_condition": "Family lives in a surrounding county outside the CMS district"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-infant-toddler-program",
+              "weight": 20,
+              "because": "You said Mecklenburg County, which is where this local early-intervention office works.",
+              "evidence": {
+                "org_id": "nc-infant-toddler-program",
+                "branch_condition": "The child does not live in Mecklenburg County"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "metrolina-association-for-the-blind-low-vision-clinic",
+              "weight": 25,
+              "because": "You said Mecklenburg County. This is the low vision clinic inside Charlotte, so there is no long drive.",
+              "evidence": {
+                "org_id": "duke-eye-center-vision-rehabilitation",
+                "branch_condition": "The 2.5-hour drive to Durham is not workable"
+              }
+            }
+          ]
+        },
+        {
+          "value": "neighbouring",
+          "label_screen": "A county next to Mecklenburg",
+          "label_voice": "a county next to Mecklenburg",
+          "aliases": [
+            "gaston",
+            "union county",
+            "cabarrus",
+            "iredell",
+            "lincoln county",
+            "rowan",
+            "next door",
+            "nearby county",
+            "york",
+            "lancaster"
+          ],
+          "effects": [
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "cms-exceptional-children-visual-impairment",
+              "weight": -20,
+              "because": "You said a county next to Mecklenburg, which is outside this school district. Your own district provides the same service.",
+              "evidence": {
+                "org_id": "cms-exceptional-children-visual-impairment",
+                "branch_condition": "Family lives in a surrounding county outside the CMS district"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-infant-toddler-program",
+              "weight": -20,
+              "because": "You said a county next to Mecklenburg. This particular office covers Mecklenburg; there is an equivalent office for your county.",
+              "evidence": {
+                "org_id": "nc-infant-toddler-program",
+                "branch_condition": "The child does not live in Mecklenburg County"
+              }
+            }
+          ]
+        },
+        {
+          "value": "elsewhere_nc",
+          "label_screen": "Somewhere else in North Carolina",
+          "label_voice": "somewhere else in North Carolina",
+          "aliases": [
+            "raleigh",
+            "durham",
+            "asheville",
+            "greensboro",
+            "winston salem",
+            "elsewhere in nc",
+            "eastern nc",
+            "another part of the state"
+          ],
+          "effects": [
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-dsb-charlotte-district-office",
+              "weight": -25,
+              "because": "You said somewhere else in North Carolina. This is the Charlotte district office; the state agency has other district offices.",
+              "evidence": {
+                "org_id": "nc-dsb-charlotte-district-office",
+                "branch_condition": "Person lives outside the 12 counties this office covers"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "disability-rights-and-resources",
+              "weight": -20,
+              "because": "You said somewhere else in North Carolina, outside this centre's published service area.",
+              "evidence": {
+                "org_id": "disability-rights-and-resources",
+                "branch_condition": "Person lives outside Mecklenburg, Gaston, Union or Cabarrus county"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "cms-exceptional-children-visual-impairment",
+              "weight": -20,
+              "because": "You said somewhere else in North Carolina, outside this school district.",
+              "evidence": {
+                "org_id": "cms-exceptional-children-visual-impairment",
+                "branch_condition": "Family lives in a surrounding county outside the CMS district"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-infant-toddler-program",
+              "weight": -20,
+              "because": "You said somewhere else in North Carolina, outside this office's county.",
+              "evidence": {
+                "org_id": "nc-infant-toddler-program",
+                "branch_condition": "The child does not live in Mecklenburg County"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-independent-living",
+              "weight": 25,
+              "because": "You said somewhere else in North Carolina. This state programme runs statewide, so it does not depend on one therapist's travel radius.",
+              "evidence": {
+                "org_id": "carolina-low-vision-rehab",
+                "branch_condition": "She does not travel to the person's county"
+              }
+            }
+          ]
+        },
+        {
+          "value": "outside_nc",
+          "label_screen": "Outside North Carolina",
+          "label_voice": "outside North Carolina",
+          "aliases": [
+            "south carolina",
+            "rock hill",
+            "fort mill",
+            "sc",
+            "another state",
+            "virginia",
+            "georgia"
+          ],
+          "effects": [
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-dsb",
+              "weight": -25,
+              "because": "You said outside North Carolina. This is a North Carolina state agency, so another state's equivalent agency is likely the right one.",
+              "evidence": {
+                "org_id": "nc-dsb",
+                "branch_condition": "Person lives in South Carolina (York or Lancaster County)"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-dsb-charlotte-district-office",
+              "weight": -25,
+              "because": "You said outside North Carolina, outside the counties this office covers.",
+              "evidence": {
+                "org_id": "nc-dsb-charlotte-district-office",
+                "branch_condition": "Person lives outside the 12 counties this office covers"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "foundation-fighting-blindness-charlotte-chapter",
+              "weight": -20,
+              "because": "You said outside North Carolina. The chapter is still worth a call, but it is organised around North Carolina.",
+              "evidence": {
+                "org_id": "foundation-fighting-blindness-charlotte-chapter",
+                "branch_condition": "Person lives in South Carolina (York or Lancaster County)"
+              }
+            }
+          ]
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "Not sure",
+          "label_voice": "not sure",
+          "aliases": [
+            "dunno",
+            "don't know",
+            "unsure"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "goals",
+      "domain": "needs",
+      "type": "multi",
+      "prompt_screen": "What would make the biggest difference right now? Choose as many as you like.",
+      "prompt_voice": "What would make the biggest difference right now? You can name more than one.",
+      "help": "There is no wrong answer, and you can change your mind later.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "work",
+          "label_screen": "Finding or keeping work",
+          "label_voice": "finding or keeping work",
+          "aliases": [
+            "a job",
+            "employment",
+            "back to work",
+            "keep my job",
+            "career",
+            "college and work"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-vocational-rehabilitation",
+              "weight": 40,
+              "because": "You said work matters. This is the state programme for finding, keeping or returning to a job when sight loss gets in the way.",
+              "evidence": {
+                "org_id": "nc-dsb",
+                "branch_condition": "Adult who wants to find, keep or return to work"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-business-enterprises",
+              "weight": 25,
+              "because": "You said work matters. This is the state route for running your own vending or food-service business.",
+              "evidence": {
+                "org_id": "nc-dsb",
+                "branch_condition": "Wants to run a vending or food-service business"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "employment",
+              "weight": 12,
+              "because": "You said work matters.",
+              "evidence": {
+                "org_id": "novant-health-ophthalmology",
+                "branch_condition": "Person is working age and wants to keep or find a job"
+              }
+            }
+          ]
+        },
+        {
+          "value": "home",
+          "label_screen": "Adjusting to sight loss at home",
+          "label_voice": "adjusting to sight loss at home",
+          "aliases": [
+            "cooking",
+            "daily living",
+            "around the house",
+            "manage at home",
+            "everyday tasks",
+            "independent living"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-independent-living",
+              "weight": 40,
+              "because": "You said managing at home matters. This is the state programme for adults adjusting to sight loss in their own home.",
+              "evidence": {
+                "org_id": "nc-dsb",
+                "branch_condition": "Adult adjusting to vision loss at home"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "metrolina-association-for-the-blind-vision-rehabilitation-services",
+              "weight": 30,
+              "because": "You said managing at home matters. This service works with people in the Charlotte area, including in the home.",
+              "evidence": {
+                "org_id": "low-vision-rehab-solutions",
+                "branch_condition": "No in-home therapist covers the Charlotte area and the person needs someone physically in the home"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "metrolina-association-for-the-blind",
+              "weight": 25,
+              "because": "You said managing at home matters, which is rehabilitation rather than a diagnosis.",
+              "evidence": {
+                "org_id": "charlotte-eye-ear-nose-throat-associates",
+                "branch_condition": "The person needs low vision rehabilitation rather than a diagnosis"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "vision_rehab",
+              "weight": 12,
+              "because": "You said managing at home matters.",
+              "evidence": {
+                "org_id": "disability-rights-and-resources",
+                "branch_condition": "Person needs vision rehabilitation or independent living skills for sight loss"
+              }
+            }
+          ]
+        },
+        {
+          "value": "travel",
+          "label_screen": "Learning to get around safely",
+          "label_voice": "learning to get around safely",
+          "aliases": [
+            "cane",
+            "white cane",
+            "mobility",
+            "walking",
+            "getting out",
+            "travel training",
+            "orientation"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-independent-living",
+              "weight": 40,
+              "because": "You said getting around safely matters. This is where cane travel teaching is arranged.",
+              "evidence": {
+                "org_id": "nc-lions-foundation",
+                "branch_condition": "The person has a cane but has never been taught to use it"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "metrolina-association-for-the-blind-vision-rehabilitation-services",
+              "weight": 30,
+              "because": "You said getting around safely matters. This Charlotte service includes safe-travel training.",
+              "evidence": {
+                "org_id": "metrolina-association-for-the-blind-accessible-document-services",
+                "branch_condition": "An individual with vision loss needs services"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "orientation_mobility",
+              "weight": 12,
+              "because": "You said getting around safely matters.",
+              "evidence": {
+                "org_id": "guide-dog-schools-serving-nc-applicants",
+                "branch_condition": "The person has not had Orientation and Mobility training"
+              }
+            }
+          ]
+        },
+        {
+          "value": "technology",
+          "label_screen": "Technology and getting online",
+          "label_voice": "technology and getting online",
+          "aliases": [
+            "computer",
+            "phone",
+            "screen reader",
+            "internet",
+            "ipad",
+            "magnifier",
+            "tech",
+            "apps"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "lions-services-lionsdenn",
+              "weight": 40,
+              "because": "You said technology matters. This is free-standing technology training open to the Charlotte community.",
+              "evidence": {
+                "org_id": "lions-services",
+                "branch_condition": "Person wants assistive-technology training, help getting online, or help choosing devices"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "ncatp-assessment-and-training",
+              "weight": 30,
+              "because": "You said technology matters. This is a formal assessment and hands-on training on assistive technology.",
+              "evidence": {
+                "org_id": "ncatp",
+                "branch_condition": "Wants a formal AT assessment, training, or consultation"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "ncatp-device-demonstration-and-loan",
+              "weight": 30,
+              "because": "You said technology matters. Here you can try a device or borrow one before deciding.",
+              "evidence": {
+                "org_id": "ncatp",
+                "branch_condition": "Wants to try, borrow, or receive reused equipment"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "ncatp-charlotte-center",
+              "weight": 25,
+              "because": "You said technology matters. This is the Charlotte location where devices can be tried or borrowed.",
+              "evidence": {
+                "org_id": "nc-dsb-charlotte-district-office",
+                "branch_condition": "Needs devices to try or borrow"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "lions-services",
+              "weight": 25,
+              "because": "You said technology matters. This organisation runs the community technology programme.",
+              "evidence": {
+                "org_id": "lions-services",
+                "branch_condition": "Person wants assistive-technology training, help getting online, or help choosing devices"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-vocational-rehabilitation",
+              "weight": 20,
+              "because": "You said technology matters. Assistive-technology fees are often paid by the state programme when the person is one of its consumers.",
+              "evidence": {
+                "org_id": "ncatp-assessment-and-training",
+                "branch_condition": "Person is a DSB vocational rehabilitation consumer"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "assistive_technology",
+              "weight": 12,
+              "because": "You said technology matters.",
+              "evidence": {
+                "org_id": "nc-lions-foundation",
+                "branch_condition": "The person needs a device assessment rather than a loan of whatever is in stock"
+              }
+            }
+          ]
+        },
+        {
+          "value": "reading",
+          "label_screen": "Reading, talking books or braille",
+          "label_voice": "reading, talking books or braille",
+          "aliases": [
+            "books",
+            "audiobooks",
+            "large print",
+            "braille",
+            "newspaper",
+            "talking books",
+            "reading"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-accessible-books-and-library-services",
+              "weight": 40,
+              "because": "You said reading matters. This is the free talking-book and braille service, posted to your door.",
+              "evidence": {
+                "org_id": "nc-dsb-community-services",
+                "branch_condition": "Wants talking books, Braille or large print by mail"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "charlotte-mecklenburg-library-accessibility-services",
+              "weight": 30,
+              "because": "You said reading matters. The public library has magnifiers and screen-reading computers you can use in the branch.",
+              "evidence": {
+                "org_id": "mecklenburg-county",
+                "branch_condition": "Needs magnifiers or a screen-reading computer to use"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-community-services",
+              "weight": 25,
+              "because": "You said reading matters. The state agency helps with the talking-book application itself.",
+              "evidence": {
+                "org_id": "nc-dsb-community-services",
+                "branch_condition": "Wants talking books, Braille or large print by mail"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nfb-newsline",
+              "weight": 25,
+              "because": "You said reading matters. This service reads newspapers and magazines aloud by phone or app.",
+              "evidence": {
+                "org_id": "nfb-newsline",
+                "branch_condition": "Person also wants talking books and a free player"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "north-carolina-reading-service",
+              "weight": 20,
+              "because": "You said reading matters. This service reads newspapers and magazines aloud by web, phone line or a loaned radio.",
+              "evidence": {
+                "org_id": "north-carolina-reading-service",
+                "branch_condition": "The over-the-air signal does not reach the listener's address"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "metrolina-association-for-the-blind-accessible-document-services",
+              "weight": 20,
+              "because": "You said reading matters. This is the local service that produces braille, large print and audio versions of documents.",
+              "evidence": {
+                "org_id": "metrolina-association-for-the-blind",
+                "branch_condition": "The caller is an organization wanting documents in braille, large print, audio, or accessible PDF"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "library_reading",
+              "weight": 12,
+              "because": "You said reading matters.",
+              "evidence": {
+                "org_id": "charlotte-mecklenburg-library-accessibility-services",
+                "branch_condition": "Wants talking books or braille by mail"
+              }
+            }
+          ]
+        },
+        {
+          "value": "meeting_people",
+          "label_screen": "Meeting other people",
+          "label_voice": "meeting other people",
+          "aliases": [
+            "support group",
+            "friends",
+            "lonely",
+            "peer support",
+            "talk to someone",
+            "community",
+            "social"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "acb-community",
+              "weight": 35,
+              "because": "You said meeting other people matters. These are free daily calls you can join by ordinary telephone.",
+              "evidence": {
+                "org_id": "hadley",
+                "branch_condition": "The person wants company today rather than at the next cohort"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nfb-mecklenburg-county-chapter",
+              "weight": 35,
+              "because": "You said meeting other people matters. This is a local in-person group in the Charlotte area.",
+              "evidence": {
+                "org_id": "acb-community",
+                "branch_condition": "The person wants a local in-person group in the Charlotte area"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "hadley",
+              "weight": 30,
+              "because": "You said meeting other people matters. This offers one-to-one peer matching and weekly groups.",
+              "evidence": {
+                "org_id": "acb-community",
+                "branch_condition": "The person wants one-to-one peer support or structured coping sessions"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "foundation-fighting-blindness-charlotte-chapter",
+              "weight": 25,
+              "because": "You said meeting other people matters. The local chapter runs events and peer support.",
+              "evidence": {
+                "org_id": "foundation-fighting-blindness",
+                "branch_condition": "Person wants local peer support or a local event"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "foundation-fighting-blindness",
+              "weight": 20,
+              "because": "You said meeting other people matters. The national body runs peer support alongside its research work.",
+              "evidence": {
+                "org_id": "foundation-fighting-blindness",
+                "branch_condition": "Person needs practical vision rehabilitation rather than research and peer support"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-council-of-the-blind",
+              "weight": 20,
+              "because": "You said meeting other people matters. This is a statewide membership group with peer connection and a yearly convention.",
+              "evidence": {
+                "org_id": "nc-council-of-the-blind",
+                "branch_condition": "The person wants a peer group they can actually attend in the Charlotte area"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "peer_support",
+              "weight": 12,
+              "because": "You said meeting other people matters.",
+              "evidence": {
+                "org_id": "disability-rights-and-resources",
+                "branch_condition": "Person specifically wants blind or low-vision peer support"
+              }
+            }
+          ]
+        },
+        {
+          "value": "recreation",
+          "label_screen": "Sport and recreation",
+          "label_voice": "sport and recreation",
+          "aliases": [
+            "exercise",
+            "running",
+            "walking group",
+            "camp",
+            "fishing",
+            "sports",
+            "swimming",
+            "cycling",
+            "gym"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "camp-dogwood",
+              "weight": 35,
+              "because": "You said sport and recreation matter. This is a week-long summer camp for blind adults in North Carolina.",
+              "evidence": {
+                "org_id": "nc-dsb-community-services",
+                "branch_condition": "Wants a week at Camp Dogwood"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-lions-vip-fishing-tournament",
+              "weight": 30,
+              "because": "You said sport and recreation matter. This is the annual fishing event with sighted guides.",
+              "evidence": {
+                "org_id": "nc-dsb-community-services",
+                "branch_condition": "Wants the annual VIP Fishing Tournament"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "achilles-international-charlotte",
+              "weight": 30,
+              "because": "You said sport and recreation matter. Free Saturday runs, walks and rolls with a trained guide.",
+              "evidence": {
+                "org_id": "sunshine-club",
+                "branch_condition": "Person wants a low-barrier group they can join this week but cannot reach the Bethlehem Center"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "usaba",
+              "weight": 25,
+              "because": "You said sport and recreation matter. This is the national body for blind and low-vision athletes.",
+              "evidence": {
+                "org_id": "para-guide-foundation",
+                "branch_condition": "The person wants organised competitive blind sport rather than a guide for their own training"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "carolina-warriors-beep-baseball",
+              "weight": 20,
+              "because": "You said sport and recreation matter, and beep baseball is one of the options locally.",
+              "evidence": {
+                "org_id": "usaba",
+                "branch_condition": "The person specifically wants beep baseball"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nbba",
+              "weight": 20,
+              "because": "You said sport and recreation matter. The national beep baseball body can point to the nearest team.",
+              "evidence": {
+                "org_id": "usaba",
+                "branch_condition": "Beep baseball, but the local team is not a fit"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "limitless-para-athletes",
+              "weight": 20,
+              "because": "You said sport and recreation matter. Free weekly guided walks, running, climbing and yoga.",
+              "evidence": {
+                "org_id": "nbba",
+                "branch_condition": "Travel or cost makes this unworkable"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "para-guide-foundation",
+              "weight": 20,
+              "because": "You said sport and recreation matter. This provides trained sighted guides and tandem pilots.",
+              "evidence": {
+                "org_id": "para-guide-foundation",
+                "branch_condition": "The person wants to volunteer as a sighted guide rather than take part as an athlete"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "marion-diehl-center",
+              "weight": 20,
+              "because": "You said sport and recreation matter. This is the county's therapeutic recreation programme.",
+              "evidence": {
+                "org_id": "marion-diehl-center",
+                "branch_condition": "Caller wants the recreation centre itself rather than a therapeutic programme"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "recreation",
+              "weight": 12,
+              "because": "You said sport and recreation matter.",
+              "evidence": {
+                "org_id": "para-guide-foundation",
+                "branch_condition": "The person wants organised competitive blind sport rather than a guide for their own training"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "age_band",
+      "domain": "person",
+      "type": "single",
+      "prompt_screen": "How old is the person?",
+      "prompt_voice": "Roughly how old is the person?",
+      "help": "Several services are split by age, so this changes the answer quite a lot. A rough band is enough — we do not want a date of birth.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "under_3",
+          "label_screen": "Under 3",
+          "label_voice": "under three",
+          "aliases": [
+            "baby",
+            "toddler",
+            "infant",
+            "newborn",
+            "two years old",
+            "one year old"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-elssp-vi",
+              "weight": 40,
+              "because": "You said the child is under three. This is free in-home teaching from a vision teacher for children from birth to five.",
+              "evidence": {
+                "org_id": "cms-exceptional-children-visual-impairment",
+                "branch_condition": "Child is under age 3 (or birth to 5)"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "cms-exceptional-children-visual-impairment",
+              "weight": -20,
+              "because": "You said the child is under three, which is below school age for this service.",
+              "evidence": {
+                "org_id": "cms-exceptional-children-visual-impairment",
+                "branch_condition": "Child is under age 3 (or birth to 5)"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-dsb-transition-services",
+              "weight": -20,
+              "because": "You said the child is under three. This programme starts around age fourteen.",
+              "evidence": {
+                "org_id": "nc-dsb-transition-services",
+                "branch_condition": "Student is under 14"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "education",
+              "weight": 10,
+              "because": "You said the child is under three.",
+              "evidence": {
+                "org_id": "cms-exceptional-children-visual-impairment",
+                "branch_condition": "Child is under age 3 (or birth to 5)"
+              }
+            }
+          ]
+        },
+        {
+          "value": "3_to_13",
+          "label_screen": "3 to 13",
+          "label_voice": "between three and thirteen",
+          "aliases": [
+            "primary school",
+            "elementary",
+            "middle school",
+            "child",
+            "kid",
+            "school age"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "cms-exceptional-children-visual-impairment",
+              "weight": 40,
+              "because": "You said the child is of school age. This is the free in-school support: braille, large print, a vision teacher and safe-travel instruction.",
+              "evidence": {
+                "org_id": "nc-elssp-vi",
+                "branch_condition": "The child is 3 or over and in a Mecklenburg school"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "governor-morehead-school",
+              "weight": 25,
+              "because": "You said the child is of school age. This is the state residential school, used when a local district cannot meet the need.",
+              "evidence": {
+                "org_id": "cms-exceptional-children-visual-impairment",
+                "branch_condition": "Local district cannot meet the student's needs"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "guide-dog-schools-serving-nc-applicants",
+              "weight": 20,
+              "because": "You said the child is of school age. One school in this group takes applicants as young as eleven.",
+              "evidence": {
+                "org_id": "guide-dog-schools-serving-nc-applicants",
+                "branch_condition": "Applicant is a child aged 11 to 16"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-elssp-vi",
+              "weight": -25,
+              "because": "You said the child is three or over, so the birth-to-five programme hands over to the school district.",
+              "evidence": {
+                "org_id": "nc-elssp-vi",
+                "branch_condition": "The child is 3 or over and in a Mecklenburg school"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-infant-toddler-program",
+              "weight": -25,
+              "because": "You said the child is three or over, which is above this programme's age range.",
+              "evidence": {
+                "org_id": "nc-infant-toddler-program",
+                "branch_condition": "The child is 3 or older"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-dsb-transition-services",
+              "weight": -20,
+              "because": "You said the child is under fourteen, which is below where this programme normally starts.",
+              "evidence": {
+                "org_id": "nc-dsb-transition-services",
+                "branch_condition": "Student is under 14"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "education",
+              "weight": 12,
+              "because": "You said the child is of school age.",
+              "evidence": {
+                "org_id": "nc-dsb-transition-services",
+                "branch_condition": "Student needs classroom vision services rather than career planning"
+              }
+            }
+          ]
+        },
+        {
+          "value": "14_to_21",
+          "label_screen": "14 to 21",
+          "label_voice": "between fourteen and twenty-one",
+          "aliases": [
+            "teenager",
+            "high school",
+            "student",
+            "college age",
+            "young adult"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-transition-services",
+              "weight": 40,
+              "because": "You said the person is a teenager or young adult. This is the state help with the move from school to work or college.",
+              "evidence": {
+                "org_id": "nc-dsb",
+                "branch_condition": "High school student planning for work or college"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "cms-exceptional-children-visual-impairment",
+              "weight": 20,
+              "because": "You said the person is a teenager. School-based support runs alongside career planning.",
+              "evidence": {
+                "org_id": "governor-morehead-school",
+                "branch_condition": "Student does not yet have an IEP"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "guide-dog-schools-serving-nc-applicants",
+              "weight": 20,
+              "because": "You said the person is a teenager. One school in this group runs a guide dog programme for teenagers.",
+              "evidence": {
+                "org_id": "guide-dog-schools-serving-nc-applicants",
+                "branch_condition": "Applicant is a teenager aged 15 to 19"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-infant-toddler-program",
+              "weight": -25,
+              "because": "You said the person is a teenager, well above this programme's age range.",
+              "evidence": {
+                "org_id": "nc-infant-toddler-program",
+                "branch_condition": "The child is 3 or older"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "education",
+              "weight": 12,
+              "because": "You said the person is still in or near school.",
+              "evidence": {
+                "org_id": "nc-dsb-vocational-rehabilitation",
+                "branch_condition": "Person is a high school student, or is as young as 14 and exploring careers"
+              }
+            }
+          ]
+        },
+        {
+          "value": "22_to_54",
+          "label_screen": "22 to 54",
+          "label_voice": "between twenty-two and fifty-four",
+          "aliases": [
+            "adult",
+            "working age",
+            "middle aged",
+            "thirties",
+            "forties"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-independent-living",
+              "weight": 30,
+              "because": "You said the person is an adult under fifty-five, which is the main Independent Living track rather than the older-adult one.",
+              "evidence": {
+                "org_id": "nc-dsb-independent-living-older-blind",
+                "branch_condition": "Person is under 55"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-vocational-rehabilitation",
+              "weight": 30,
+              "because": "You said the person is of working age.",
+              "evidence": {
+                "org_id": "novant-health-ophthalmology",
+                "branch_condition": "Person is working age and wants to keep or find a job"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-dsb-independent-living-older-blind",
+              "weight": -25,
+              "because": "You said the person is under fifty-five, which is below this track's age gate.",
+              "evidence": {
+                "org_id": "nc-dsb-independent-living-older-blind",
+                "branch_condition": "Person is under 55"
+              }
+            }
+          ]
+        },
+        {
+          "value": "55_plus",
+          "label_screen": "55 or older",
+          "label_voice": "fifty-five or older",
+          "aliases": [
+            "senior",
+            "elderly",
+            "retired",
+            "older",
+            "sixties",
+            "seventies",
+            "eighties"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-independent-living-older-blind",
+              "weight": 40,
+              "because": "You said the person is fifty-five or older, which is exactly this track's age range.",
+              "evidence": {
+                "org_id": "nc-dsb-independent-living",
+                "branch_condition": "Age 55 or older"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "vision_rehab",
+              "weight": 10,
+              "because": "You said the person is fifty-five or older.",
+              "evidence": {
+                "org_id": "novant-health-ophthalmology",
+                "branch_condition": "Person is over 55"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hearing_loss",
+      "domain": "person",
+      "type": "yes_no",
+      "prompt_screen": "Does the person also have hearing loss?",
+      "prompt_voice": "Does the person also have any hearing loss?",
+      "help": "Combined hearing and sight loss opens a separate set of services that are easy to miss.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [
+            "deaf",
+            "hard of hearing",
+            "hearing aids",
+            "deafblind",
+            "both"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-deaf-blind-services",
+              "weight": 40,
+              "because": "You said there is hearing loss as well. This is the state's specialist service for combined hearing and sight loss.",
+              "evidence": {
+                "org_id": "nc-dsb",
+                "branch_condition": "Combined hearing and vision loss"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsdhh-charlotte-regional-center",
+              "weight": 30,
+              "because": "You said there is hearing loss as well. This regional centre covers communication access and equipment.",
+              "evidence": {
+                "org_id": "nc-dsb-deaf-blind-services",
+                "branch_condition": "Person's primary need is deaf or hard-of-hearing services rather than vision"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-deafblind-project-ecac",
+              "weight": 25,
+              "because": "You said there is hearing loss as well. This project supports families of children with deaf-blindness.",
+              "evidence": {
+                "org_id": "nc-elssp-vi",
+                "branch_condition": "The child has combined vision and hearing loss"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "rha-health-services-deaf-hard-of-hearing",
+              "weight": 20,
+              "because": "You said there is hearing loss as well. This provider offers a communication-accessible way in.",
+              "evidence": {
+                "org_id": "rha-health-services-deaf-hard-of-hearing",
+                "branch_condition": "The person is deaf-blind and needs a communication-accessible route in"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "beginnings-nc",
+              "weight": 20,
+              "because": "You said there is hearing loss as well. This is free family support for children who are DeafBlind.",
+              "evidence": {
+                "org_id": "beginnings-nc",
+                "branch_condition": "Child is DeafBlind and needs educational technical assistance as well as family support"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "deafblind",
+              "weight": 15,
+              "because": "You said there is hearing loss as well.",
+              "evidence": {
+                "org_id": "nc-lions-foundation",
+                "branch_condition": "The person is deaf-blind"
+              }
+            }
+          ]
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [
+            "hearing is fine",
+            "no hearing problem"
+          ],
+          "effects": []
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "Not sure",
+          "label_voice": "not sure",
+          "aliases": [
+            "maybe",
+            "dunno",
+            "possibly"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "eye_doctor",
+      "domain": "eye_care",
+      "type": "single",
+      "prompt_screen": "Does the person have an eye doctor?",
+      "prompt_voice": "Does the person have an eye doctor they see?",
+      "help": "Most rehabilitation services need a report from an eye doctor before they can start. If there is no eye doctor, that is the first thing to fix, and there are free routes.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "has",
+          "label_screen": "Yes, there is one",
+          "label_voice": "yes",
+          "aliases": [
+            "ophthalmologist",
+            "optometrist",
+            "eye specialist",
+            "i see one",
+            "retina doctor"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-charlotte-district-office",
+              "weight": 30,
+              "because": "You said there is an eye doctor. The state agency opens a case from what that doctor's report shows.",
+              "evidence": {
+                "org_id": "university-eye-associates",
+                "branch_condition": "The report shows acuity of 20/200 or worse, or a visual field of 20 degrees or less, in the better eye"
+              }
+            }
+          ]
+        },
+        {
+          "value": "none",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [
+            "no eye doctor",
+            "haven't got one",
+            "never seen one",
+            "no specialist"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "vision-nc",
+              "weight": 40,
+              "because": "You said there is no eye doctor. This arranges a free eye exam from a volunteer optometrist.",
+              "evidence": {
+                "org_id": "metrolina-association-for-the-blind",
+                "branch_condition": "The person has no eye doctor and cannot afford an exam"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "cw-williams-community-health-center",
+              "weight": 30,
+              "because": "You said there is no eye doctor. This health centre works on a sliding fee scale and can be a starting point.",
+              "evidence": {
+                "org_id": "cats-special-transportation-service",
+                "branch_condition": "The person has no eye doctor and no current eye report to give the signing professional"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "eyecare-america",
+              "weight": 30,
+              "because": "You said there is no eye doctor. This arranges a no-cost medical eye exam from a volunteer ophthalmologist.",
+              "evidence": {
+                "org_id": "foundation-fighting-blindness",
+                "branch_condition": "Person has no eye doctor and cannot afford one"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "charlotte-eye-ear-nose-throat-associates",
+              "weight": 25,
+              "because": "You said there is no eye doctor. This large practice can produce the diagnostic report other services ask for.",
+              "evidence": {
+                "org_id": "university-eye-associates",
+                "branch_condition": "The site will not load or the practice cannot be reached"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "charlotte-mecklenburg-library-accessibility-services",
+              "weight": 20,
+              "because": "You said there is no eye doctor. The library service does not need a doctor to certify anything.",
+              "evidence": {
+                "org_id": "nc-accessible-books-and-library-services",
+                "branch_condition": "The person has no doctor or professional available to certify"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "eye_care_access",
+              "weight": 15,
+              "because": "You said there is no eye doctor.",
+              "evidence": {
+                "org_id": "metrolina-association-for-the-blind-low-vision-clinic",
+                "branch_condition": "The person has no eye doctor or cannot afford an exam"
+              }
+            }
+          ]
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "Not sure",
+          "label_voice": "not sure",
+          "aliases": [
+            "maybe",
+            "dunno",
+            "i think so"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "eye_care_access",
+              "weight": 8,
+              "because": "You were not sure whether there is an eye doctor, so we have kept eye-care routes in view.",
+              "evidence": {
+                "org_id": "metrolina-association-for-the-blind-low-vision-clinic",
+                "branch_condition": "The person has no eye doctor or cannot afford an exam"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eye_exam_recency",
+      "domain": "eye_care",
+      "type": "single",
+      "prompt_screen": "When was the last eye exam?",
+      "prompt_voice": "When was the last eye exam, roughly?",
+      "help": "Agencies usually want a report from the last year or so. An old report often has to be redone.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "within_year",
+          "label_screen": "Within the last year",
+          "label_voice": "within the last year",
+          "aliases": [
+            "recently",
+            "a few months ago",
+            "this year",
+            "last month"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "metrolina-association-for-the-blind-low-vision-clinic",
+              "weight": 30,
+              "because": "You said there was an eye exam within the last year. A low vision clinic works from a recent exam.",
+              "evidence": {
+                "org_id": "eyecare-america",
+                "branch_condition": "The exam confirms low vision or legal blindness"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-charlotte-district-office",
+              "weight": 30,
+              "because": "You said there was an eye exam within the last year. The state agency opens a case from a current report.",
+              "evidence": {
+                "org_id": "charlotte-eye-ear-nose-throat-associates",
+                "branch_condition": "The report shows acuity of 20/200 or worse, or a visual field of 20 degrees or less, in the better eye"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-medical-eye-care",
+              "weight": 20,
+              "because": "You said there was an eye exam within the last year, which is the point at which the state eye-care route usually takes over.",
+              "evidence": {
+                "org_id": "eyecare-america",
+                "branch_condition": "Person has seen an ophthalmologist within the last three years, or has used EyeCare America before"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "eyecare-america",
+              "weight": -25,
+              "because": "You said there was a recent eye exam. This programme is aimed at people who have not seen an eye doctor for some years.",
+              "evidence": {
+                "org_id": "eyecare-america",
+                "branch_condition": "Person has seen an ophthalmologist within the last three years, or has used EyeCare America before"
+              }
+            }
+          ]
+        },
+        {
+          "value": "more_than_year",
+          "label_screen": "More than a year ago",
+          "label_voice": "more than a year ago",
+          "aliases": [
+            "a while back",
+            "few years ago",
+            "long time",
+            "ages ago"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "cw-williams-community-health-center",
+              "weight": 30,
+              "because": "You said the last eye exam was more than a year ago, so a current report will probably be needed.",
+              "evidence": {
+                "org_id": "low-vision-rehab-solutions",
+                "branch_condition": "The person has no physician who can sign, or no recent eye examination"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "vision-nc",
+              "weight": 30,
+              "because": "You said the last eye exam was more than a year ago. This arranges a free exam for uninsured residents.",
+              "evidence": {
+                "org_id": "nc-department-military-veterans-affairs",
+                "branch_condition": "Veteran has no current eye report"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "eyecare-america",
+              "weight": 25,
+              "because": "You said the last eye exam was more than a year ago, which is what this programme is for.",
+              "evidence": {
+                "org_id": "cw-williams-community-health-center",
+                "branch_condition": "The clinic cannot produce an eye report and the person is uninsured"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "eye_care_access",
+              "weight": 12,
+              "because": "You said the last eye exam was more than a year ago.",
+              "evidence": {
+                "org_id": "low-vision-rehab-solutions",
+                "branch_condition": "The person has no physician who can sign, or no recent eye examination"
+              }
+            }
+          ]
+        },
+        {
+          "value": "never_or_unknown",
+          "label_screen": "Never, or cannot remember",
+          "label_voice": "never, or you cannot remember",
+          "aliases": [
+            "never",
+            "no idea",
+            "can't remember",
+            "cannot remember"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "vision-nc",
+              "weight": 35,
+              "because": "You said there has been no recent eye exam. This arranges a free exam from a volunteer optometrist.",
+              "evidence": {
+                "org_id": "mecklenburg-county",
+                "branch_condition": "Person has no current eye report and no insurance"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "cw-williams-community-health-center",
+              "weight": 30,
+              "because": "You said there has been no recent eye exam, so the first step is a physician who can examine and sign.",
+              "evidence": {
+                "org_id": "low-vision-rehab-solutions",
+                "branch_condition": "The person has no physician who can sign, or no recent eye examination"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "eyecare-america",
+              "weight": 25,
+              "because": "You said there has been no recent eye exam. This is a no-cost medical eye exam route.",
+              "evidence": {
+                "org_id": "care-ring",
+                "branch_condition": "Person needs a no-cost medical eye exam now"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "eye_care_access",
+              "weight": 15,
+              "because": "You said there has been no recent eye exam.",
+              "evidence": {
+                "org_id": "metrolina-association-for-the-blind",
+                "branch_condition": "The person has no eye doctor and cannot afford an exam"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "insurance",
+      "domain": "money",
+      "type": "single",
+      "prompt_screen": "What health cover does the person have?",
+      "prompt_voice": "What health cover does the person have, if any?",
+      "help": "This decides which of the free and low-cost eye-care routes are open. We do not ask for any policy number.",
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "medicaid",
+          "label_screen": "Medicaid",
+          "label_voice": "Medicaid",
+          "aliases": [
+            "nc medicaid",
+            "healthy blue",
+            "medicaid card"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-medicaid-vision",
+              "weight": 40,
+              "because": "You said Medicaid, which covers a routine eye exam and glasses as well as medical eye care.",
+              "evidence": {
+                "org_id": "nc-dsb-medical-eye-care",
+                "branch_condition": "Person qualifies for Medicaid"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "carolina-low-vision-rehab",
+              "weight": 30,
+              "because": "You said Medicaid. This in-home therapist is in network for it.",
+              "evidence": {
+                "org_id": "carolina-low-vision-rehab",
+                "branch_condition": "Person has Medicare or NC Medicaid"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "duke-eye-center-vision-rehabilitation",
+              "weight": 20,
+              "because": "You said Medicaid. One Medicaid plan gives access to this academic clinic.",
+              "evidence": {
+                "org_id": "nc-medicaid-vision",
+                "branch_condition": "Person wants Duke Eye Center and has Healthy Blue"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "metrolina-association-for-the-blind",
+              "weight": 20,
+              "because": "You said Medicaid. This Charlotte service is the nearer option on at least one Medicaid plan.",
+              "evidence": {
+                "org_id": "duke-eye-center-vision-rehabilitation",
+                "branch_condition": "The person's NC Medicaid plan is Healthy Blue"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-dsb-medical-eye-care",
+              "weight": -25,
+              "because": "You said Medicaid. The state eye-care fund is for people who do not qualify for Medicaid, so Medicaid usually comes first.",
+              "evidence": {
+                "org_id": "nc-dsb-medical-eye-care",
+                "branch_condition": "Person qualifies for Medicaid"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "vision-nc",
+              "weight": -25,
+              "because": "You said Medicaid. This free-exam programme is for uninsured people.",
+              "evidence": {
+                "org_id": "vision-nc",
+                "branch_condition": "The person has NC Medicaid or any other insurance"
+              }
+            }
+          ]
+        },
+        {
+          "value": "medicare",
+          "label_screen": "Medicare",
+          "label_voice": "Medicare",
+          "aliases": [
+            "medicare card",
+            "part b"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "carolina-low-vision-rehab",
+              "weight": 30,
+              "because": "You said Medicare. This in-home therapist is in network for it.",
+              "evidence": {
+                "org_id": "carolina-low-vision-rehab",
+                "branch_condition": "Person has Medicare or NC Medicaid"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-medicaid-vision",
+              "weight": 20,
+              "because": "You said Medicare. This record explains where Medicare and Medicaid sit alongside each other.",
+              "evidence": {
+                "org_id": "care-ring",
+                "branch_condition": "Person has Medicaid or Medicare, or income above the limit"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "vision-nc",
+              "weight": -20,
+              "because": "You said Medicare. This free-exam programme is for uninsured people.",
+              "evidence": {
+                "org_id": "vision-nc",
+                "branch_condition": "The person has NC Medicaid or any other insurance"
+              }
+            }
+          ]
+        },
+        {
+          "value": "private",
+          "label_screen": "Private or employer insurance",
+          "label_voice": "private or employer insurance",
+          "aliases": [
+            "work insurance",
+            "blue cross",
+            "aetna",
+            "cigna",
+            "united",
+            "ppo",
+            "hmo"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-medical-eye-care",
+              "weight": 20,
+              "because": "You said private or employer insurance. This record explains where the state eye-care fund fits when someone is already insured.",
+              "evidence": {
+                "org_id": "eyecare-america",
+                "branch_condition": "Person has an HMO, PPO or private insurance"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "university-eye-associates",
+              "weight": 25,
+              "because": "You said private or employer insurance, so a private low vision exam is affordable to you.",
+              "evidence": {
+                "org_id": "university-eye-associates",
+                "branch_condition": "The person cannot afford an eye exam"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "novant-health-ophthalmology",
+              "weight": 25,
+              "because": "You said private or employer insurance, which is what this hospital system's eye practices bill.",
+              "evidence": {
+                "org_id": "novant-health-ophthalmology",
+                "branch_condition": "Person is uninsured or on Medicaid and cannot get seen"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "low-vision-centers-of-north-carolina",
+              "weight": 20,
+              "because": "You said private or employer insurance. This private practice is an option when cost is not the deciding factor.",
+              "evidence": {
+                "org_id": "low-vision-centers-of-north-carolina",
+                "branch_condition": "Cost is the deciding factor"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "eyecare-america",
+              "weight": -25,
+              "because": "You said private or employer insurance. This no-cost programme is aimed at people without it.",
+              "evidence": {
+                "org_id": "eyecare-america",
+                "branch_condition": "Person has an HMO, PPO or private insurance"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "carolina-low-vision-rehab",
+              "weight": -20,
+              "because": "You said private or employer insurance. This therapist is in network only for Medicare and Medicaid.",
+              "evidence": {
+                "org_id": "carolina-low-vision-rehab",
+                "branch_condition": "Person has Medicare or NC Medicaid"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "vision-nc",
+              "weight": -25,
+              "because": "You said private or employer insurance. This free-exam programme is for uninsured people.",
+              "evidence": {
+                "org_id": "vision-nc",
+                "branch_condition": "The person has NC Medicaid or any other insurance"
+              }
+            }
+          ]
+        },
+        {
+          "value": "va",
+          "label_screen": "VA benefits",
+          "label_voice": "V A benefits",
+          "aliases": [
+            "veterans affairs",
+            "va health care",
+            "va card",
+            "va hospital"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-health-care-enrollment",
+              "weight": 35,
+              "because": "You said VA benefits, and enrolment is the step that unlocks every VA vision service.",
+              "evidence": {
+                "org_id": "eyecare-america",
+                "branch_condition": "Person is a veteran with or eligible for VA benefits"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-low-vision-clinics",
+              "weight": 25,
+              "because": "You said VA benefits. The VA runs its own low vision clinics and device training.",
+              "evidence": {
+                "org_id": "ifb-solutions",
+                "branch_condition": "Person is a veteran"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "veterans",
+              "weight": 12,
+              "because": "You said VA benefits.",
+              "evidence": {
+                "org_id": "foundation-fighting-blindness",
+                "branch_condition": "Person is a veteran"
+              }
+            }
+          ]
+        },
+        {
+          "value": "uninsured",
+          "label_screen": "No insurance",
+          "label_voice": "no insurance",
+          "aliases": [
+            "uninsured",
+            "nothing",
+            "no cover",
+            "no coverage",
+            "can't afford"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "vision-nc",
+              "weight": 40,
+              "because": "You said there is no insurance. This arranges a free eye exam for low-income uninsured residents.",
+              "evidence": {
+                "org_id": "carolina-eye-doctors",
+                "branch_condition": "Person is uninsured and low income"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-medical-eye-care",
+              "weight": 35,
+              "because": "You said there is no insurance. This state fund pays for eye exams, surgery and eye medicines for people who do not qualify for Medicaid.",
+              "evidence": {
+                "org_id": "nc-dsb",
+                "branch_condition": "Cannot afford eye surgery or medications and does not qualify for Medicaid"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "eyecare-america",
+              "weight": 30,
+              "because": "You said there is no insurance. This is a no-cost medical eye exam from a volunteer ophthalmologist.",
+              "evidence": {
+                "org_id": "cw-williams-community-health-center",
+                "branch_condition": "The clinic cannot produce an eye report and the person is uninsured"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-lions-foundation",
+              "weight": 25,
+              "because": "You said there is no insurance. This charity gives free white canes and lends magnifiers to any blind North Carolinian.",
+              "evidence": {
+                "org_id": "lions-services-lionsroar",
+                "branch_condition": "Person is not an employee and needs help paying for adaptive devices"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "lvrs-foundation",
+              "weight": 25,
+              "because": "You said there is no insurance. This charity gives free magnifiers and reading technology to people who cannot pay.",
+              "evidence": {
+                "org_id": "low-vision-rehab-solutions",
+                "branch_condition": "The person cannot afford a recommended device, has no insurance cover for it, or is in financial hardship"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "care-ring",
+              "weight": 20,
+              "because": "You said there is no insurance. This provides low-cost and free care to uninsured Mecklenburg residents under an income limit.",
+              "evidence": {
+                "org_id": "care-ring",
+                "branch_condition": "Person has Medicaid or Medicare, or income above the limit"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "low-vision-rehab-solutions",
+              "weight": 20,
+              "because": "You said there is no insurance. The device charity works through this clinical service.",
+              "evidence": {
+                "org_id": "lvrs-foundation",
+                "branch_condition": "The Foundation says the person must be a Low Vision Rehab Solutions client first, or wants a clinical recommendation behind the request"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "vsp-eyes-of-hope",
+              "weight": 20,
+              "because": "You said there is no insurance, and help paying for glasses is a separate question from the exam.",
+              "evidence": {
+                "org_id": "eyecare-america",
+                "branch_condition": "Person needs help paying for glasses"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-dsb-vocational-rehabilitation",
+              "weight": 20,
+              "because": "You said there is no insurance. The state programme sometimes pays fees the person cannot.",
+              "evidence": {
+                "org_id": "ncatp",
+                "branch_condition": "Service is fee-based and the person cannot pay"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "ncatp",
+              "weight": 20,
+              "because": "You said there is no insurance. This state programme has a low-cost route to devices.",
+              "evidence": {
+                "org_id": "lvrs-foundation",
+                "branch_condition": "The person needs a device now and cannot wait on an unpublished process"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "nc-medicaid-vision",
+              "weight": -20,
+              "because": "You said there is no insurance, so the Medicaid route is not open unless the person turns out to be eligible.",
+              "evidence": {
+                "org_id": "nc-medicaid-vision",
+                "branch_condition": "The person is uninsured, low income, and not eligible for Medicaid"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "financial_assistance",
+              "weight": 12,
+              "because": "You said there is no insurance.",
+              "evidence": {
+                "org_id": "low-vision-rehab-solutions",
+                "branch_condition": "The person cannot afford a recommended device, has no insurance cover for it, or is in financial hardship"
+              }
+            }
+          ]
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "Not sure",
+          "label_voice": "not sure",
+          "aliases": [
+            "dunno",
+            "i'd have to check",
+            "don't know"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "eye_care_access",
+              "weight": 8,
+              "because": "You were not sure about cover, so we have kept the free and low-cost eye-care routes in view.",
+              "evidence": {
+                "org_id": "mecklenburg-county",
+                "branch_condition": "Person has no current eye report and no insurance"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "veteran",
+      "domain": "military",
+      "type": "yes_no",
+      "prompt_screen": "Has the person served in the US military?",
+      "prompt_voice": "Has the person ever served in the military?",
+      "help": "Any branch, any length of service. National Guard and Reserve count. This opens a large separate set of services.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [
+            "served",
+            "i'm a veteran",
+            "i was in the army",
+            "navy",
+            "marines",
+            "air force",
+            "coast guard",
+            "national guard",
+            "reserve",
+            "vet"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-vist-coordinator-charlotte",
+              "weight": 40,
+              "because": "You said the person served in the military. This VA case manager coordinates every vision service for a veteran, for life, and is the first call.",
+              "evidence": {
+                "org_id": "nc-dsb-vocational-rehabilitation",
+                "branch_condition": "Person served in the military"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-department-military-veterans-affairs",
+              "weight": 30,
+              "because": "You said the person served in the military. State and county service officers help free of charge.",
+              "evidence": {
+                "org_id": "mecklenburg-county",
+                "branch_condition": "The person has served in the US military"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "blinded-veterans-association",
+              "weight": 30,
+              "because": "You said the person served in the military. Peer support and mentoring come from other blinded veterans.",
+              "evidence": {
+                "org_id": "va-blind-rehabilitation-services",
+                "branch_condition": "Peer support / mentoring from other blinded veterans"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-prosthetics-sensory-aids",
+              "weight": 25,
+              "because": "You said the person served in the military. The VA supplies vision devices free when a clinician prescribes them.",
+              "evidence": {
+                "org_id": "nc-dsb-community-services",
+                "branch_condition": "Person served in the military"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-low-vision-clinics",
+              "weight": 25,
+              "because": "You said the person served in the military. The VA runs its own low vision clinics.",
+              "evidence": {
+                "org_id": "ifb-solutions",
+                "branch_condition": "Person is a veteran"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "disabled-american-veterans",
+              "weight": 25,
+              "because": "You said the person served in the military. This veterans service organisation helps with claims at no cost.",
+              "evidence": {
+                "org_id": "va-health-care-enrollment",
+                "branch_condition": "Prefers help from a veterans service organisation"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-salisbury-medical-center",
+              "weight": 20,
+              "because": "You said the person served in the military. This is the regional VA medical centre for the Charlotte area.",
+              "evidence": {
+                "org_id": "disabled-american-veterans",
+                "branch_condition": "The DAV van does not serve the person's county or the person is not ambulatory"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "veterans",
+              "weight": 15,
+              "because": "You said the person served in the military.",
+              "evidence": {
+                "org_id": "nc-dsb",
+                "branch_condition": "Person served in the military"
+              }
+            }
+          ]
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [
+            "never served",
+            "not a veteran",
+            "no military"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "metrolina-association-for-the-blind-low-vision-clinic",
+              "weight": 25,
+              "because": "You said the person did not serve, so the civilian low vision clinic is the route to a clinical evaluation.",
+              "evidence": {
+                "org_id": "charles-bonnet-syndrome-podcast-helpline",
+                "branch_condition": "Person is not a veteran and needs a clinical low vision evaluation"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "metrolina-association-for-the-blind",
+              "weight": 25,
+              "because": "You said the person did not serve, so civilian vision rehabilitation is the route.",
+              "evidence": {
+                "org_id": "foundation-fighting-blindness-charlotte-chapter",
+                "branch_condition": "Person is not a veteran and needs vision rehabilitation or a low vision exam"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "category",
+              "id": "veterans",
+              "weight": -10,
+              "because": "You said the person did not serve, so we have moved veterans-only services down rather than removing them.",
+              "evidence": {
+                "org_id": "ifb-solutions",
+                "branch_condition": "Person is not a veteran and needs a low vision exam in the Charlotte area"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "va_enrolled",
+      "domain": "military",
+      "type": "single",
+      "prompt_screen": "Is the person enrolled in VA health care?",
+      "prompt_voice": "Is the person signed up for V A health care?",
+      "help": "Enrolment is the single step that unlocks VA eye clinics, home training, devices and residential rehabilitation. Being enrolled is different from having a disability rating.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": {
+        "q": "veteran",
+        "in": [
+          "yes"
+        ]
+      },
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [
+            "enrolled",
+            "i use the va",
+            "i have a va doctor",
+            "signed up"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-vist-coordinator-charlotte",
+              "weight": 40,
+              "because": "You said the person is already enrolled, so go straight to the VIST Coordinator.",
+              "evidence": {
+                "org_id": "va-blind-rehabilitation-services",
+                "branch_condition": "Already enrolled in VA health care"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-prosthetics-sensory-aids",
+              "weight": 30,
+              "because": "You said the person is enrolled. Devices are supplied through VA prosthetics once prescribed.",
+              "evidence": {
+                "org_id": "guide-dog-schools-serving-nc-applicants",
+                "branch_condition": "The recipient is a VA-enrolled veteran"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-low-vision-clinics",
+              "weight": 30,
+              "because": "You said the person is enrolled. VA low vision clinics cover exams and device training.",
+              "evidence": {
+                "org_id": "va-blind-rehabilitation-services",
+                "branch_condition": "Still reads with aids / gets around safely"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-blind-rehabilitation-services",
+              "weight": 25,
+              "because": "You said the person is enrolled, which opens the VA's whole set of vision-loss services.",
+              "evidence": {
+                "org_id": "va-blind-rehabilitation-services",
+                "branch_condition": "Already enrolled in VA health care"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-bros",
+              "weight": 25,
+              "because": "You said the person is enrolled. A VA specialist can train the veteran at home.",
+              "evidence": {
+                "org_id": "va-vist-coordinator-charlotte",
+                "branch_condition": "Needs one-on-one training at home"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-advanced-low-vision-clinic-salisbury",
+              "weight": 25,
+              "because": "You said the person is enrolled. This is the region's advanced-tier VA low vision clinic.",
+              "evidence": {
+                "org_id": "va-vist-coordinator-charlotte",
+                "branch_condition": "Needs the region's advanced-tier low vision clinic"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-charlotte-health-care-center",
+              "weight": 20,
+              "because": "You said the person is enrolled. This Charlotte VA site has eye care and the VIST Coordinator on it.",
+              "evidence": {
+                "org_id": "va-charlotte-health-care-center",
+                "branch_condition": "Vision loss needing coordination across services"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-visor",
+              "weight": 20,
+              "because": "You said the person is enrolled. This is a short VA outpatient programme with lodging, if the veteran is a candidate.",
+              "evidence": {
+                "org_id": "va-vist-coordinator-charlotte",
+                "branch_condition": "Candidate for a short lodged outpatient program"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-victors",
+              "weight": 20,
+              "because": "You said the person is enrolled. This is a VA team low vision programme, if the veteran is a candidate.",
+              "evidence": {
+                "org_id": "va-low-vision-clinics",
+                "branch_condition": "Candidate for a team low vision programme (roughly 20/70–20/200 or worse and/or significant field loss)"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-blind-rehabilitation-center-augusta",
+              "weight": 20,
+              "because": "You said the person is enrolled. This is the VA's live-in blind rehabilitation programme, arranged through the VIST.",
+              "evidence": {
+                "org_id": "va-vist-coordinator-charlotte",
+                "branch_condition": "Legally blind and needs intensive residential skills training"
+              }
+            }
+          ]
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [
+            "not enrolled",
+            "never signed up",
+            "not registered"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-health-care-enrollment",
+              "weight": 40,
+              "because": "You said the person is not enrolled. Enrolment is the step that unlocks everything else.",
+              "evidence": {
+                "org_id": "va-blind-rehabilitation-services",
+                "branch_condition": "Not enrolled but discharge is honorable or general (under honorable conditions)"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-department-military-veterans-affairs",
+              "weight": 30,
+              "because": "You said the person is not enrolled. A state or county service officer will help complete the form free of charge.",
+              "evidence": {
+                "org_id": "va-health-care-enrollment",
+                "branch_condition": "Wants free help completing the form"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "disabled-american-veterans",
+              "weight": 25,
+              "because": "You said the person is not enrolled. A veterans service organisation can help with the paperwork.",
+              "evidence": {
+                "org_id": "va-health-care-enrollment",
+                "branch_condition": "Prefers help from a veterans service organisation"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "american-legion",
+              "weight": 20,
+              "because": "You said the person is not enrolled. Accredited service officers here help with VA enrolment at no cost.",
+              "evidence": {
+                "org_id": "american-legion",
+                "branch_condition": "The veteran is not yet enrolled in VA health care"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "veterans-of-foreign-wars",
+              "weight": 20,
+              "because": "You said the person is not enrolled. VFW service officers file at no charge for any veteran, member or not.",
+              "evidence": {
+                "org_id": "veterans-of-foreign-wars",
+                "branch_condition": "The veteran is not yet enrolled in VA health care"
+              }
+            }
+          ]
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "Not sure",
+          "label_voice": "not sure",
+          "aliases": [
+            "dunno",
+            "maybe",
+            "i think so",
+            "don't know"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-health-care-enrollment",
+              "weight": 30,
+              "because": "You were not sure. This record explains how enrolment works and how to check.",
+              "evidence": {
+                "org_id": "american-legion",
+                "branch_condition": "The veteran is not yet enrolled in VA health care"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-department-military-veterans-affairs",
+              "weight": 30,
+              "because": "You were not sure. A service officer can check the person's status free of charge.",
+              "evidence": {
+                "org_id": "va-health-care-enrollment",
+                "branch_condition": "Wants free help completing the form"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "discharge",
+      "domain": "military",
+      "type": "single",
+      "prompt_screen": "What kind of discharge does the person have?",
+      "prompt_voice": "What kind of discharge does the person have?",
+      "help": "We ask because a discharge other than honorable can be reviewed, and that review sometimes opens VA health care. It is not a dead end.",
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": {
+        "q": "va_enrolled",
+        "in": [
+          "no",
+          "not_sure"
+        ]
+      },
+      "options": [
+        {
+          "value": "honorable_general",
+          "label_screen": "Honorable, or general under honorable conditions",
+          "label_voice": "honorable, or general under honorable conditions",
+          "aliases": [
+            "honorable",
+            "general",
+            "good discharge"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-health-care-enrollment",
+              "weight": 40,
+              "because": "You said the discharge is honorable or general, which is the usual route straight into VA enrolment.",
+              "evidence": {
+                "org_id": "va-vist-coordinator-charlotte",
+                "branch_condition": "Not enrolled, discharge honorable or general (under honorable conditions)"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "va-vist-coordinator-charlotte",
+              "weight": 25,
+              "because": "You said the discharge is honorable or general. Once enrolled, the VIST Coordinator picks up the vision side.",
+              "evidence": {
+                "org_id": "va-health-care-enrollment",
+                "branch_condition": "Always"
+              }
+            }
+          ]
+        },
+        {
+          "value": "other_than_honorable",
+          "label_screen": "Other than honorable, bad conduct or dishonorable",
+          "label_voice": "other than honorable, bad conduct, or dishonorable",
+          "aliases": [
+            "oth",
+            "bad conduct",
+            "dishonorable",
+            "less than honorable",
+            "dd"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-department-military-veterans-affairs",
+              "weight": 40,
+              "because": "You said the discharge was other than honorable. Do not stop here: a service officer can request a Character of Discharge determination, which sometimes opens VA health care.",
+              "evidence": {
+                "org_id": "va-health-care-enrollment",
+                "branch_condition": "Other-than-honorable, bad conduct or dishonorable discharge"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "disabled-american-veterans",
+              "weight": 25,
+              "because": "You said the discharge was other than honorable. An accredited representative can file and appeal at no cost.",
+              "evidence": {
+                "org_id": "va-health-care-enrollment",
+                "branch_condition": "Prefers help from a veterans service organisation"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "va-health-care-enrollment",
+              "weight": -25,
+              "because": "You said the discharge was other than honorable, so ordinary enrolment usually needs a determination first. It is still not ruled out.",
+              "evidence": {
+                "org_id": "va-health-care-enrollment",
+                "branch_condition": "Other-than-honorable, bad conduct or dishonorable discharge"
+              }
+            }
+          ]
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "Not sure",
+          "label_voice": "not sure",
+          "aliases": [
+            "dunno",
+            "don't know",
+            "have to check"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-department-military-veterans-affairs",
+              "weight": 35,
+              "because": "You were not sure. A service officer can look this up and help with the form free of charge.",
+              "evidence": {
+                "org_id": "va-health-care-enrollment",
+                "branch_condition": "Wants free help completing the form"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "housing_stable",
+      "domain": "social_needs",
+      "type": "single",
+      "prompt_screen": "Is the person's housing steady right now?",
+      "prompt_voice": "Is the person's housing steady at the moment?",
+      "help": "We ask because rehabilitation at home is hard to start without a settled home. This directory has no housing services in it, and we will say so rather than pretend.",
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [
+            "stable",
+            "settled",
+            "own home",
+            "fine"
+          ],
+          "effects": []
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [
+            "homeless",
+            "no fixed address",
+            "sofa surfing",
+            "in a shelter",
+            "evicted"
+          ],
+          "effects": []
+        },
+        {
+          "value": "worried",
+          "label_screen": "Worried it may not last",
+          "label_voice": "worried it may not last",
+          "aliases": [
+            "might lose it",
+            "behind on rent",
+            "at risk",
+            "not sure how long"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "food_worry",
+      "domain": "social_needs",
+      "type": "single",
+      "prompt_screen": "In the last year, has food run out before there was money to buy more?",
+      "prompt_voice": "In the last year, has food run out before there was money to buy more?",
+      "help": "This is the standard wording used in health settings. This directory has no food programmes in it.",
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "often",
+          "label_screen": "Often true",
+          "label_voice": "often true",
+          "aliases": [
+            "a lot",
+            "yes often",
+            "most weeks"
+          ],
+          "effects": []
+        },
+        {
+          "value": "sometimes",
+          "label_screen": "Sometimes true",
+          "label_voice": "sometimes true",
+          "aliases": [
+            "now and then",
+            "occasionally",
+            "some months"
+          ],
+          "effects": []
+        },
+        {
+          "value": "never",
+          "label_screen": "Never true",
+          "label_voice": "never true",
+          "aliases": [
+            "no",
+            "never"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "utilities",
+      "domain": "social_needs",
+      "type": "single",
+      "prompt_screen": "In the last year, has a utility company threatened to shut off service?",
+      "prompt_voice": "In the last year, has a utility company threatened to cut off the power, water or gas?",
+      "help": "We ask because good lighting matters a great deal with low vision. This directory has no utility assistance in it.",
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "often",
+          "label_screen": "Often",
+          "label_voice": "often",
+          "aliases": [
+            "yes often",
+            "several times"
+          ],
+          "effects": []
+        },
+        {
+          "value": "sometimes",
+          "label_screen": "Sometimes",
+          "label_voice": "sometimes",
+          "aliases": [
+            "once or twice",
+            "occasionally"
+          ],
+          "effects": []
+        },
+        {
+          "value": "never",
+          "label_screen": "Never",
+          "label_voice": "never",
+          "aliases": [
+            "no",
+            "never"
+          ],
+          "effects": []
+        },
+        {
+          "value": "not_applicable",
+          "label_screen": "I do not pay utilities",
+          "label_voice": "you do not pay utilities",
+          "aliases": [
+            "included in rent",
+            "someone else pays",
+            "not my bill"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "transport_barrier",
+      "domain": "social_needs",
+      "type": "single",
+      "prompt_screen": "In the last year, has a lack of transport meant missing an appointment, work, or getting the things needed for daily life?",
+      "prompt_voice": "In the last year, has a lack of transport stopped the person getting to appointments or getting what they need?",
+      "help": "Almost everything else in this directory depends on being able to get there, so this one changes the results.",
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "often",
+          "label_screen": "Often",
+          "label_voice": "often",
+          "aliases": [
+            "yes often",
+            "all the time",
+            "no car",
+            "can't drive",
+            "stopped driving",
+            "no rides"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "mecklenburg-transportation-system",
+              "weight": 40,
+              "because": "You said transport is often a problem. This is the county's curb-based ride service for medical appointments, shopping and work.",
+              "evidence": {
+                "org_id": "mecklenburg-county",
+                "branch_condition": "Needs rides"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "cats-special-transportation-service",
+              "weight": 35,
+              "because": "You said transport is often a problem. This is the door-side van service for people who cannot use regular buses.",
+              "evidence": {
+                "org_id": "mecklenburg-transportation-system",
+                "branch_condition": "Cannot use regular CATS buses because of a disability and lives near a CATS route"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "cw-williams-community-health-center",
+              "weight": 20,
+              "because": "You said transport is often a problem. This health centre runs its own patient transport.",
+              "evidence": {
+                "org_id": "cw-williams-community-health-center",
+                "branch_condition": "The person cannot get to the clinic"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "transportation",
+              "weight": 15,
+              "because": "You said transport is often a problem.",
+              "evidence": {
+                "org_id": "sunshine-club",
+                "branch_condition": "Person cannot travel independently"
+              }
+            }
+          ]
+        },
+        {
+          "value": "sometimes",
+          "label_screen": "Sometimes",
+          "label_voice": "sometimes",
+          "aliases": [
+            "now and then",
+            "occasionally",
+            "depends"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "mecklenburg-transportation-system",
+              "weight": 25,
+              "because": "You said transport is sometimes a problem. County rides can fill the gaps.",
+              "evidence": {
+                "org_id": "marion-diehl-center",
+                "branch_condition": "Person cannot get to Tyvola Road independently"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "cats-special-transportation-service",
+              "weight": 20,
+              "because": "You said transport is sometimes a problem. The van service is worth knowing about even for occasional trips.",
+              "evidence": {
+                "org_id": "mecklenburg-transportation-system",
+                "branch_condition": "Cannot use regular CATS buses because of a disability and lives near a CATS route"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "transportation",
+              "weight": 10,
+              "because": "You said transport is sometimes a problem.",
+              "evidence": {
+                "org_id": "achilles-international-charlotte",
+                "branch_condition": "Person cannot get to Freedom Park independently"
+              }
+            }
+          ]
+        },
+        {
+          "value": "never",
+          "label_screen": "Never",
+          "label_voice": "never",
+          "aliases": [
+            "no",
+            "i drive",
+            "family drives me",
+            "no problem"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "legal_matter",
+      "domain": "social_needs",
+      "type": "multi",
+      "prompt_screen": "Is there a legal matter in the way? Choose any that apply.",
+      "prompt_voice": "Is there a legal matter in the way? You can name more than one.",
+      "help": "We only cover two kinds well: a military discharge that needs reviewing, and a disability service or accommodation that was refused. We will say plainly where we have nothing.",
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "discharge_upgrade",
+          "label_screen": "A military discharge that needs reviewing",
+          "label_voice": "a military discharge that needs reviewing",
+          "aliases": [
+            "discharge upgrade",
+            "bad paper",
+            "character of discharge",
+            "oth review"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-department-military-veterans-affairs",
+              "weight": 40,
+              "because": "You said a discharge needs reviewing. A service officer can request a Character of Discharge determination, which sometimes opens VA health care.",
+              "evidence": {
+                "org_id": "nc-department-military-veterans-affairs",
+                "branch_condition": "Person has an other-than-honorable discharge"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "disabled-american-veterans",
+              "weight": 30,
+              "because": "You said a discharge needs reviewing. Accredited representatives here file and appeal at no cost.",
+              "evidence": {
+                "org_id": "disabled-american-veterans",
+                "branch_condition": "Needs help filing or appealing a VA disability claim for vision loss"
+              }
+            }
+          ]
+        },
+        {
+          "value": "service_refused",
+          "label_screen": "A disability service or accommodation was refused",
+          "label_voice": "a disability service or accommodation was refused",
+          "aliases": [
+            "they said no",
+            "denied",
+            "turned down",
+            "ada",
+            "discrimination",
+            "refused"
+          ],
+          "effects": []
+        },
+        {
+          "value": "other_legal",
+          "label_screen": "Another legal matter",
+          "label_voice": "another legal matter",
+          "aliases": [
+            "family court",
+            "landlord",
+            "debt",
+            "benefits appeal",
+            "immigration",
+            "criminal"
+          ],
+          "effects": []
+        },
+        {
+          "value": "none",
+          "label_screen": "None",
+          "label_voice": "none",
+          "aliases": [
+            "no",
+            "nothing",
+            "not applicable"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "loneliness",
+      "domain": "social_needs",
+      "type": "single",
+      "prompt_screen": "How often does the person feel lonely or isolated?",
+      "prompt_voice": "How often does the person feel lonely or cut off from other people?",
+      "help": "This is one of the areas where we have a lot to offer, including groups you can join by ordinary telephone this week.",
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "often",
+          "label_screen": "Often",
+          "label_voice": "often",
+          "aliases": [
+            "all the time",
+            "very lonely",
+            "isolated",
+            "stuck at home",
+            "no one to talk to"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "acb-community",
+              "weight": 35,
+              "because": "You said loneliness is often a problem. These are free daily calls you can join by ordinary telephone, with no software.",
+              "evidence": {
+                "org_id": "camp-dogwood",
+                "branch_condition": "The person needs support now rather than next summer"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nfb-mecklenburg-county-chapter",
+              "weight": 35,
+              "because": "You said loneliness is often a problem. This is a monthly in-person group in the Charlotte area.",
+              "evidence": {
+                "org_id": "nc-council-of-the-blind",
+                "branch_condition": "The person wants a peer group they can actually attend in the Charlotte area"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "hadley",
+              "weight": 30,
+              "because": "You said loneliness is often a problem. This offers one-to-one peer matching and weekly groups.",
+              "evidence": {
+                "org_id": "acb-community",
+                "branch_condition": "The person wants one-to-one peer support or structured coping sessions"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "sunshine-club",
+              "weight": 25,
+              "because": "You said loneliness is often a problem. This is a weekly drop-in group with no eye report and no waiting list.",
+              "evidence": {
+                "org_id": "sunshine-club",
+                "branch_condition": "Person wants a low-barrier group they can join this week but cannot reach the Bethlehem Center"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "metrolina-association-for-the-blind",
+              "weight": 25,
+              "because": "You said loneliness is often a problem. Counselling around sight loss is part of what this organisation does.",
+              "evidence": {
+                "org_id": "lions-services-lionsheart",
+                "branch_condition": "Person needs mental-health support around sight loss but is not an employee"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "mary-carmels-light",
+              "weight": 20,
+              "because": "You said loneliness is often a problem. This runs free phone support groups for people with sight loss and for carers.",
+              "evidence": {
+                "org_id": "charles-bonnet-syndrome-podcast-helpline",
+                "branch_condition": "Person wants to actually talk to someone about CBS"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "peer_support",
+              "weight": 15,
+              "because": "You said loneliness is often a problem.",
+              "evidence": {
+                "org_id": "disability-rights-and-resources",
+                "branch_condition": "Person specifically wants blind or low-vision peer support"
+              }
+            }
+          ]
+        },
+        {
+          "value": "sometimes",
+          "label_screen": "Sometimes",
+          "label_voice": "sometimes",
+          "aliases": [
+            "now and then",
+            "occasionally",
+            "a bit"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "acb-community",
+              "weight": 25,
+              "because": "You said loneliness is sometimes a problem. These calls are free and there is no commitment.",
+              "evidence": {
+                "org_id": "hadley",
+                "branch_condition": "The person wants company today rather than at the next cohort"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nfb-mecklenburg-county-chapter",
+              "weight": 25,
+              "because": "You said loneliness is sometimes a problem. This local group meets once a month.",
+              "evidence": {
+                "org_id": "acb-community",
+                "branch_condition": "The person wants a local in-person group in the Charlotte area"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "peer_support",
+              "weight": 10,
+              "because": "You said loneliness is sometimes a problem.",
+              "evidence": {
+                "org_id": "disability-rights-and-resources",
+                "branch_condition": "Person specifically wants blind or low-vision peer support"
+              }
+            }
+          ]
+        },
+        {
+          "value": "never",
+          "label_screen": "Never",
+          "label_voice": "never",
+          "aliases": [
+            "no",
+            "plenty of company",
+            "i'm fine"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "broadband",
+      "domain": "social_needs",
+      "type": "yes_no",
+      "prompt_screen": "Is there internet at home?",
+      "prompt_voice": "Is there internet at home?",
+      "help": "Several services are online only. Several others work entirely by ordinary telephone, and we will put those first if there is no internet.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [
+            "wifi",
+            "broadband",
+            "we have internet",
+            "yes online"
+          ],
+          "effects": []
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [
+            "no internet",
+            "no wifi",
+            "not online",
+            "no computer"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "acb-community",
+              "weight": 30,
+              "because": "You said there is no internet at home. This community runs everything by ordinary telephone, with no software at all.",
+              "evidence": {
+                "org_id": "out-of-sight",
+                "branch_condition": "The person has no computer or smartphone, or cannot install software"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-accessible-books-and-library-services",
+              "weight": 30,
+              "because": "You said there is no internet at home. Books and a free player arrive by post.",
+              "evidence": {
+                "org_id": "nfb-newsline",
+                "branch_condition": "Person cannot complete a web form"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "charlotte-mecklenburg-library-accessibility-services",
+              "weight": 25,
+              "because": "You said there is no internet at home. The public library has computers and magnifiers you can use in the branch.",
+              "evidence": {
+                "org_id": "mecklenburg-county",
+                "branch_condition": "Needs magnifiers or a screen-reading computer to use"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "out-of-sight",
+              "weight": -25,
+              "because": "You said there is no internet at home. This community is joined through software on a computer or phone, so we have moved it down.",
+              "evidence": {
+                "org_id": "out-of-sight",
+                "branch_condition": "The person has no computer or smartphone, or cannot install software"
+              }
+            }
+          ]
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "Not sure",
+          "label_voice": "not sure",
+          "aliases": [
+            "dunno",
+            "maybe",
+            "sometimes"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "devices",
+      "domain": "social_needs",
+      "type": "multi",
+      "prompt_screen": "What does the person have to use? Choose any that apply.",
+      "prompt_voice": "Does the person have a smartphone, a computer or tablet, both, or neither?",
+      "help": "This tells us whether to point at things that need a device, or at things that work without one.",
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "smartphone",
+          "label_screen": "A smartphone",
+          "label_voice": "a smartphone",
+          "aliases": [
+            "iphone",
+            "android",
+            "mobile",
+            "cell phone"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-accessible-books-and-library-services",
+              "weight": 20,
+              "because": "You said there is a smartphone. Talking books can be downloaded as well as posted.",
+              "evidence": {
+                "org_id": "nfb-newsline",
+                "branch_condition": "Person also wants talking books and a free player"
+              }
+            }
+          ]
+        },
+        {
+          "value": "computer_tablet",
+          "label_screen": "A computer or tablet",
+          "label_voice": "a computer or tablet",
+          "aliases": [
+            "laptop",
+            "ipad",
+            "desktop",
+            "pc",
+            "mac"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "lions-services-lionsdenn",
+              "weight": 25,
+              "because": "You said there is a computer or tablet. This is free training on getting the most out of it with sight loss.",
+              "evidence": {
+                "org_id": "lions-services",
+                "branch_condition": "Person wants assistive-technology training, help getting online, or help choosing devices"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "out-of-sight",
+              "weight": 25,
+              "because": "You said there is a computer or tablet, which is what this free virtual community runs on.",
+              "evidence": {
+                "org_id": "out-of-sight",
+                "branch_condition": "The person has no computer or smartphone, or cannot install software"
+              }
+            }
+          ]
+        },
+        {
+          "value": "neither",
+          "label_screen": "Neither",
+          "label_voice": "neither",
+          "aliases": [
+            "nothing",
+            "no devices",
+            "no computer or phone"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "ncatp-device-demonstration-and-loan",
+              "weight": 35,
+              "because": "You said there is no device. Here you can try one, borrow one, or receive donated equipment.",
+              "evidence": {
+                "org_id": "out-of-sight",
+                "branch_condition": "The person needs help getting a device or learning to use it first"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "charlotte-mecklenburg-library-accessibility-services",
+              "weight": 30,
+              "because": "You said there is no device. The library has magnifiers and screen-reading computers free to use in the branch.",
+              "evidence": {
+                "org_id": "mecklenburg-county",
+                "branch_condition": "Needs magnifiers or a screen-reading computer to use"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "ncatp-charlotte-center",
+              "weight": 25,
+              "because": "You said there is no device. This is the Charlotte location where devices can be tried or borrowed.",
+              "evidence": {
+                "org_id": "nc-dsb-charlotte-district-office",
+                "branch_condition": "Needs devices to try or borrow"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "org",
+              "id": "nc-lions-foundation",
+              "weight": 25,
+              "because": "You said there is no device. This charity lends magnifiers and gives free white canes.",
+              "evidence": {
+                "org_id": "lions-services-lionsroar",
+                "branch_condition": "Person is not an employee and needs help paying for adaptive devices"
+              }
+            },
+            {
+              "op": "suppress",
+              "target": "org",
+              "id": "out-of-sight",
+              "weight": -25,
+              "because": "You said there is no device. This community is joined through software on a computer or phone, so we have moved it down.",
+              "evidence": {
+                "org_id": "out-of-sight",
+                "branch_condition": "The person has no computer or smartphone, or cannot install software"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "assistive_technology",
+              "weight": 15,
+              "because": "You said there is no device.",
+              "evidence": {
+                "org_id": "nc-lions-foundation",
+                "branch_condition": "The person needs a device assessment rather than a loan of whatever is in stock"
+              }
+            }
+          ]
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "Not sure",
+          "label_voice": "not sure",
+          "aliases": [
+            "dunno",
+            "don't know"
+          ],
+          "effects": []
+        }
+      ]
+    }
+  ],
+  "handoffs": [
+    {
+      "id": "housing",
+      "trigger": {
+        "q": "housing_stable",
+        "in": [
+          "no",
+          "worried"
+        ]
+      },
+      "headline": "This directory has no housing services in it.",
+      "body": "That is a gap in what we have collected, not a claim that none exist. Every organisation in here is about sight loss, and none of them houses anyone. The county line below is free, answers immediately by phone, and is the right first call for housing, and it accepts a call from a family member or a professional on someone's behalf. It is not a vision service and does not pretend to be.",
+      "refer_to": [
+        "mecklenburg-county-just1call"
+      ],
+      "missing_record_note": "We do not have a verified NC 211 record yet, so we are not printing a number for it. NC 211 is the usual statewide route for housing, food and utility help, and it should be added to this directory and verified before we point anyone at it."
+    },
+    {
+      "id": "food",
+      "trigger": {
+        "q": "food_worry",
+        "in": [
+          "often",
+          "sometimes"
+        ]
+      },
+      "headline": "This directory has no food programmes in it.",
+      "body": "We collected sight-loss services, so food assistance is simply not here. Rather than guess, we are handing you to the county line, which is free and immediate by phone and can start a referral for someone else. Nothing in your sight-loss results changes because of this answer.",
+      "refer_to": [
+        "mecklenburg-county-just1call"
+      ],
+      "missing_record_note": "We do not have a verified NC 211 record, nor any verified food pantry or SNAP outreach record. Those would need to be added and checked against a published source before we name one."
+    },
+    {
+      "id": "utilities",
+      "trigger": {
+        "q": "utilities",
+        "in": [
+          "often",
+          "sometimes"
+        ]
+      },
+      "headline": "This directory has no help with utility bills in it.",
+      "body": "Lighting matters a lot with low vision, so this is a real problem and not a side issue. We still have nothing verified to offer on it. The county line is free, answers by phone straight away, and is where utility assistance is usually started in Mecklenburg.",
+      "refer_to": [
+        "mecklenburg-county-just1call"
+      ],
+      "missing_record_note": "We do not have a verified NC 211 record, and no verified record for the Low Income Home Energy Assistance Programme or the Crisis Intervention Programme. Do not quote a number for these until a record exists."
+    },
+    {
+      "id": "benefits_counselling",
+      "trigger": {
+        "q": "insurance",
+        "in": [
+          "not_sure"
+        ]
+      },
+      "headline": "We have nobody in here who does benefits counselling.",
+      "body": "Working out whether someone qualifies for Medicaid, SSI or SSDI, and what happens to those benefits if they start work, is a specialist job. There is no record in this directory that does it. The one exception is VA benefits, which the veterans organisations in here do cover. For everything else the county line is the honest starting point.",
+      "refer_to": [
+        "mecklenburg-county-just1call"
+      ],
+      "missing_record_note": "No Social Security work-incentive or benefits-counselling record has been collected. A WIPA project or a certified benefits counsellor covering Mecklenburg would need to be researched and verified before we list one."
+    },
+    {
+      "id": "disability_rights",
+      "trigger": {
+        "q": "legal_matter",
+        "in": [
+          "service_refused"
+        ]
+      },
+      "headline": "There is exactly one legal record in this directory, and this is it.",
+      "body": "When a disability service or an accommodation has been refused, this is the free legal route in North Carolina. We are showing it here as a hand-off rather than scoring it, because no organisation in this directory publishes a referral path into it — we found the record, but not a verified route. Intake can be reached by phone if the online form is not usable.",
+      "refer_to": [
+        "disability-rights-north-carolina"
+      ],
+      "missing_record_note": "No organisation in this directory publishes a branch that routes a person to disability rights legal help, so this hand-off is based on the record itself rather than on a referral path someone else publishes. Worth asking the agencies whether they do refer, and to whom."
+    },
+    {
+      "id": "other_legal",
+      "trigger": {
+        "q": "legal_matter",
+        "in": [
+          "other_legal"
+        ]
+      },
+      "headline": "This directory does not cover general legal help.",
+      "body": "Housing court, family matters, debt, benefits appeals and criminal matters are all outside what we collected. We have one disability rights record and nothing else, and we would rather say that than send you somewhere we have not checked.",
+      "refer_to": [
+        "mecklenburg-county-just1call",
+        "disability-rights-north-carolina"
+      ],
+      "missing_record_note": "We do not have a verified Legal Aid of North Carolina record, nor a Charlotte Center for Legal Advocacy record. Both are likely relevant and neither has been researched or verified yet."
+    }
+  ]
+}

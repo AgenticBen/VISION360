@@ -1,0 +1,626 @@
+/* =========================================================================
+   Vision loss services — greater Charlotte, NC
+   Maintained by Lions Services, Inc.
+
+   A reference tool. Dense but calm. One accent colour, reserved for things
+   you can click.
+
+   Palette is Lions Services' own, taken from lionsservices.org: navy #1c3879
+   and #051362, green #168726 (darkened here for contrast). Brand alignment
+   never outranks rule 5 — every pair below is computed, not eyeballed, and
+   the navy is a HIGHER contrast accent than the generic blue it replaced
+   (11.1:1 against 7.2:1).
+
+     ink        #16191d on #ffffff .......... 17.6:1
+     ink-muted  #525a63 on #ffffff ...........  7.0:1  (6.5:1 on --surface)
+     accent     #1c3879 on #ffffff ........... 11.1:1  (white on accent 11.1:1)
+     brand-deep #051362 on #ffffff ........... 16.5:1  (page title only)
+     line       #7f8992 on #ffffff ...........  3.6:1  (UI borders, >= 3:1)
+     gap-ink    #8a4b00 on #fff7ec ...........  6.4:1
+     stop-ink   #8a1f11 on #fdecea ...........  8.0:1
+     go-ink     #0f6a1e on #e7f4ec ...........  6.0:1
+
+   The high-contrast theme is deliberately NOT brand-coloured. It is gold on
+   black because that is what measures best for low vision users, which is the
+   whole point of this site.
+   ========================================================================= */
+
+:root {
+  --page: #ffffff;
+  --surface: #f4f6f8;
+  --surface-2: #e9edf2;
+  --ink: #16191d;
+  --ink-muted: #525a63;
+  --accent: #1c3879;        /* Lions navy */
+  --accent-ink: #ffffff;
+  --accent-wash: #eaeef7;
+  --brand-deep: #051362;    /* Lions deep navy, page title */
+  --line: #7f8992;          /* meaningful UI borders */
+  --line-soft: #d7dce2;     /* decorative rules */
+  --gap-bg: #fff7ec;
+  --gap-ink: #8a4b00;
+  --gap-line: #a86a14;
+  --stop-bg: #fdecea;
+  --stop-ink: #8a1f11;
+  --go-bg: #e7f4ec;
+  --go-ink: #0f6a1e;        /* Lions green, darkened for contrast */
+  --focus: #1c3879;
+  --focus-halo: #ffffff;
+
+  --radius: 6px;
+  --step: 0.5rem;
+  --measure: 74ch;
+
+  font-size: 18px;                     /* 18px floor, everything below is rem */
+  color-scheme: light;
+}
+
+html[data-textsize="125"] { font-size: 22.5px; }
+html[data-textsize="150"] { font-size: 27px; }
+
+/* ---------- High contrast ---------- */
+html[data-contrast="high"] {
+  --page: #000000;
+  --brand-deep: #ffffff;
+  --surface: #101010;
+  --surface-2: #1c1c1c;
+  --ink: #ffffff;
+  --ink-muted: #f2f2f2;
+  --accent: #ffd24a;
+  --accent-ink: #000000;
+  --accent-wash: #241d00;
+  --line: #ffffff;
+  --line-soft: #ffffff;
+  --gap-bg: #241d00;
+  --gap-ink: #ffd24a;
+  --gap-line: #ffd24a;
+  --stop-bg: #2a0d0a;
+  --stop-ink: #ffb3a7;
+  --go-bg: #06210f;
+  --go-ink: #9be6b4;
+  --focus: #ffd24a;
+  --focus-halo: #000000;
+  color-scheme: dark;
+}
+html[data-contrast="high"] .card,
+html[data-contrast="high"] .badge,
+html[data-contrast="high"] .chip { border-width: 2px; }
+
+* { box-sizing: border-box; }
+
+html, body { max-width: 100%; }
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  /* Open Sans is Lions Services' body face. Used when the reader already has it;
+     never fetched, because this site loads nothing from a third party. The
+     fallbacks keep the property the spec actually requires: open apertures and
+     unambiguous numerals, on a page that is mostly phone numbers. */
+  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "Noto Sans", "Liberation Sans", Arial, sans-serif;
+  font-size: 1rem;              /* = 18px at 100% */
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Long URLs and source lines must break rather than push the page sideways.
+   overflow-wrap:break-word alone does not shrink min-content; "anywhere" does. */
+a, code, .hint, .facts dt, .facts dd, .contact-list, .sources,
+.branch-note, .step-detail, .staff, .badge, .step-actor { overflow-wrap: anywhere; }
+.facts > dt, .facts > dd, .badges, .badge, .org-item, .card,
+.panel > section, .flow > li { min-width: 0; max-width: 100%; }
+
+/* Phone numbers everywhere: unambiguous, evenly spaced numerals. */
+a[href^="tel:"], .num, .step-marker, .badge, .count { font-variant-numeric: tabular-nums lining-nums; }
+
+h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 .4em; font-weight: 700; }
+h1 { font-size: 1.55rem; letter-spacing: -0.01em; color: var(--brand-deep); }
+
+/* Maintainer attribution. A credit line, not a masthead — this directory lists
+   95 other organisations, several of them Lions' peers, and is shown to them
+   during verification calls. Lions Services is named as who keeps it, and is
+   not given visual precedence over the organisations listed. */
+.maintainer {
+  margin: .15rem 0 .5rem;
+  font-size: 1rem;
+  color: var(--ink-muted);
+}
+.maintainer b { color: var(--brand-deep); font-weight: 700; }
+.maintainer .tagline { font-style: italic; }
+.site-header { border-top: 4px solid var(--brand-deep); }
+h2 { font-size: 1.2rem; }
+h3 { font-size: 1.1rem; }
+h4 { font-size: 1rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted); }
+p { margin: 0 0 .7em; }
+ul, ol { margin: 0 0 .7em; padding-left: 1.3em; }
+li { margin-bottom: .3em; }
+code { font-size: 1em; background: var(--surface-2); padding: .05em .3em; border-radius: 3px; }
+
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+
+.wrap { max-width: 82rem; margin: 0 auto; padding: 0 1rem; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ---------- Focus: one loud, consistent ring ---------- */
+:focus { outline: none; }
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 5px var(--focus-halo);
+}
+.skip-link {
+  position: absolute; left: .5rem; top: -100vh;
+  background: var(--accent); color: var(--accent-ink);
+  padding: .6rem 1rem; border-radius: var(--radius); z-index: 50;
+  font-weight: 700; text-decoration: none;
+}
+.skip-link:focus { top: .5rem; }
+
+/* ---------- Header ---------- */
+.site-header { border-bottom: 2px solid var(--line); background: var(--surface); }
+.header-inner {
+  display: flex; flex-wrap: wrap; gap: 1rem 2rem;
+  align-items: flex-start; justify-content: space-between;
+  padding-top: 1.1rem; padding-bottom: 1.1rem;
+}
+.header-titles { flex: 1 1 28rem; }
+.lede { max-width: var(--measure); color: var(--ink-muted); margin-bottom: 0; }
+
+.display-controls { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: flex-end; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.textsize legend, .field legend {
+  padding: 0; font-weight: 700; font-size: 1rem;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted);
+}
+.textsize legend { margin-bottom: .25rem; }
+/* Wraps: at 320px with the 150% text control on, three fused buttons could not
+   break onto a second line and pushed the page sideways. Each button now carries
+   its own border and radius, so a wrapped row still looks right. */
+.segmented { display: flex; flex-wrap: wrap; gap: .3rem; }
+.seg-btn {
+  font: inherit; cursor: pointer;
+  background: var(--page); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: .4rem .7rem;
+}
+.seg-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+
+/* ---------- Tabs ----------
+   flex-wrap is mandatory. .segmented originally shipped without it and that was
+   accessibility blocker A3(a): three fused buttons could not break onto a second
+   line and pushed the page sideways at 320px with 150% text. Same shape here.
+   Selection is never signalled by colour alone — weight plus a 3px rule. */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin: 1rem 0 0;
+  border-bottom: 2px solid var(--line);
+  min-width: 0;
+}
+.tab {
+  font: inherit;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid transparent;
+  border-bottom: 3px solid transparent;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: .55rem .9rem;
+  margin-bottom: -2px;          /* sit the active rule on the container border */
+  min-height: 2.6rem;           /* target size stays >= 24px at every text size */
+}
+.tab:hover { background: var(--accent-wash); }
+.tab[aria-selected="true"] {
+  font-weight: 700;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: var(--page);
+}
+.tab-icon { color: var(--ink-muted); }
+.tab[aria-selected="true"] .tab-icon { color: var(--accent); }
+
+.panel-body { padding-top: 1.25rem; padding-bottom: 3rem; }
+
+/* A panel that is not selected is removed from the tree entirely, not merely
+   moved offscreen — same mechanism as .panel[hidden] on the detail panels. */
+[role="tabpanel"][hidden] { display: none !important; }
+
+/* Placeholder copy for views that are not built yet. Says so plainly rather
+   than showing an empty box that reads as a bug. */
+.not-built {
+  max-width: var(--measure);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.2rem;
+  background: var(--surface);
+}
+.not-built h3 { margin-top: 0; }
+
+/* ---------- Pathways ----------
+   Every colour here is a token so the high-contrast theme covers it for free.
+   No hex literal appears in this block or inside any SVG — that is the rule
+   that keeps the contrast guarantee true without re-measuring every element. */
+.pw-zoom { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; margin: 1rem 0; }
+.pw-zoom .hint { flex: 1 1 18rem; margin: 0; }
+
+/* The picture is sized in rem so it grows with the text-size control. At the
+   18px root, 34rem = 612px against a 600-unit viewBox, so a 19-unit label
+   renders at ~19px — above the project's 18px floor by arithmetic, not by eye. */
+.pw-svg {
+  display: block;
+  width: 100%;
+  height: 34rem;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.pw-group { margin: 1.6rem 0; }
+.pw-group h3 { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.pw-ico { color: var(--accent); display: inline-flex; }
+.pw-count { color: var(--ink-muted); font-weight: 400; }
+
+.pw-list, .pw-edges, .pw-counties { list-style: none; padding-left: 0; }
+.pw-list { display: flex; flex-wrap: wrap; gap: .5rem; }
+.pw-list > li { margin: 0; min-width: 0; }
+
+.node-btn {
+  font: inherit; cursor: pointer; text-align: left;
+  background: var(--page); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: .5rem .7rem; min-width: 0; max-width: 100%;
+  display: flex; flex-direction: column; gap: .15rem;
+}
+.node-btn:hover { background: var(--accent-wash); border-color: var(--accent); }
+.node-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.node-name { overflow-wrap: anywhere; }
+.node-deg { color: var(--ink-muted); font-size: 1rem; }
+.node-btn[aria-pressed="true"] .node-deg { color: var(--accent-ink); }
+.node-btn-inline { margin-top: .3rem; }
+
+.pw-focus > h3 { margin-top: .6rem; }
+.pw-edges > li {
+  border-left: 3px solid var(--line);
+  padding: .5rem 0 .5rem .8rem; margin-bottom: .8rem; min-width: 0;
+}
+.pw-cond { margin-bottom: .2em; }
+.pw-when { color: var(--ink-muted); font-weight: 700; }
+.pw-target { margin-bottom: .2em; }
+
+.pw-map { margin-top: 2rem; }
+.pw-counties > li { margin-bottom: .25em; }
+
+/* ---------- Find services ---------- */
+.quiz-privacy {
+  border: 2px solid var(--gap-line); background: var(--gap-bg); color: var(--gap-ink);
+  border-radius: var(--radius); padding: .7rem .9rem; max-width: var(--measure);
+}
+.quiz-card { max-width: var(--measure); }
+.quiz-step { color: var(--ink-muted); }
+.quiz-preamble {
+  border: 2px dashed var(--line); border-radius: var(--radius);
+  padding: .9rem 1rem; margin-bottom: 1rem; background: var(--surface);
+}
+.quiz-q { margin: 1rem 0; }
+.quiz-q legend { font-size: 1.15rem; font-weight: 700; color: var(--ink); text-transform: none; letter-spacing: 0; margin-bottom: .4rem; }
+.quiz-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1rem; }
+
+.quiz-results { list-style: none; padding-left: 0; }
+.quiz-result {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: .9rem 1rem; margin-bottom: 1rem; min-width: 0; background: var(--page);
+}
+.quiz-result h4 { text-transform: none; letter-spacing: 0; font-size: 1.1rem; color: var(--ink); }
+.rank { color: var(--accent); }
+.quiz-why { background: var(--accent-wash); border-radius: var(--radius); padding: .6rem .8rem; margin: .6rem 0; }
+.quiz-why-head { font-weight: 700; margin-bottom: .3em; }
+.quiz-why ul, .quiz-qual ul { list-style: disc; padding-left: 1.3em; }
+.quiz-note { color: var(--ink-muted); }
+.quiz-qual summary { cursor: pointer; font-weight: 700; }
+.quiz-handoffs { margin-top: 2rem; border-top: 2px solid var(--line); padding-top: 1rem; }
+.quiz-handoffs > ul, .quiz-handoffs .handoff { list-style: none; padding-left: 0; }
+.handoff { border-left: 3px solid var(--gap-line); padding-left: .9rem; margin-bottom: 1.2rem; }
+.handoff h4 { text-transform: none; letter-spacing: 0; color: var(--ink); font-size: 1.05rem; }
+
+/* ---------- Tier dividers (Mecklenburg-first ordering) ----------
+   A signpost inside the list, never a filter. Nothing below one is hidden,
+   so this must not look like a collapsed section or a control. Deliberately
+   not a heading: h3 is already per-card and a heading here would skip a level.
+   Colour is never the only signal — the caption says it in words. */
+.tier-break {
+  list-style: none;
+  margin: 1.6rem 0 .7rem;
+  padding: .45rem 0 .45rem .1rem;
+  border-top: 2px solid var(--line);
+  color: var(--ink-muted);
+  font-size: 1rem;
+  display: flex;
+  flex-wrap: wrap;          /* the .segmented bug: never let a row force h-scroll */
+  gap: .5rem;
+  align-items: baseline;
+  min-width: 0;
+}
+.tier-break:first-child { margin-top: .2rem; border-top: 0; }
+.tier-break strong { color: var(--ink); font-weight: 700; }
+.tier-break-mark { color: var(--line); }
+
+/* ---------- Buttons ---------- */
+.btn {
+  font: inherit; cursor: pointer; border-radius: var(--radius);
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  padding: .5rem .9rem; font-weight: 600;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn-quiet { background: var(--page); color: var(--accent); border-color: var(--line); }
+.btn-quiet:hover { background: var(--accent-wash); border-color: var(--accent); }
+.btn-sm { padding: .35rem .65rem; }
+#contrast-toggle[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* ---------- Layout ---------- */
+.layout {
+  display: grid; gap: 1.5rem;
+  grid-template-columns: minmax(16rem, 21rem) minmax(0, 1fr);
+  align-items: start; padding-top: 1.25rem; padding-bottom: 3rem;
+}
+/* minmax(0, 1fr), never 1fr: a bare 1fr track is floored at min-content and
+   long unbroken strings (URLs, county lists) push the page sideways. */
+@media (max-width: 60rem) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Filter rail ---------- */
+.filters {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); padding: 1rem;
+}
+@media (min-width: 60.0625rem) { .filters { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; } }
+.filters-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.filters-head h2 { margin: 0; }
+.field { margin-top: 1.1rem; }
+.field > label { display: block; font-weight: 700; font-size: 1rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted); margin-bottom: .25rem; }
+.hint { color: var(--ink-muted); margin: .3rem 0 .4rem; }
+input[type="search"], select {
+  font: inherit; width: 100%; padding: .5rem .6rem;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--page); color: var(--ink);
+}
+/* Left to the UA this is engine-dependent, and under data-contrast="high"
+   color-scheme:dark hands placeholder painting back to the browser. */
+::placeholder { color: var(--ink-muted); opacity: 1; }
+.checks { display: flex; flex-direction: column; gap: .1rem; margin-top: .35rem; }
+.check { display: flex; align-items: flex-start; gap: .5rem; padding: .25rem .3rem; border-radius: 4px; cursor: pointer; }
+.check:hover { background: var(--surface-2); }
+/* accent-color styles the CHECKED box only; the unchecked border was painted by
+   the UA and so sat outside the contrast audit. This gives it an explicit
+   >= 3:1 border in both themes. */
+.check input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none;
+  width: 1.15rem; height: 1.15rem; margin: .25rem 0 0; flex: none; cursor: pointer;
+  border: 2px solid var(--line); border-radius: 4px;
+  background: var(--page);
+  display: inline-grid; place-content: center;
+}
+.check input[type="checkbox"]::before {
+  content: ""; width: .62rem; height: .62rem; transform: scale(0);
+  background: var(--accent-ink);
+  clip-path: polygon(14% 44%, 0 65%, 40% 100%, 100% 16%, 84% 0, 39% 68%);
+}
+.check input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+.check input[type="checkbox"]:checked::before { transform: scale(1); }
+@media (forced-colors: active) { .check input[type="checkbox"] { appearance: auto; } }
+.check .count { color: var(--ink-muted); }
+
+/* ---------- Results head ---------- */
+.results-head { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline; justify-content: space-between; max-width: 100%; }
+.results-head h2 { margin: 0; }
+/* min-width:0 on both, or the flex items refuse to shrink below the select's
+   longest option ("Most open questions first") and push the page sideways at
+   320px with the 150% text control on. */
+.results-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; min-width: 0; max-width: 100%; }
+.results-tools select { width: auto; max-width: 100%; min-width: 0; }
+.inline-label { color: var(--ink-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.status { font-weight: 700; margin: .5rem 0; }
+.status .num { color: var(--accent); }
+
+/* ---------- Chips ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .3rem 0 .8rem; }
+.chip {
+  font: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: var(--accent-wash); color: var(--ink);
+  border: 1px solid var(--accent); border-radius: 999px; padding: .25rem .6rem;
+}
+.chip .x { font-weight: 700; color: var(--accent); }
+.chip:hover { background: var(--accent); color: var(--accent-ink); }
+.chip:hover .x { color: var(--accent-ink); }
+
+/* ---------- Cards ---------- */
+.org-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .6rem; }
+.org-list .children { list-style: none; padding: 0 0 0 1.1rem; margin: .5rem 0 0; display: flex; flex-direction: column; gap: .5rem; border-left: 3px solid var(--line-soft); }
+@media (max-width: 30rem) { .org-list .children { padding-left: .5rem; } }
+
+.card {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--page); padding: .85rem .95rem;
+}
+.card.is-open { border-color: var(--accent); border-width: 2px; padding: calc(.85rem - 1px) calc(.95rem - 1px); }
+.card-head h3 { margin: 0; }
+.disclosure {
+  font: inherit; font-weight: 700; font-size: 1.05rem; text-align: left;
+  background: none; border: 0; padding: .1rem 0; margin: 0; cursor: pointer;
+  color: var(--accent); display: flex; gap: .5rem; align-items: baseline; width: 100%;
+}
+.disclosure:hover .disclosure-name { text-decoration: underline; text-decoration-thickness: 2px; }
+/* Under 1rem, and justified: aria-hidden decoration carrying no text. */
+.disclosure .caret { flex: none; font-size: .8em; transform: rotate(0deg); }
+.disclosure[aria-expanded="true"] .caret { transform: rotate(90deg); }
+@media (prefers-reduced-motion: no-preference) { .disclosure .caret { transition: transform .15s ease; } }
+
+.one-line { margin: .3rem 0 .5rem; max-width: var(--measure); }
+.parent-note { color: var(--ink-muted); margin: 0 0 .35rem; }
+.parent-note a { color: var(--accent); }
+
+/* ---------- Badges: never colour alone, always a word ---------- */
+.badges { list-style: none; display: flex; flex-wrap: wrap; gap: .35rem; padding: 0; margin: 0; }
+.badge {
+  display: inline-flex; align-items: baseline; gap: .35rem;
+  font-size: 1rem; line-height: 1.35; padding: .15rem .5rem;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--ink);
+}
+.badge .b-key { color: var(--ink-muted); }
+.badge .b-icon { font-size: .95em; }   /* aria-hidden glyph, no text */
+.badge-area-in_area { background: var(--go-bg); color: var(--go-ink); border-color: var(--go-ink); }
+.badge-area-partial,
+.badge-area-statewide_travel_required { background: var(--gap-bg); color: var(--gap-ink); border-color: var(--gap-line); }
+.badge-area-out_of_area { background: var(--stop-bg); color: var(--stop-ink); border-color: var(--stop-ink); }
+.badge-conf-high { background: var(--go-bg); color: var(--go-ink); border-color: var(--go-ink); }
+.badge-conf-medium { background: var(--surface-2); color: var(--ink); }
+.badge-conf-low { background: var(--stop-bg); color: var(--stop-ink); border-color: var(--stop-ink); }
+.badge-gap { background: var(--gap-bg); color: var(--gap-ink); border-color: var(--gap-line); }
+.badge-flag { background: var(--gap-bg); color: var(--gap-ink); border-color: var(--gap-line); font-weight: 700; }
+
+/* ---------- Gaps: shown, never hidden ---------- */
+.gap, .gap-inline {
+  display: inline-flex; align-items: baseline; gap: .4rem;
+  background: var(--gap-bg); color: var(--gap-ink);
+  border: 1px dashed var(--gap-line); border-radius: 4px;
+  padding: .1rem .45rem; font-weight: 600;
+}
+.gap { display: block; font-weight: 400; }
+.gap-mark {
+  flex: none; font-weight: 700; border: 1px solid currentColor; border-radius: 50%;
+  width: 1.15em; height: 1.15em; line-height: 1.05em; text-align: center; font-size: .85em; /* aria-hidden "!" */
+}
+
+/* ---------- Detail panel ---------- */
+.panel { margin-top: .9rem; border-top: 1px solid var(--line-soft); padding-top: .9rem; }
+.panel[hidden] { display: none; }
+.panel > section { margin-bottom: 1.3rem; max-width: var(--measure); }
+.panel h4 { margin-bottom: .4rem; }
+.panel ul { padding-left: 1.2rem; }
+
+.panel-toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: 1.1rem; }
+.copy-note { color: var(--ink-muted); margin: 0; flex: 1 1 14rem; }
+
+.svc { margin: 0 0 .7rem; }
+.svc-plain { margin: 0; }
+.svc-label { display: block; color: var(--ink-muted); }
+.svc-notes { color: var(--ink-muted); margin: .15rem 0 0; }
+
+/* What to bring — the field that most often blocks people. */
+.bring {
+  border: 2px solid var(--accent); border-left-width: 8px;
+  border-radius: var(--radius); background: var(--accent-wash);
+  padding: .8rem .9rem; max-width: var(--measure);
+}
+.bring h4 { color: var(--ink); }
+.bring ul { margin-bottom: 0; }
+
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .3rem .9rem; margin: 0; }
+@media (max-width: 34rem) { .facts { grid-template-columns: 1fr; gap: 0 0; } .facts dd { margin-bottom: .6rem; } }
+.facts dt { font-weight: 700; color: var(--ink-muted); }
+.facts dd { margin: 0; }
+
+.contact-list { list-style: none; padding: 0; }
+.contact-list > li { margin-bottom: .45rem; }
+.contact-key { font-weight: 700; color: var(--ink-muted); display: block; }
+.staff { border-left: 3px solid var(--line-soft); padding-left: .7rem; margin: .5rem 0; }
+.staff-name { font-weight: 700; }
+.staff-title { color: var(--ink-muted); }
+
+.provenance { border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--surface); padding: .8rem .9rem; }
+.provenance h4 { margin-top: 0; }
+.provenance .sources li { margin-bottom: .35rem; }
+.q-list li { margin-bottom: .4rem; }
+
+/* ---------- Flowchart: the ordered list IS the diagram ---------- */
+.flow { list-style: none; counter-reset: step; padding: 0; margin: .2rem 0 0; }
+.flow > li {
+  counter-increment: step;
+  position: relative;
+  padding: 0 0 1.1rem 3rem;
+  margin: 0;
+}
+.flow > li::before {                       /* the numbered node */
+  content: counter(step);
+  position: absolute; left: 0; top: 0;
+  width: 2.1rem; height: 2.1rem; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 1rem;
+  background: var(--surface); color: var(--ink);
+  border: 2px solid var(--line);
+}
+.flow > li::after {                        /* the connector */
+  content: ""; position: absolute; left: 1.05rem; top: 2.1rem; bottom: .2rem;
+  width: 2px; background: var(--line);
+}
+.flow > li:last-child { padding-bottom: 0; }
+.flow > li:last-child::after { display: none; }
+.flow > li[data-blocking="true"]::before { background: var(--stop-bg); color: var(--stop-ink); border-color: var(--stop-ink); }
+
+/* Was 12.96px and unshrinkable: it broke reflow at 320px/150% and escaped its
+   own card inside nested programme cards at ordinary desktop widths. */
+.step-actor {
+  display: inline-block; font-size: 1rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em;
+  border: 1px solid var(--line); border-radius: 3px;
+  padding: .05rem .35rem; margin-right: .4rem; color: var(--ink-muted);
+  vertical-align: .1em;
+  max-width: 100%; min-width: 0; overflow-wrap: anywhere;
+}
+.step-action { font-weight: 700; margin: .15rem 0 .25rem; }
+.step-detail { margin: 0 0 .4rem; color: var(--ink); }
+.step-tokens { list-style: none; display: flex; flex-wrap: wrap; gap: .3rem; padding: 0; margin: .3rem 0; min-width: 0; }
+.token {
+  font-size: 1rem; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); padding: .1rem .45rem;
+  min-width: 0; max-width: 100%; overflow-wrap: anywhere;
+}
+.token-req { background: var(--gap-bg); color: var(--gap-ink); border-color: var(--gap-line); }
+.step-meta { color: var(--ink-muted); margin: .25rem 0 0; display: flex; flex-wrap: wrap; gap: .2rem .6rem; }
+.step-flag { font-weight: 700; font-size: 1rem; }
+.step-flag.is-blocking { color: var(--stop-ink); }
+
+.branches { list-style: none; padding: 0; margin: .5rem 0 0; }
+.branches > li {
+  border-left: 3px solid var(--accent); background: var(--surface);
+  padding: .4rem .6rem; margin-bottom: .4rem; border-radius: 0 4px 4px 0;
+}
+.branch-cond { font-weight: 700; display: block; }
+.branch-note { margin: .2rem 0 0; }
+.goto-link { font-weight: 700; }
+
+/* ---------- Errors / empty ---------- */
+.error-box {
+  border: 2px solid var(--stop-ink); background: var(--stop-bg); color: var(--stop-ink);
+  border-radius: var(--radius); padding: 1rem; margin: 1rem 0; max-width: var(--measure);
+}
+.error-box h2 { margin-top: 0; color: var(--stop-ink); }
+.error-box code { background: transparent; border: 1px solid currentColor; }
+.empty { border: 1px dashed var(--line); border-radius: var(--radius); padding: 1.2rem; text-align: left; }
+
+.site-footer { border-top: 1px solid var(--line-soft); padding-top: 1rem; padding-bottom: 2rem; color: var(--ink-muted); }
+
+/* ---------- Motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+/* ---------- Print ---------- */
+@media print {
+  .filters, .display-controls, .results-tools, .skip-link, .chips { display: none; }
+  .layout { display: block; }
+  .panel[hidden] { display: none; }
+  .card { break-inside: avoid; border-color: #000; }
+}

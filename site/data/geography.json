@@ -1,0 +1,38 @@
+{
+  "_comment": "Machine-readable twin of docs/geography-definition.md. The site reads county names ONLY from this file — CLAUDE.md rule 2 forbids hardcoding them anywhere else. scripts/validate.mjs checks this file against the doc and fails if they drift. Unlike organizations.json this file has nothing to sanitize, so there is no separate working copy: it lives here and ships as-is.",
+
+  "status": "PROVISIONAL — the county list was drafted by us, not supplied by the project lead. Pending her sign-off.",
+  "source_doc": "docs/geography-definition.md",
+
+  "home_county": "Mecklenburg",
+
+  "tiers": [
+    {
+      "id": "home",
+      "label": "Mecklenburg County",
+      "counties": ["Mecklenburg"]
+    },
+    {
+      "id": "adjacent",
+      "label": "Counties next to Mecklenburg",
+      "note": "The six counties that physically border Mecklenburg.",
+      "counties": ["Cabarrus", "Gaston", "Iredell", "Lincoln", "Union", "York"]
+    },
+    {
+      "id": "region",
+      "label": "The wider greater-Charlotte region",
+      "counties": ["Catawba", "Cleveland", "Lancaster", "Rowan", "Stanly"]
+    }
+  ],
+
+  "tier_captions": {
+    "home": "Serving Mecklenburg County",
+    "statewide": "Statewide and national services — no office to visit, usable from anywhere in North Carolina",
+    "adjacent": "Beyond Mecklenburg — counties next door",
+    "region": "The wider greater-Charlotte region",
+    "travel": "Worth the journey — these require significant travel",
+    "elsewhere": "Outside the region, kept because they may still take a referral from here"
+  },
+
+  "unlisted_counties_note": "service_area.counties also contains Anson, Montgomery, Richmond, Forsyth, Wake, Guilford and New Hanover, which are not in the working list. Anson and Montgomery are part of the NC DSB Charlotte district's real catchment. geoRank() falls back to service_area.verdict for any county it does not recognise, so an unlisted county never demotes an in_area record. scripts/validate.mjs warns about these so the project lead can rule on them."
+}

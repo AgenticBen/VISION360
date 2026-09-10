@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Organization record",
+  "type": "object",
+  "required": ["id","name","org_type","categories","one_line","service_area","services","who_qualifies","documentation_required","cost","typical_wait","accepts_third_party_referral","access_path","contacts","last_verified","confidence","open_questions","sources","needs_research"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "name": { "type": "string", "minLength": 2 },
+    "also_known_as": { "type": "array", "items": { "type": "string" } },
+    "org_type": { "enum": ["nonprofit","state_agency","federal_agency","county_agency","clinic","peer_group","chapter","school","other"] },
+    "parent_org_id": { "type": ["string","null"] },
+    "is_program_of": { "type": ["string","null"] },
+    "programs": { "type": "array", "items": { "type": "string" } },
+    "categories": { "type": "array", "minItems": 1, "items": { "enum": [
+      "vision_rehab","orientation_mobility","low_vision_clinic","assistive_technology",
+      "employment","education","transportation","peer_support","recreation","legal_advocacy",
+      "condition_specific","veterans","financial_assistance","library_reading","guide_dogs",
+      "caregiver_support","eye_care_access","deafblind","housing","other"
+    ] } },
+    "one_line": { "type": "string", "minLength": 10, "maxLength": 140 },
+    "service_area": {
+      "type": "object",
+      "required": ["counties","verdict"],
+      "additionalProperties": false,
+      "properties": {
+        "counties": { "type": "array", "items": { "type": "string" } },
+        "verdict": { "enum": ["in_area","partial","statewide_travel_required","out_of_area"] },
+        "note": { "type": "string" }
+      }
+    },
+    "services": { "type": "array", "minItems": 1, "items": {
+      "type": "object", "required": ["label","plain_language"], "additionalProperties": false,
+      "properties": { "label": {"type":"string"}, "plain_language": {"type":"string"}, "notes": {"type":"string"} }
+    } },
+    "who_qualifies": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "documentation_required": { "type": "array", "items": { "type": "string" } },
+    "cost": { "type": "string", "minLength": 1 },
+    "typical_wait": { "type": "string", "minLength": 1 },
+    "accepts_third_party_referral": { "enum": ["yes","no","unclear"] },
+    "access_path": { "type": "array", "items": {
+      "type": "object", "required": ["order","actor","action","blocking"], "additionalProperties": false,
+      "properties": {
+        "order": { "type": "integer", "minimum": 1 },
+        "actor": { "enum": ["person","referrer","organization"] },
+        "action": { "type": "string", "minLength": 3 },
+        "detail": { "type": "string" },
+        "requires": { "type": "array", "items": { "type": "string" } },
+        "duration": { "type": "string" },
+        "blocking": { "type": "boolean" },
+        "branches": { "type": "array", "items": {
+          "type": "object", "required": ["condition"], "additionalProperties": false,
+          "properties": { "condition": {"type":"string"}, "goto_org_id": {"type":["string","null"]}, "note": {"type":"string"} }
+        } }
+      }
+    } },
+    "contacts": {
+      "type": "object", "required": ["website"], "additionalProperties": false,
+      "properties": {
+        "general_phone": { "type": "string" },
+        "general_email": { "type": "string" },
+        "address": { "type": "string" },
+        "website": { "type": "string" },
+        "intake_form_url": { "type": "string" },
+        "named_staff": { "type": "array", "items": {
+          "type": "object", "required": ["name","public_safe"], "additionalProperties": false,
+          "properties": { "name":{"type":"string"}, "title":{"type":"string"}, "email":{"type":"string"}, "phone":{"type":"string"}, "public_safe":{"type":"boolean"}, "source_url":{"type":"string"} }
+        } }
+      }
+    },
+    "last_verified": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "confidence": { "enum": ["high","medium","low"] },
+    "confidence_note": { "type": "string" },
+    "open_questions": { "type": "array", "items": { "type": "string" } },
+    "sources": { "type": "array", "minItems": 1, "items": {
+      "type": "object", "required": ["report"], "additionalProperties": false,
+      "properties": { "report": {"type":"string"}, "heading": {"type":"string"}, "url": {"type":"string"} }
+    } },
+    "internal_only_notes": { "type": "array", "items": { "type": "string" } },
+    "needs_research": { "type": "boolean" }
+  }
+}
