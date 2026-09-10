@@ -1809,33 +1809,33 @@
       "peer_support",
       "caregiver_support"
     ],
-    "one_line": "Free phone support groups and information for people who see things that aren't there because of vision loss (Charles Bonnet Syndrome).",
+    "one_line": "Free CBS helpline, weekly virtual support groups, education and advocacy for people with Charles Bonnet Syndrome and their caregivers.",
     "service_area": {
       "counties": [
         "Union"
       ],
       "verdict": "in_area",
-      "note": "Based in Indian Trail, NC (Union County — within greater Charlotte). Serves people with CBS broadly/nationally (phone support groups; awareness is national/international). Not geographically restricted."
+      "note": "Based in Indian Trail, NC (Union County — within greater Charlotte). Serves people with CBS broadly/nationally (telephone and virtual services; awareness is national/international). Not geographically restricted."
     },
     "services": [
       {
-        "label": "Weekly CBS support group",
-        "plain_language": "A weekly phone group for people who have visual hallucinations because of vision loss. Saturdays 12:00 PM EDT.",
-        "notes": "Join by phone: 704-389-0160 (the number published on marycarmelslight.com). A second number, 502-439-0398, is published on the About CBS page beside the name Dr. Gary Cusick and appears in third-party listings as the group dial-in — confirm which number joins the call before telling someone to dial."
+        "label": "Weekly CBS virtual support group",
+        "plain_language": "A weekly virtual support group for people living with Charles Bonnet Syndrome. Access to Zoom is important. Previously published schedule: Saturdays 12:00 PM EDT; confirm the current time when contacting MCL.",
+        "notes": "Contact 704-389-0160, marycarmelslight@gmail.com, or the website contact page for joining details. The partner supplied this phone number for referrals; it is not confirmed as a Zoom meeting dial-in."
       },
       {
-        "label": "Caregiver support group",
-        "plain_language": "A weekly phone group for family and caregivers. Saturdays 1:00 PM EDT, straight after the CBS group.",
-        "notes": "Join by phone: 704-389-0160."
+        "label": "Weekly caregiver virtual support group",
+        "plain_language": "A weekly virtual support group for caregivers and family members. Access to Zoom is important. Previously published schedule: Saturdays 1:00 PM EDT; confirm the current time when contacting MCL.",
+        "notes": "Contact 704-389-0160, marycarmelslight@gmail.com, or the website contact page for joining details."
       },
       {
         "label": "Awareness and education about Charles Bonnet Syndrome",
-        "plain_language": "Explaining why some people with vision loss see things that aren't there, and that it is not a mental illness.",
+        "plain_language": "Empower and support people living with Charles Bonnet Syndrome (CBS), a physiological condition that affects people with low vision or onset blindness. They may begin to have SILENT visual hallucinations that can be simple, such as geometric patterns, or more complex, such as seeing dogs, people, etc. We offer a compassionate helpline and a weekly virtual support group that serves people living with CBS, their family, and caregivers.",
         "notes": "Coping tools described on the site include music, eye-movement exercises, light therapy and the support groups themselves."
       },
       {
         "label": "Crisis-intervention helpline and connection to services — NOT medical care and NOT medical referrals",
-        "plain_language": "Someone to call in a crisis, and help finding services, resources and information. They cannot refer you to a doctor or tell you what is wrong with your eyes.",
+        "plain_language": "A compassionate helpline, advocacy, and help connecting to services, resources, and information. NOT medical care and NOT medical referrals.",
         "notes": "LIMITATION — KEEP VISIBLE. Verbatim from marycarmelslight.com: \"We cannot give you a medical referral, but we can assist you in your search for services, resources, and information.\" And from the About CBS page: \"We are not doctors or medical professionals. We are a 501(c)(3) organization that provides awareness, education, and information about Charles Bonnet Syndrome (CBS). We do not offer medical advice, diagnosis, or treatment of CBS.\" Anyone needing a diagnosis, an eye exam or a clinical low vision evaluation must be routed to a clinician in parallel."
       },
       {
@@ -1845,12 +1845,12 @@
       }
     ],
     "who_qualifies": [
-      "People experiencing Charles Bonnet Syndrome (visual hallucinations due to vision loss)",
-      "Their caregivers and families",
-      "Medical providers",
-      "No vision-level, age, income, or residency gate"
+      "People experiencing Charles Bonnet Syndrome (visual hallucinations due to vision loss), their caregivers and families, regardless of age, gender, socioeconomic status, sexual orientation, or ethnic background."
     ],
-    "documentation_required": [],
+    "documentation_required": [
+      "No documents are required. Services are provided by telephone and virtual meetings; access to Zoom is important for the support groups.",
+      "A diagnosis of CBS or symptoms of CBS can prompt a referral."
+    ],
     "cost": "Free (donation-supported)",
     "typical_wait": "None stated (support groups are open/weekly)",
     "accepts_third_party_referral": "yes",
@@ -1879,8 +1879,8 @@
       {
         "order": 2,
         "actor": "person",
-        "action": "Join the weekly phone support group on a Saturday",
-        "detail": "CBS support group Saturdays 12:00 PM EDT; caregiver group Saturdays 1:00 PM EDT immediately after. MCL's site says to join by calling 704-389-0160. Confirm the dial-in number when you call, because 502-439-0398 also appears on MCL's About CBS page.",
+        "action": "Join a weekly virtual CBS or caregiver support group",
+        "detail": "Access to Zoom is important. Contact MCL by phone at 704-389-0160, email at marycarmelslight@gmail.com, or the website contact page for joining details. Previously published Saturday times are 12:00 PM EDT for CBS and 1:00 PM EDT for caregivers; the partner update confirms weekly groups but does not reconfirm these times.",
         "requires": [],
         "duration": "weekly, ongoing",
         "blocking": false,
@@ -1930,14 +1930,13 @@
         }
       ]
     },
-    "last_verified": "2026-09-03",
+    "last_verified": "2026-09-10",
     "confidence": "high",
-    "confidence_note": "Site verified live 2026-09-03; helpline 704-389-0160, PO Box, Saturday 12:00/1:00 PM EDT group times, founders Eva and Kevin Potts, and the medical-referral limitation all re-confirmed on marycarmelslight.com. New this pass: the email marycarmelslight@gmail.com and a second published contact, Dr. Gary Cusick on 502-439-0398, both on the About CBS page. RELATIONSHIP SETTLED: The Charles Bonnet Syndrome Podcast is NOT a Mary Carmel's Light programme — see that record. MCL's own site does not mention the podcast anywhere; the podcast's site lists marycarmelslight.com only as one of four external resources and publishes no phone number of its own. Peer support and education, not medical care.",
+    "confidence_note": "Partner profile supplied September 8, 2026 and reviewed September 10, 2026: virtual CBS and caregiver groups, Zoom access, compassionate helpline, advocacy, eligibility, no required documents, free donation-supported services, and referral phone/email/contact page. Weekly groups were confirmed; previously published Saturday meeting times and Zoom joining instructions still need confirmation. The partner reconfirmed that MCL provides neither medical care nor medical referrals. Other retained details come from the September 3, 2026 website review. The independent Charles Bonnet Syndrome Podcast remains a separate resource, not an MCL program.",
     "open_questions": [
-      "Call Mary Carmel's Light (704-389-0160) and ask: which number does a person actually dial to join the Saturday support groups — 704-389-0160, or the 502-439-0398 number shown on your About CBS page?",
+      "Contact Mary Carmel's Light (704-389-0160) for the current Zoom joining instructions and to confirm the previously published Saturday 12:00 PM / 1:00 PM EDT group times.",
       "Call Mary Carmel's Light (704-389-0160) and ask: what is Dr. Gary Cusick's role, and is his number a clinical line or a group dial-in?",
-      "Call Mary Carmel's Light (704-389-0160) and ask: is the helpline staffed 24/7 or business hours only?",
-      "Call Mary Carmel's Light (704-389-0160) and ask: are there any in-person NC services, or is everything phone-only?"
+      "Call Mary Carmel's Light (704-389-0160) and ask: is the helpline staffed 24/7 or business hours only?"
     ],
     "sources": [
       {
@@ -1954,6 +1953,10 @@
         "report": "Phase 2 web verification 2026-09-03",
         "heading": "About CBS and Coping Tools — email address, Dr. Gary Cusick contact, full medical disclaimer",
         "url": "https://marycarmelslight.com/about-cbs/"
+      },
+      {
+        "report": "Partner-supplied profile, September 8, 2026; reviewed September 10, 2026",
+        "heading": "Mary Carmel’s Light — services, eligibility, preparation, cost, wait, agency referrals, and referral contacts"
       }
     ],
     "needs_research": false
