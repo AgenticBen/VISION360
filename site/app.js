@@ -1092,6 +1092,25 @@
       t = window.setTimeout(function () { state.q = q.value.trim(); render(); }, 160);
     });
 
+    $("site-search").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      window.clearTimeout(t);
+      state.q = q.value.trim();
+      showTab("directory", false);
+      render();
+      $("results").focus();
+      $("results").scrollIntoView({ block: "start" });
+    });
+    $("filters").addEventListener("submit", function (ev) { ev.preventDefault(); });
+    $("clear-search").addEventListener("click", function () {
+      window.clearTimeout(t);
+      state.q = "";
+      q.value = "";
+      render();
+      announce("Search cleared. Other filters are unchanged.");
+      q.focus();
+    });
+
     /* Sync the control TO the state, not the other way round: if geography.json
        failed to load, boot() has already downgraded sort away from "meck" and
        the select must not claim otherwise. */
@@ -1119,6 +1138,11 @@
   /* ---------------------------------------------------------------------
      Filtering
      --------------------------------------------------------------------- */
+  function normalizeSearch(text) {
+    return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase().replace(/[’‘']/g, "").replace(/[^a-z0-9@]+/g, " ").trim();
+  }
+
   function buildSearchIndex() {
     ORGS.forEach(function (o) {
       var bits = [o.name, o.id, (o.also_known_as || []).join(" "), o.one_line, o.is_program_of || ""];
@@ -1129,13 +1153,21 @@
          "Union" and "Gastonia" returned nothing before this. */
       var sa = o.service_area || {};
       bits.push((sa.counties || []).join(" "), sa.note || "", AREA_LABELS[sa.verdict] || sa.verdict || "");
-      SEARCH_INDEX[o.id] = bits.join(" · ").toLowerCase();
+      bits.push((o.who_qualifies || []).join(" "), (o.documentation_required || []).join(" "), o.cost || "", o.typical_wait || "");
+      (o.access_path || []).forEach(function (step) {
+        bits.push(step.action || "", step.detail || "", (step.requires || []).join(" "));
+        (step.branches || []).forEach(function (branch) { bits.push(branch.condition || "", branch.note || ""); });
+      });
+      var contacts = o.contacts || {};
+      bits.push(contacts.address || "", contacts.general_phone || "", contacts.general_email || "", contacts.website || "");
+      (contacts.named_staff || []).forEach(function (person) { bits.push(person.name || "", person.title || ""); });
+      SEARCH_INDEX[o.id] = normalizeSearch(bits.join(" "));
     });
   }
 
   function matches(o) {
     if (state.q) {
-      var terms = state.q.toLowerCase().split(/\s+/).filter(Boolean);
+      var terms = normalizeSearch(state.q).split(/\s+/).filter(Boolean);
       var hay = SEARCH_INDEX[o.id] || "";
       for (var i = 0; i < terms.length; i++) if (hay.indexOf(terms[i]) === -1) return false;
     }
@@ -1547,6 +1579,29 @@
     return btn;
   }
 
+  function shareButton(org) {
+    var btn = el("button", { type: "button", class: "btn btn-quiet" }, "Copy link to this organization");
+    btn.addEventListener("click", function () {
+      var url = new URL(window.location.pathname, window.location.origin);
+      url.hash = "org-" + org.id;
+      copyToClipboard(url.href).then(function () {
+        announce("Link to " + org.name + " copied.");
+        btn.textContent = "Link copied";
+        window.setTimeout(function () { btn.textContent = "Copy link to this organization"; }, 4000);
+      }, function () {
+        var input = btn.parentNode.querySelector(".share-fallback");
+        if (!input) {
+          input = el("input", { class: "share-fallback", type: "text", readonly: true, "aria-label": "Link to " + org.name });
+          btn.parentNode.appendChild(input);
+        }
+        input.value = url.href;
+        input.focus(); input.select();
+        announce("Copy the selected organization link.");
+      });
+    });
+    return btn;
+  }
+
   /* ---------------------------------------------------------------------
      Detail panel
      --------------------------------------------------------------------- */
@@ -1569,21 +1624,13 @@
 
     /* Copy email — the most used control, so it sits first. */
     panel.appendChild(el("div", { class: "panel-toolbar" }, [
+      shareButton(org),
       copyButton(org),
       el("p", { class: "copy-note" },
         "Copies a subject line and a short email that leads with what we already have, asks the two standard questions, and names the fields we could not find. Open questions are listed at the foot of this panel if you want to add any.")
     ]));
 
-    /* What they do */
-    var svcNodes = (org.services || []).map(function (s) {
-      return el("div", { class: "svc" }, [
-        el("p", { class: "svc-plain" }, linkify(s.plain_language || s.label)),
-        s.label && s.label !== s.plain_language ? el("span", { class: "svc-label" }, "Their name for it: " + s.label) : null,
-        s.notes ? el("p", { class: "svc-notes" }, linkify(s.notes)) : null
-      ]);
-    });
-    panel.appendChild(section("What they do", svcNodes.length ? svcNodes : [gapBlock("No services recorded. " + GAP_TEXT + ".")]));
-
+    panel.appendChild(el("h4", { class: "before-heading" }, "Before you contact them"));
     /* Who qualifies */
     panel.appendChild(section("Who qualifies", [listOrGap(org.who_qualifies, "Eligibility is not recorded. " + GAP_TEXT + ".")]));
 
@@ -1614,12 +1661,6 @@
     ]));
     panel.appendChild(section("Cost, wait and referral", [facts]));
 
-    /* Access path */
-    panel.appendChild(section("How a person gets in", [
-      el("p", { class: "hint" }, "Numbered steps in order. Steps marked “must be done before the next step” block everything after them."),
-      flowchart(org)
-    ]));
-
     /* Contacts */
     var c = org.contacts || {};
     var cl = el("ul", { class: "contact-list", role: "list" });
@@ -1644,6 +1685,22 @@
       ]);
     });
     panel.appendChild(section("Contact", [cl].concat(staffNodes.length ? [el("h4", null, "Named staff")].concat(staffNodes) : [])));
+
+    /* What they do */
+    var svcNodes = (org.services || []).map(function (s) {
+      return el("div", { class: "svc" }, [
+        el("p", { class: "svc-plain" }, linkify(s.plain_language || s.label)),
+        s.label && s.label !== s.plain_language ? el("span", { class: "svc-label" }, "Their name for it: " + s.label) : null,
+        s.notes ? el("p", { class: "svc-notes" }, linkify(s.notes)) : null
+      ]);
+    });
+    panel.appendChild(section("What they do", svcNodes.length ? svcNodes : [gapBlock("No services recorded. " + GAP_TEXT + ".")]));
+
+    /* Access path */
+    panel.appendChild(section("How a person gets in", [
+      el("p", { class: "hint" }, "Numbered steps in order. Steps marked “must be done before the next step” block everything after them."),
+      flowchart(org)
+    ]));
 
     /* Provenance */
     var prov = el("div", { class: "provenance" }, [el("h4", null, "Where this came from")]);
@@ -1852,6 +1909,8 @@
       list.appendChild(el("li", null, empty));
     }
 
+    $("search-summary").textContent = matched.length + " of " + ORGS.length +
+      " organizations match the current search and filters. Use Clear all in Directory to show every organization.";
     syncCollapseAll();
     renderChips();
   }
@@ -1874,6 +1933,44 @@
     $("result-status").textContent = "The directory could not be loaded.";
     try { box.focus(); } catch (e) { /* focus is a courtesy, not a requirement */ }
   }
+
+  function initFeedback() {
+    var dialog = $("feedback-dialog");
+    var opener = $("feedback-open");
+    var message = $("feedback-message");
+    var status = $("feedback-status");
+    opener.addEventListener("click", function () {
+      status.textContent = "";
+      dialog.showModal();
+      message.focus();
+    });
+    $("feedback-close").addEventListener("click", function () { dialog.close(); });
+    dialog.addEventListener("close", function () { opener.focus(); });
+    function feedbackText() {
+      return "VISION360 website feedback\n\n" + message.value.trim() +
+        "\n\nWebsite: https://lions-vision-referral.vercel.app/";
+    }
+    $("feedback-form").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      if (!message.value.trim()) { message.setCustomValidity("Please describe what we can improve."); message.reportValidity(); return; }
+      var href = "mailto:ben@agenticarc.ai?subject=" + encodeURIComponent("VISION360 website feedback") +
+        "&body=" + encodeURIComponent(feedbackText());
+      status.textContent = "Your email app should open. Send the message there to submit your feedback. If it does not open, copy your feedback and email ben@agenticarc.ai.";
+      window.location.href = href;
+    });
+    message.addEventListener("input", function () { message.setCustomValidity(""); });
+    $("feedback-copy").addEventListener("click", function () {
+      if (!message.value.trim()) { message.focus(); status.textContent = "Describe what we can improve first."; return; }
+      copyToClipboard(feedbackText()).then(function () {
+        status.textContent = "Feedback copied. Paste it into an email to ben@agenticarc.ai and send it for review.";
+      }, function () {
+        message.focus(); message.select();
+        status.textContent = "Copy the selected feedback and email it to ben@agenticarc.ai.";
+      });
+    });
+  }
+  // Feedback stays available even if the directory data fails to load.
+  initFeedback();
 
   /* ---------------------------------------------------------------------
      Boot

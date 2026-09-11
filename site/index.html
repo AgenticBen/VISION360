@@ -12,6 +12,7 @@
 </head>
 <body>
 
+<a class="skip-link" href="#q">Skip to search</a>
 <a class="skip-link" href="#views">Skip to the three views</a>
 <a class="skip-link" href="#results">Skip to the organization list</a>
 <a class="skip-link" href="#filters">Skip to filters</a>
@@ -50,12 +51,26 @@
 
 <main id="main">
 
+  <div class="wrap">
+    <form id="site-search" class="site-search" role="search" aria-label="Search the organization directory">
+      <label for="q">Search organizations and services</label>
+      <div class="search-controls">
+        <input type="search" id="q" name="q" autocomplete="off" spellcheck="false"
+               aria-describedby="q-hint" placeholder="Try an organization, service or county">
+        <button type="submit" class="btn">Search directory</button>
+        <button type="button" id="clear-search" class="btn btn-quiet">Clear search</button>
+      </div>
+      <p class="hint" id="q-hint">Search names, services, locations, eligibility, contacts and referral steps. Results open in Directory; your Find services answers stay in place.</p>
+      <p class="hint" id="search-summary">Loading organizations…</p>
+    </form>
+  </div>
+
   <!-- ======================= VIEWS ======================= -->
   <div class="wrap">
     <!-- A real tablist, not aria-pressed toggles: these are three views OF one
          dataset, and a screen reader should hear "2 of 3, selected" rather than
-         three unrelated buttons. Arrow-key handling lives in app.js and is
-         deliberately the only keydown listener in the file. -->
+         three unrelated buttons. Arrow-key handling lives in app.js and supports
+         standard arrow-key navigation. -->
     <div class="tabs" id="views" role="tablist" aria-label="Views of this directory">
       <button type="button" class="tab" role="tab" id="tab-directory"
               aria-controls="panel-directory" aria-selected="true" tabindex="0">
@@ -78,18 +93,10 @@
   <div class="wrap layout">
 
   <!-- ======================= FILTER RAIL ======================= -->
-  <form class="filters" id="filters" role="search" aria-labelledby="filters-heading" tabindex="-1">
+  <form class="filters" id="filters" aria-labelledby="filters-heading" tabindex="-1">
     <div class="filters-head">
       <h2 id="filters-heading">Filters</h2>
       <button type="button" class="btn btn-quiet btn-sm" id="clear-all">Clear all</button>
-    </div>
-
-    <div class="field">
-      <label for="q">Search</label>
-      <input type="search" id="q" name="q" autocomplete="off" spellcheck="false"
-             aria-describedby="q-hint"
-             placeholder="Name, other names, services">
-      <p class="hint" id="q-hint">Searches name, other names, one-line summary and service descriptions.</p>
     </div>
 
     <fieldset class="field">
@@ -160,6 +167,29 @@
     </div>
   </div>
 </main>
+
+<div class="feedback-dock">
+  <button type="button" id="feedback-open" class="btn" aria-haspopup="dialog">Help improve this site</button>
+</div>
+<dialog id="feedback-dialog" aria-labelledby="feedback-title" aria-describedby="feedback-help">
+  <div class="feedback-header">
+    <h2 id="feedback-title">Help improve this site</h2>
+    <button type="button" id="feedback-close" class="btn btn-quiet">Close</button>
+  </div>
+  <p id="feedback-help">Tell us what was difficult and what would make the site easier to use. Feedback is reviewed before any listing is changed.</p>
+  <form id="feedback-form">
+    <label for="feedback-message">What should we improve?</label>
+    <textarea id="feedback-message" name="message" rows="5" maxlength="1500" required
+              aria-describedby="feedback-privacy" placeholder="I was trying to… It would help if…"></textarea>
+    <p class="hint" id="feedback-privacy">Please leave out personal medical information and other private details. Your search and Find services answers are not included.</p>
+    <p class="hint">This opens your email app with your feedback addressed to <a href="mailto:ben@agenticarc.ai">ben@agenticarc.ai</a>. You will still need to press Send there.</p>
+    <div class="feedback-actions">
+      <button type="submit" class="btn">Open email to send</button>
+      <button type="button" id="feedback-copy" class="btn btn-quiet">Copy feedback instead</button>
+    </div>
+    <p id="feedback-status" role="status" aria-live="polite"></p>
+  </form>
+</dialog>
 
 <footer class="site-footer wrap">
   <p>

@@ -624,3 +624,29 @@ input[type="search"], select {
   .panel[hidden] { display: none; }
   .card { break-inside: avoid; border-color: #000; }
 }
+
+/* Shared search and practical listing information. */
+.site-search { margin: 1rem 0; padding: 1rem; border: 2px solid var(--accent); border-radius: var(--radius); background: var(--surface); }
+.site-search > label { display: block; font-size: 1.15rem; font-weight: 700; margin-bottom: .5rem; }
+.search-controls { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; }
+.search-controls input { flex: 1 1 20rem; min-width: 0; width: 100%; }
+.search-controls .btn { min-height: 44px; }
+.site-search .hint { margin: .5rem 0 0; }
+.before-heading { margin: 1rem 0; padding: .6rem; background: var(--accent-wash); border-left: 4px solid var(--accent); }
+.share-fallback { width: 100%; padding: .5rem; font: inherit; color: var(--ink); background: var(--page); }
+@media print { .site-search, .panel-toolbar { display: none; } }
+
+/* Reserve enough bottom spacing for the last document items to scroll above
+   the persistent feedback control, including with enlarged text. */
+body { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+html { scroll-padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
+.feedback-dock { position: fixed; z-index: 20; bottom: 0; left: 0; right: 0; padding: .5rem 1rem calc(.5rem + env(safe-area-inset-bottom)); background: var(--page); border-top: 1px solid var(--line); display: flex; justify-content: flex-end; }
+.feedback-dock .btn { max-width: 100%; min-height: 44px; }
+#feedback-dialog { width: min(36rem, calc(100% - 1rem)); max-height: calc(100dvh - 1rem); overflow: auto; padding: 1rem; border: 2px solid var(--accent); border-radius: var(--radius); color: var(--ink); background: var(--page); }
+#feedback-dialog::backdrop { background: rgba(0,0,0,.6); }
+.feedback-header, .feedback-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; align-items: center; }
+#feedback-form label { display: block; font-weight: 700; }
+#feedback-message { width: 100%; padding: .5rem; font: inherit; color: var(--ink); background: var(--page); border: 1px solid var(--line); }
+#feedback-dialog .btn { min-height: 44px; }
+@media (max-width: 34rem) { .feedback-dock .btn { width: 100%; } }
+@media print { .feedback-dock, #feedback-dialog { display: none; } body { padding-bottom: 0; } }

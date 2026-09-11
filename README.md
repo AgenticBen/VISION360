@@ -17,6 +17,12 @@ python3 -m http.server 8000 --directory site
 
 Open http://localhost:8000. The checks validate records, linked programs, geography configuration, and assessment routing scenarios.
 
+## Search and feedback
+
+Search is available above all three views. It matches names, aliases, services, geography, eligibility, preparation, contact details, and referral-step text. Search filters the Directory only; it does not change assessment answers, recommendations, or organization records. Use Clear all in Directory to restore all records. Each expanded listing has a copyable direct link.
+
+The persistent feedback button opens an accessible dialog. Feedback is handed to the visitor's email app, addressed to ben@agenticarc.ai, for review; the visitor must press Send in that app. There is a copy fallback. This static version does not store submissions or provide server-side delivery confirmation. It includes neither search terms nor assessment answers in feedback. Feedback never edits a listing automatically.
+
 ## Updating records
 
 Edit `data/organizations.json`, then run `npm run check`. The data build generates `site/data/organizations.json`, which is the only organization dataset deployed. Commit both copies. Keep organization IDs and parent/program relationships stable. Clearly distinguish unknown requirements from confirmed absence of requirements. Preserve clinical-service limitations and published referral paths.
