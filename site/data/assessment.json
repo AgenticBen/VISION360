@@ -153,17 +153,6 @@
                 "org_id": "lions-services-lionsdenn",
                 "branch_condition": "A family member, case manager or other professional is completing the form for someone else"
               }
-            },
-            {
-              "op": "suppress",
-              "target": "org",
-              "id": "achilles-international-charlotte",
-              "weight": -20,
-              "because": "You said you are making the referral. This group's published pages describe the athlete creating their own account, and third-party sign-up is not published, so we have ranked it lower rather than ruled it out.",
-              "evidence": {
-                "org_id": "achilles-international-charlotte",
-                "branch_condition": "A case manager, family member or professional wants to sign someone up"
-              }
             }
           ]
         }
@@ -948,7 +937,7 @@
               "target": "org",
               "id": "limitless-para-athletes",
               "weight": 20,
-              "because": "You said sport and recreation matter. Free weekly guided walks, running, climbing and yoga.",
+              "because": "You said sport and recreation matter. Free weekly guided walks, running and climbing; yoga is planned and has not started.",
               "evidence": {
                 "org_id": "nbba",
                 "branch_condition": "Travel or cost makes this unworkable"
@@ -2980,7 +2969,7 @@
               "because": "You said transport is sometimes a problem.",
               "evidence": {
                 "org_id": "achilles-international-charlotte",
-                "branch_condition": "Person cannot get to Freedom Park independently"
+                "branch_condition": "Person cannot get to Project Lean Nation independently"
               }
             }
           ]

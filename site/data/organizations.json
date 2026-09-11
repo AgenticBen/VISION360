@@ -682,7 +682,7 @@
         "Union"
       ],
       "verdict": "in_area",
-      "note": "Confirmed verbatim on MAB's own About page (2026-09-03): \"The main service areas are Mecklenburg, Cabarrus and Union counties in NC, however any person who is visually impaired may participate in an agency-based service.\" MAB's Transportation page independently confirms all three counties for rides, correcting third-party listings that described transportation as Mecklenburg-only. The \"37 other counties in North and South Carolina\" figure appears only in third-party material and is not on mabnc.org."
+      "note": "Confirmed verbatim on MAB's own About page (2026-09-03): \"The main service areas are Mecklenburg, Cabarrus and Union counties in NC, however any person who is visually impaired may participate in an agency-based service.\" MAB's Transportation page independently confirms all three counties for rides, correcting third-party listings that described transportation as Mecklenburg-only. The \"37 other counties in North and South Carolina\" figure appears only in third-party material and is not on mabnc.org. Partner confirmed the primary service region is Charlotte, NC on September 10, 2026."
     },
     "services": [
       {
@@ -703,7 +703,7 @@
       {
         "label": "Mini Center (8-week group program)",
         "plain_language": "An eight-week group program for people who are new to vision loss or whose sight has recently got much worse.",
-        "notes": "Published fee $50 for the 8-week program. Covers adaptive kitchen skills, signing your name, pouring, money management, orientation and mobility, transportation, labeling, clothing management, home management, descriptive video, assistive technology, and personal communication."
+        "notes": "Instructional services are not fee based (partner confirmed September 10, 2026). Covers adaptive kitchen skills, signing your name, pouring, money management, orientation and mobility, transportation, labeling, clothing management, home management, descriptive video, assistive technology, and personal communication."
       },
       {
         "label": "White-cane / safe-travel training",
@@ -713,7 +713,7 @@
       {
         "label": "Assistive-technology training",
         "plain_language": "Learning screen readers, magnification, iPhone/iPad, and smart speakers.",
-        "notes": "Two visits per year to the Assistive Technology Demonstration Center are free; training is a published $150 for 30 hours."
+        "notes": "Two Assistive Technology Demonstration Center visits per year were previously listed as free. Instructional services are not fee based (partner confirmed September 10, 2026)."
       },
       {
         "label": "Case management / social work",
@@ -728,34 +728,53 @@
       {
         "label": "Door-through-door transportation",
         "plain_language": "Rides for people who are blind or visually impaired, with help from your door to the destination's door.",
-        "notes": "MAB's Transportation page states the service covers Mecklenburg, Union, and Cabarrus counties, Monday to Friday 6:30am to 8:30pm with limited weekend availability. $10 per round trip up to 26 miles; reduced to $5 up to 26 miles for someone living below 125% of poverty. Book at 704-887-5121 or ajimenez@mabnc.org."
+        "notes": "Limited availability in the Charlotte region (partner confirmed September 10, 2026). MAB's Transportation page states the service covers Mecklenburg, Union, and Cabarrus counties, Monday to Friday 6:30am to 8:30pm with limited weekend availability. $10 per round trip up to 26 miles; reduced to $5 up to 26 miles for someone living below 125% of poverty. Book at 704-887-5121 or ajimenez@mabnc.org. Confirm current ride availability and fares when booking."
       },
       {
         "label": "Accessible document production (ADS)",
         "plain_language": "Braille, large print, audio, and accessible PDF documents.",
         "notes": "A business line, not a direct consumer intake path. See the MAB Accessible Document Services record."
+      },
+      {
+        "label": "Social events",
+        "plain_language": "Meet others experiencing vision loss at MAB social events.",
+        "notes": ""
+      },
+      {
+        "label": "Community outreach and vision-loss awareness training",
+        "plain_language": "Learn about vision loss and available community resources.",
+        "notes": ""
+      },
+      {
+        "label": "Workforce & Academic Readiness instruction",
+        "plain_language": "Instruction for high school students preparing for work and academics.",
+        "notes": "Contact MAB for enrollment details and schedules."
+      },
+      {
+        "label": "In-person and group instruction",
+        "plain_language": "MAB provides instruction in person and in groups.",
+        "notes": "Ask which format is offered for your chosen service."
       }
     ],
     "who_qualifies": [
-      "Anyone \"currently experiencing vision loss or legally blind\"",
-      "No stated age gate",
-      "No income gate to qualify (income affects hardship pricing, not eligibility)",
-      "Residency: primary tri-county (Mecklenburg, Cabarrus, Union), but broader accepted for agency-based services"
+      "Anyone experiencing vision loss or blindness; MAB describes serving ages 4–104, not a strict age cutoff.",
+      "No income requirement to qualify. Sliding-scale and hardship pricing depend on income.",
+      "Primarily the Charlotte, NC region; existing agency-based services may accept people from outside the primary counties."
     ],
     "documentation_required": [
-      "A current eye report less than one year old (required for new low-vision/clinical patients, stated on MAB's Low Vision page)",
-      "Insurance information — co-pays and fees are due at time of service based on your insurance",
-      "Hardship application for financial assistance, arranged through your case manager; must be renewed once per year, or when a case is reopened more than a year after closure"
+      "A current eye report less than one year old for low-vision exams",
+      "Insurance information if applicable; co-pays and fees are due at the exam",
+      "Hardship application for financial assistance through the case manager; previously required annual renewal"
     ],
-    "cost": "Insurance-billed for low-vision and clinical services: co-pays and fees are due at time of service based on your insurance, MAB files the claim and bills you the balance, and prescribed devices cost extra. Published program fees (mabnc.org, Fees and Co-Pays): transportation $10 per round trip up to 26 miles, reduced to $5 for someone living below 125% of poverty; Mini Center $50 for the 8-week program; Assistive Technology training $150 for 30 hours; two Assistive Technology Demonstration Center visits per year free of charge; clients pay for their own Braille training supplies. MAB states direct service normally costs $150 per hour but that clients are not responsible for the total. A hardship application is available through your case manager and is renewed once a year.",
-    "typical_wait": "Not published — verification call required. MAB publishes no wait time anywhere on mabnc.org (checked 2026-09-03 across the VRS, Low Vision, Case Management, Rehabilitation, Fees and Contact pages). The only published context is a Queen City Nerve report of July 7, 2025, which said \"There are currently hundreds of people awaiting services on the organization's waiting list\" and quoted CEO Tracy Libertino describing the waitlist, in the past tense, as having been two years long. The roughly 19-month figure carried in our source material is corroborated by no published source and must not be quoted to a client as fact.",
-    "accepts_third_party_referral": "unclear",
+    "cost": "Low-vision and clinical services are insurance billed; co-pays and fees are due at the exam based on insurance or lack of insurance. Instructional services are not fee based. Sliding-scale and hardship pricing are available depending on income. Prescribed devices and Braille supplies may cost extra. Previously published transportation fares: $10 round trip up to 26 miles, or $5 below 125% of poverty; confirm current fares when booking. Hardship applications are arranged through a case manager and previously required annual renewal.",
+    "typical_wait": "Typically 2–3 months for low-vision exams; wait times for other services vary.",
+    "accepts_third_party_referral": "yes",
     "access_path": [
       {
         "order": 1,
         "actor": "person",
         "action": "Call MAB at 704-372-3870, or Vision Rehabilitation Services toll-free at 800-926-5466",
-        "detail": "Ask for Vision Rehabilitation Services. MAB publishes no online intake form; the contact form at mabnc.org/contact-us has a Vision Rehabilitation Services option and is the only published web route.",
+        "detail": "Ask for Vision Rehabilitation Services. The contact form at mabnc.org/contact-us has a Vision Rehabilitation Services option for inquiries. Agency referrals and individual self-referrals are accepted. Eye-doctor referrals are preferred and may be sent by fax or Phreesia. Call 704-372-3870 for the correct referral fax or Phreesia instructions.",
         "requires": [],
         "duration": "same day",
         "blocking": true,
@@ -785,11 +804,11 @@
       {
         "order": 3,
         "actor": "person",
-        "action": "Provide a current eye report less than one year old, plus insurance information",
-        "detail": "Required for new low-vision and clinical patients. Have the insurance card ready as well, since co-pays and fees are due at time of service.",
+        "action": "For a low-vision exam, provide a current eye report and insurance information if applicable",
+        "detail": "For a low-vision exam, provide a current eye report less than one year old and insurance information if applicable. Co-pays and fees are due at the exam.",
         "requires": [
-          "Eye report less than one year old",
-          "Insurance card"
+          "Eye report less than one year old for a low-vision exam",
+          "Insurance information, if applicable"
         ],
         "duration": "days to weeks",
         "blocking": true,
@@ -825,9 +844,9 @@
         "order": 6,
         "actor": "organization",
         "action": "Services are scheduled",
-        "detail": "MAB publishes no wait time. Ask Dolly Baxter at 704-887-5131 for the current wait before telling a client what to expect.",
+        "detail": "Low-vision exams typically have a 2–3 month wait. Wait times for other services vary; ask the case manager for a current estimate.",
         "requires": [],
-        "duration": "Not published — verification call required",
+        "duration": "Low-vision exams: typically 2–3 months; other services vary",
         "blocking": true,
         "branches": []
       }
@@ -872,17 +891,17 @@
         }
       ]
     },
-    "last_verified": "2026-09-03",
+    "last_verified": "2026-09-11",
     "confidence": "medium",
-    "confidence_note": "Domain confirmed: mabnc.org is live as of 2026-09-03 (site copyright 2026); the About page still carries a \"This Page is Under Construction\" banner. Verified this pass from MAB's own pages: service area, transportation counties and fares, published fee schedule, hardship application renewal rule, eye-report requirement, ZIP-code case-manager assignment, and Case Management Supervisor Dolly Baxter at 704-887-5131 (fax 704-887-0202). Additional MAB lines: VRS toll-free 800-926-5466, transportation 704-887-5121, low-vision patient portal support 704-887-5123, ADS sales ADS_Sales@mabnc.org. Two things remain deliberately unsettled: MAB publishes no wait time, and MAB publishes no third-party referral policy, so accepts_third_party_referral stays \"unclear\" rather than being promoted from a hedge. Dana Draa's affiliation is resolved: WBTV (2026-03-11) identifies her as Lions Services' director of outreach, and the \"MAB's Dana Draa\" attribution in the February 2023 WBTV story reflects earlier tenure at MAB, so the current affiliation is Lions Services, not MAB.",
+    "confidence_note": "Partner-confirmed September 10, 2026: Services, eligibility, instructional fees, clinical paperwork, wait times, and referral routes. Other details retain their previously recorded sources; unresolved questions remain below.",
     "open_questions": [
-      "Call Case Management Supervisor Dolly Baxter at 704-887-5131 and ask: what is the current average wait from first call to first service for vision rehabilitation? Specifically, is the roughly 19-month figure in our source material accurate? It is published nowhere; a July 2025 news report described a two-year waitlist in the past tense and said hundreds were waiting.",
-      "Call Dolly Baxter at 704-887-5131 and ask: can a partner organization, doctor, or family member submit a referral on someone's behalf, and by what route — phone, the fax at 704-887-0202, or the contact form at mabnc.org/contact-us? MAB publishes no third-party referral policy anywhere on its site.",
       "Call MAB at 704-372-3870 and ask: which insurers are in network for the low vision clinic, and is NC Medicaid accepted?",
       "Call MAB at 704-372-3870 and ask: is Dr. Brittany Flaherty still on staff?",
-      "Call MAB at 704-372-3870 and ask: what is Susan L. King's current role, and is [contact withheld pending verification] an appropriate contact for referrals? She could not be found anywhere on mabnc.org in September 2026.",
       "Call MAB at 704-372-3870 and ask: what are the exact support-group names and schedule, in person versus virtual, and are any disease-specific? Can a support group or the technology hour be joined quickly without full intake?",
-      "Call MAB at 704-372-3870 and ask: what documentation is required for orientation & mobility and for assistive technology training, separate from the low-vision eye report?"
+      "Call MAB at 704-372-3870 and ask: what documentation is required for orientation & mobility and for assistive technology training, separate from the low-vision eye report?",
+      "Ask MAB for the current wait for each rehabilitation service and the next Workforce & Academic Readiness session.",
+      "Ask MAB for the correct referral fax number and Phreesia instructions.",
+      "Confirm current transportation fares and availability, and any device or materials charges."
     ],
     "sources": [
       {
@@ -944,6 +963,11 @@
         "report": "phase-2-web-verification",
         "heading": "WBTV, 2026-03-11 — Dana Draa identified as Lions Services' director of outreach",
         "url": "https://www.wbtv.com/2026/03/11/braille-trail-connect-visually-impaired-workers-transit-community/"
+      },
+      {
+        "report": "partner-verification-2026-09-10",
+        "heading": "Services, eligibility, instructional fees, clinical paperwork, wait times, and referral routes",
+        "url": "https://www.mabnc.org/"
       }
     ],
     "needs_research": true
@@ -971,7 +995,7 @@
         "Union"
       ],
       "verdict": "in_area",
-      "note": "MAB's About page, verbatim: \"The main service areas are Mecklenburg, Cabarrus and Union counties in NC, however any person who is visually impaired may participate in an agency-based service.\" That sentence answers the open question about whether the clinic is closed to people outside the three counties: it is not."
+      "note": "MAB's About page, verbatim: \"The main service areas are Mecklenburg, Cabarrus and Union counties in NC, however any person who is visually impaired may participate in an agency-based service.\" That sentence answers the open question about whether the clinic is closed to people outside the three counties: it is not. Partner confirmed the primary service region is Charlotte, NC on September 10, 2026."
     },
     "services": [
       {
@@ -986,22 +1010,24 @@
       }
     ],
     "who_qualifies": [
-      "People who are blind or visually impaired",
-      "A specific acuity threshold for clinic services is not published; a current eye report is required"
+      "Anyone experiencing vision loss or blindness; MAB describes serving ages 4–104, not a strict age cutoff.",
+      "No income requirement to qualify. Sliding-scale and hardship pricing depend on income.",
+      "Primarily the Charlotte, NC region; existing agency-based services may accept people from outside the primary counties."
     ],
     "documentation_required": [
-      "A current eye report less than one year old for new low-vision patients",
-      "Hardship application (for financial assistance), renewed once per year"
+      "A current eye report less than one year old for low-vision exams",
+      "Insurance information if applicable; co-pays and fees are due at the exam",
+      "Hardship application for financial assistance through the case manager; previously required annual renewal"
     ],
-    "cost": "Insurance billed (co-pays/fees due at service; MAB files claims and bills the balance). Prescribed devices are additional. Hardship application available for those who cannot afford services.",
-    "typical_wait": "Not published — verification call required. MAB's Low Vision page carries no wait time (checked 2026-09-03). This is the only medical low-vision clinic physically in Charlotte, so do not give a client an estimate without calling.",
-    "accepts_third_party_referral": "unclear",
+    "cost": "Low-vision and clinical services are insurance billed; co-pays and fees are due at the exam based on insurance or lack of insurance. Prescribed devices cost extra. Sliding-scale and hardship pricing are available depending on income.",
+    "typical_wait": "Typically 2–3 months for low-vision exams; wait times for other services vary.",
+    "accepts_third_party_referral": "yes",
     "access_path": [
       {
         "order": 1,
         "actor": "person",
         "action": "Call MAB at 704-372-3870 and ask for the Low Vision Clinic",
-        "detail": "MAB's Low Vision page directs new patients to call the main line to speak with a case manager, who arranges the initial meeting.",
+        "detail": "MAB's Low Vision page directs new patients to call the main line to speak with a case manager, who arranges the initial meeting. Agency referrals and individual self-referrals are accepted. Eye-doctor referrals are preferred and may be sent by fax or Phreesia. Call 704-372-3870 for the correct referral fax or Phreesia instructions.",
         "requires": [],
         "duration": "same day",
         "blocking": true,
@@ -1054,11 +1080,11 @@
       {
         "order": 5,
         "actor": "person",
-        "action": "Attend the low vision exam and functional evaluation; bring your insurance card and co-pay",
-        "detail": "MAB's Low Vision page, verbatim: \"Co-pays and fees are expected at time of service based on your insurance. MAB will file claims with your insurance and bill you for the balance.\" Prescribed devices cost extra. Ask the case manager for the hardship application if cost is a barrier — it is renewed once per year.",
+        "action": "Attend the low-vision exam; bring insurance information if applicable and any co-pay or fees",
+        "detail": "Co-pays and fees are due at the exam based on insurance or lack of insurance. Prescribed devices cost extra. Ask the case manager about sliding-scale or hardship pricing if cost is a barrier.",
         "requires": [
-          "Insurance card",
-          "Co-pay"
+          "Insurance information, if applicable",
+          "Co-pay or fees, if applicable"
         ],
         "duration": "Not published — verification call required",
         "blocking": false,
@@ -1097,15 +1123,13 @@
         }
       ]
     },
-    "last_verified": "2026-09-03",
+    "last_verified": "2026-09-11",
     "confidence": "high",
-    "confidence_note": "Link check 2026-09-03: the Low Vision page is live, and the Crystal PM patient portal is live and branded to Metrolina Association for the Blind with a Register New Account option. Re-confirmed verbatim this pass: both optometrists, the eye-report requirement, the co-pay/billing language, the 704-887-5123 portal line, and the case-manager route. Wait time is still published nowhere. Third-party referral is still unpublished, so the field stays \"unclear\". This is the only medical low-vision clinic physically in Charlotte, so treat any unverified number attached to it as a credibility risk.",
+    "confidence_note": "Partner-confirmed September 10, 2026: Services, eligibility, instructional fees, clinical paperwork, wait times, and referral routes. Other details retain their previously recorded sources; unresolved questions remain below.",
     "open_questions": [
-      "Call MAB at 704-372-3870 and ask: what is the current wait for a low vision clinic appointment, from first call to exam?",
       "Call MAB at 704-372-3870 and ask: which insurers are in network for the low vision clinic, and is NC Medicaid accepted?",
       "Call MAB at 704-372-3870 and ask: is Dr. Brittany Flaherty still on staff?",
-      "Call Case Management Supervisor Dolly Baxter at 704-887-5131 and ask: can a referring eye doctor or a case manager send the eye report and start the clinic referral directly, rather than the patient calling?",
-      "Call MAB at 704-372-3870 and ask: is there an acuity or visual-field threshold for clinic services, or is a current eye report the only gate?"
+      "Ask MAB for the correct referral fax number and Phreesia instructions."
     ],
     "sources": [
       {
@@ -1137,6 +1161,11 @@
         "report": "phase-2-web-verification",
         "heading": "About MAB — service area and open participation",
         "url": "https://www.mabnc.org/about-mab"
+      },
+      {
+        "report": "partner-verification-2026-09-10",
+        "heading": "Services, eligibility, instructional fees, clinical paperwork, wait times, and referral routes",
+        "url": "https://www.mabnc.org/"
       }
     ],
     "needs_research": true
@@ -1167,7 +1196,7 @@
         "Union"
       ],
       "verdict": "in_area",
-      "note": "MAB's About page, verbatim: \"The main service areas are Mecklenburg, Cabarrus and Union counties in NC, however any person who is visually impaired may participate in an agency-based service.\" MAB's Transportation page confirms rides cover all three counties, not Mecklenburg alone."
+      "note": "MAB's About page, verbatim: \"The main service areas are Mecklenburg, Cabarrus and Union counties in NC, however any person who is visually impaired may participate in an agency-based service.\" MAB's Transportation page confirms rides cover all three counties, not Mecklenburg alone. Partner confirmed the primary service region is Charlotte, NC on September 10, 2026."
     },
     "services": [
       {
@@ -1194,24 +1223,46 @@
         "label": "Counseling and support services",
         "plain_language": "Counseling and support groups for people adjusting to vision loss.",
         "notes": ""
+      },
+      {
+        "label": "Social events",
+        "plain_language": "Meet others experiencing vision loss at MAB social events.",
+        "notes": ""
+      },
+      {
+        "label": "Community outreach and vision-loss awareness training",
+        "plain_language": "Learn about vision loss and available community resources.",
+        "notes": ""
+      },
+      {
+        "label": "Workforce & Academic Readiness instruction",
+        "plain_language": "Instruction for high school students preparing for work and academics.",
+        "notes": "Contact MAB for enrollment details and schedules."
+      },
+      {
+        "label": "In-person and group instruction",
+        "plain_language": "MAB provides instruction in person and in groups.",
+        "notes": "Ask which format is offered for your chosen service."
       }
     ],
     "who_qualifies": [
-      "Experiencing vision loss or legally blind"
+      "Anyone experiencing vision loss or blindness; MAB describes serving ages 4–104, not a strict age cutoff.",
+      "No income requirement to qualify. Sliding-scale and hardship pricing depend on income.",
+      "Primarily the Charlotte, NC region; existing agency-based services may accept people from outside the primary counties."
     ],
     "documentation_required": [
       "Not published — verification call required. MAB's Rehabilitation page says only that a client begins vision rehabilitation therapy through their social worker, who refers them to a Certified Vision Rehabilitation Therapist for an individualized program; no document list is published for non-clinic VRS services.",
       "A current eye report less than one year old is published as a requirement for the low-vision clinic (see the MAB Low Vision Clinic record). Whether VRS requires one separately is not published."
     ],
-    "cost": "Published fees (mabnc.org, Fees and Co-Pays): Mini Center $50 for the 8-week program; Assistive Technology training $150 for 30 hours; two Assistive Technology Demonstration Center visits per year free of charge; clients are responsible for the cost of their own Braille training supplies; transportation $10 per round trip up to 26 miles, reduced to $5 for someone living below 125% of poverty. MAB states direct service normally costs $150 per hour but that clients are not responsible for the total. A hardship application for financial assistance is available through your case manager and must be renewed once per year, or when a case is reopened more than a year after closure. The 75%/50%/25% sliding-scale tiers carried in our source material are NOT published on mabnc.org and are not confirmed.",
-    "typical_wait": "Not published — verification call required. MAB publishes no VRS wait time. The only published context is a Queen City Nerve report of July 7, 2025 saying hundreds were on MAB's waiting list, and quoting the CEO describing the waitlist in the past tense as having been two years long. The roughly 19-month figure in our source material is corroborated by no published source and must not be quoted to a client as fact.",
-    "accepts_third_party_referral": "unclear",
+    "cost": "Instructional services are not fee based. Sliding-scale and hardship pricing are available depending on income for applicable costs. Braille supplies and transportation may cost extra. Previously published transportation fares: $10 round trip up to 26 miles, or $5 below 125% of poverty; confirm current fares. Hardship applications are arranged through a case manager and previously required annual renewal.",
+    "typical_wait": "Varies by service; ask MAB for the current rehabilitation wait. The 2–3 month estimate applies to low-vision exams, not all services.",
+    "accepts_third_party_referral": "yes",
     "access_path": [
       {
         "order": 1,
         "actor": "person",
         "action": "Call Vision Rehabilitation Services toll-free at 800-926-5466, or MAB's main line at 704-372-3870",
-        "detail": "The toll-free VRS number is published on MAB's About page. There is no online VRS intake form; the contact form at mabnc.org/contact-us has a Vision Rehabilitation Services option.",
+        "detail": "The VRS toll-free number is 800-926-5466. The contact form at mabnc.org/contact-us has a Vision Rehabilitation Services option for inquiries. Agency referrals and individual self-referrals are accepted. Eye-doctor referrals are preferred and may be sent by fax or Phreesia. Call 704-372-3870 for the correct referral fax or Phreesia instructions.",
         "requires": [],
         "duration": "same day",
         "blocking": true,
@@ -1247,7 +1298,7 @@
         "order": 4,
         "actor": "person",
         "action": "Ask about the Mini Center if the person is new to vision loss",
-        "detail": "An 8-week group program for people \"new to vision loss, or have had a recent and significant decrease in their vision.\" Published fee $50. Covers adaptive kitchen skills, money management, orientation and mobility, transportation, labeling, clothing and home management, descriptive video, assistive technology, and personal communication.",
+        "detail": "An 8-week group program for people \"new to vision loss, or have had a recent and significant decrease in their vision.\" Instructional services are not fee based. Covers adaptive kitchen skills, money management, orientation and mobility, transportation, labeling, clothing and home management, descriptive video, assistive technology, and personal communication.",
         "requires": [],
         "duration": "8 weeks once started",
         "blocking": false,
@@ -1257,7 +1308,7 @@
         "order": 5,
         "actor": "person",
         "action": "Ask the case manager for the hardship application if cost is a barrier",
-        "detail": "Available through your case manager; renewed once per year or when a case is reopened more than a year after closure.",
+        "detail": "Instruction is not fee based. Ask about hardship assistance for other applicable costs; previously published applications required annual renewal or renewal when a case reopened more than a year after closure.",
         "requires": [],
         "duration": "",
         "blocking": false,
@@ -1267,9 +1318,9 @@
         "order": 6,
         "actor": "organization",
         "action": "Services are scheduled",
-        "detail": "No wait time is published. Ask Dolly Baxter at 704-887-5131 for the current wait before telling a client what to expect.",
+        "detail": "Wait times for rehabilitation services vary. Ask MAB for the current wait for the specific service needed.",
         "requires": [],
-        "duration": "Not published — verification call required",
+        "duration": "Varies by service",
         "blocking": true,
         "branches": []
       }
@@ -1290,15 +1341,14 @@
         }
       ]
     },
-    "last_verified": "2026-09-03",
+    "last_verified": "2026-09-11",
     "confidence": "medium",
-    "confidence_note": "Verified on MAB's own pages 2026-09-03: the VRS service list, the ZIP-code case-manager assignment, the social-worker-to-CVRT referral route, the Mini Center, and the published fee schedule. accepts_third_party_referral was DOWNGRADED from \"yes\" to \"unclear\" — the \"yes\" traced back to a source-report hedge (\"Yes (likely)\"), and MAB publishes no inbound third-party referral policy anywhere on its site. Its Case Management page describes referrals only outbound, from the case manager to other agencies. Wait time remains unpublished. MAB lines: VRS toll-free 800-926-5466, main 704-372-3870, case management 704-887-5131, fax 704-887-0202, transportation 704-887-5121.",
+    "confidence_note": "Partner-confirmed September 10, 2026: Services, eligibility, instructional fees, clinical paperwork, wait times, and referral routes. Other details retain their previously recorded sources; unresolved questions remain below.",
     "open_questions": [
-      "Call Case Management Supervisor Dolly Baxter at 704-887-5131 and ask: can a partner organization, doctor, or family member submit a VRS referral on someone's behalf, and by what route — phone, the fax at 704-887-0202, or the contact form? This is the single question that would settle accepts_third_party_referral, which is currently \"unclear\".",
-      "Call Dolly Baxter at 704-887-5131 and ask: what is the current average wait from first call to first VRS service? Is the roughly 19-month figure in our source material accurate? It is published nowhere.",
       "Call VRS at 800-926-5466 and ask: what documentation does VRS require for non-clinic services — orientation & mobility, vision rehabilitation therapy, assistive technology — separate from the low-vision eye report?",
-      "Call VRS at 800-926-5466 and ask: does MAB use a sliding scale with 75%/50%/25% tiers? Those tiers appear in our source material but not on the published Fees and Co-Pays page.",
-      "Call VRS at 800-926-5466 and ask: when does the next Mini Center cohort start, and is there a separate waitlist for it?"
+      "Call VRS at 800-926-5466 and ask: when does the next Mini Center cohort start, and is there a separate waitlist for it?",
+      "Ask MAB for current waits by rehabilitation service, the referral fax number and Phreesia instructions.",
+      "Ask MAB which device, materials or transportation costs remain separate from fee-free instruction."
     ],
     "sources": [
       {
@@ -1335,6 +1385,11 @@
         "report": "phase-2-web-verification",
         "heading": "About MAB — toll-free VRS line and service area",
         "url": "https://www.mabnc.org/about-mab"
+      },
+      {
+        "report": "partner-verification-2026-09-10",
+        "heading": "Services, eligibility, instructional fees, clinical paperwork, wait times, and referral routes",
+        "url": "https://www.mabnc.org/"
       }
     ],
     "needs_research": true
@@ -10238,13 +10293,13 @@
       "recreation",
       "peer_support"
     ],
-    "one_line": "Free Saturday group runs, walks, and rolls at Freedom Park with a trained volunteer guide for athletes with disabilities.",
+    "one_line": "Free Saturday runs, walks, and rolls for athletes with disabilities, meeting at Project Lean Nation at 8:00 AM.",
     "service_area": {
       "counties": [
         "Mecklenburg"
       ],
       "verdict": "in_area",
-      "note": "Charlotte / Mecklenburg; meets at Freedom Park, Charlotte. Athletes anywhere in the US can join the national program via United in Stride / Rosterfy. Takes anyone with a disability."
+      "note": "Charlotte / Mecklenburg; meets at Project Lean Nation, 1730 E. Woodlawn Road, Charlotte. Athletes anywhere in the US can join the national program via United in Stride / Rosterfy. Takes anyone with a disability."
     },
     "services": [
       {
@@ -10253,9 +10308,9 @@
         "notes": "Achilles pairs athletes with volunteer guides by pace and preference."
       },
       {
-        "label": "Weekly Saturday workouts at Freedom Park",
-        "plain_language": "A regular Saturday morning group workout you can just show up to.",
-        "notes": "Start time is 8:00 AM per the chapter's own page, confirmed 2026-09-03. A chapter Facebook post saying 8:30 AM conflicts with this; the chapter's own page is the authority, but confirm by email before a first visit."
+        "label": "Weekly Saturday workouts at Project Lean Nation",
+        "plain_language": "Free weekly workouts for people living with disabilities.",
+        "notes": "Meet at 1730 E. Woodlawn Road, Charlotte, at 8:00 AM. Partner corrected the location and confirmed the time on September 10, 2026."
       },
       {
         "label": "Training toward mainstream 5Ks and marathons",
@@ -10275,17 +10330,17 @@
     "documentation_required": [
       "None to participate as an athlete — no eye report and no proof of disability is requested",
       "A free Rosterfy account is required for US members",
-      "An optional $15 background check via Sterling Volunteers — Achilles states \"The $15 cost is optional\""
+      "Background checks are free for athletes and anyone living with a disability."
     ],
-    "cost": "Free. Achilles states \"Membership is free.\" The only money involved is an optional $15 background check.",
+    "cost": "Free membership and weekly workouts. Background checks are free for athletes and anyone living with a disability.",
     "typical_wait": "Same week — the next scheduled Saturday workout. No waitlist and no intake appointment.",
-    "accepts_third_party_referral": "unclear",
+    "accepts_third_party_referral": "yes",
     "access_path": [
       {
         "order": 1,
         "actor": "person",
-        "action": "Email the Charlotte chapter contact",
-        "detail": "Anthony Butler, charlottenc@achillesinternational.org. The chapter page names him as the person to contact about joining as an athlete. No chapter phone number is published.",
+        "action": "Email or call the Charlotte chapter",
+        "detail": "Contact charlottenc@achillesinternational.org or 646-249-5031. Agency referrals and direct inquiries are welcome.",
         "requires": [],
         "duration": "same day",
         "blocking": false,
@@ -10293,7 +10348,7 @@
           {
             "condition": "A case manager, family member or professional wants to sign someone up",
             "goto_org_id": null,
-            "note": "Not settled. Achilles' published pages describe the athlete creating their own Rosterfy account, and say only that help completing the form is available at rosterfy@achillesinternational.org. There is no published statement that a third party may register or refer an athlete. Ask the chapter before assuming."
+            "note": "Agency referrals are welcome. Contact the chapter by email or phone; ask for help with Rosterfy registration if needed."
           },
           {
             "condition": "The athlete is under 13",
@@ -10315,8 +10370,8 @@
       {
         "order": 3,
         "actor": "person",
-        "action": "Decide about the optional $15 background check",
-        "detail": "US members are asked to complete a Sterling Volunteers background check. Achilles states the $15 cost is optional, so it should not stop anyone joining.",
+        "action": "Complete the athlete background-check process with no fee",
+        "detail": "Background checks are free for athletes and anyone living with a disability. Ask the chapter for help with the registration and background-check steps.",
         "requires": [],
         "duration": "same day",
         "blocking": false,
@@ -10325,14 +10380,14 @@
       {
         "order": 4,
         "actor": "person",
-        "action": "Show up at the next Saturday workout at Freedom Park",
-        "detail": "Freedom Park, 1619 Princeton Ave, Charlotte, NC. 8:00 AM per the chapter page. Bring nothing — no eye report, no referral, no fee.",
+        "action": "Attend the next Saturday workout at Project Lean Nation",
+        "detail": "Meet at Project Lean Nation, 1730 E. Woodlawn Road, Charlotte, at 8:00 AM. No eye report or participation fee.",
         "requires": [],
         "duration": "same week",
         "blocking": false,
         "branches": [
           {
-            "condition": "Person cannot get to Freedom Park independently",
+            "condition": "Person cannot get to Project Lean Nation independently",
             "goto_org_id": "mecklenburg-transportation-system",
             "note": "Transportation is not published as part of the programme; arrange it separately."
           }
@@ -10341,8 +10396,8 @@
     ],
     "contacts": {
       "website": "https://www.achillesinternational.org/charlotte",
-      "general_email": "info@achillesinternational.org",
-      "address": "Meeting location: Freedom Park, 1619 Princeton Ave, Charlotte, NC",
+      "general_email": "charlottenc@achillesinternational.org",
+      "address": "Meeting location: Project Lean Nation, 1730 E. Woodlawn Road, Charlotte, NC",
       "intake_form_url": "https://achillesinternational.rosterfy.com/login",
       "named_staff": [
         {
@@ -10353,17 +10408,15 @@
           "public_safe": true,
           "source_url": "https://www.achillesinternational.org/charlotte"
         }
-      ]
+      ],
+      "general_phone": "646-249-5031"
     },
-    "last_verified": "2026-09-03",
+    "last_verified": "2026-09-11",
     "confidence": "high",
-    "confidence_note": "Chapter page and national join page both fetched live on 2026-09-03. Confirmed: Saturday start time 8:00 AM on the chapter's own page, Freedom Park 1619 Princeton Ave, Anthony Butler as chapter contact, no chapter phone number, membership free, Rosterfy registration, and the $15 Sterling Volunteers background check being optional. This remains the fastest low-barrier option in the dataset — free, same week, no eye report, no queue. The one thing that could not be settled is whether a third party may register or refer an athlete.",
+    "confidence_note": "Partner-confirmed September 10, 2026: Meeting location, 8:00 AM start, free athlete background checks, and agency referral contacts. Other details retain their previously recorded sources; unresolved questions remain below.",
     "open_questions": [
-      "Email charlottenc@achillesinternational.org and ask: can a case manager, family member or professional register or refer an athlete, or must the athlete create their own Rosterfy account? Achilles' published pages describe self-registration only, so accepts_third_party_referral has been set to unclear until this is answered.",
-      "Email charlottenc@achillesinternational.org and ask: the chapter page says the Saturday workout starts at 8:00 AM and the chapter Facebook says 8:30 AM — which is correct right now?",
       "Email charlottenc@achillesinternational.org and ask: is a guide guaranteed for a first-time drop-in blind athlete on a given Saturday, or should someone give notice first?",
-      "Email charlottenc@achillesinternational.org and ask: do they help arrange transportation to Freedom Park?",
-      "Email charlottenc@achillesinternational.org and ask: is there a chapter phone number for people who do not use email?",
+      "Email charlottenc@achillesinternational.org and ask: do they help arrange transportation to Project Lean Nation?",
       "Email charlottenc@achillesinternational.org and ask: does the workout run year-round and in bad weather, and how is a cancellation announced?"
     ],
     "sources": [
@@ -10376,6 +10429,11 @@
         "report": "phase-2-verification",
         "heading": "Become an Achilles Athlete — free membership, Rosterfy, optional $15 background check",
         "url": "https://www.achillesinternational.org/join"
+      },
+      {
+        "report": "partner-verification-2026-09-10",
+        "heading": "Meeting location, 8:00 AM start, free athlete background checks, and agency referral contacts",
+        "url": "https://www.achillesinternational.org/charlotte"
       }
     ],
     "needs_research": false
@@ -10570,7 +10628,7 @@
       "recreation",
       "peer_support"
     ],
-    "one_line": "Free weekly guided walks at Freedom Park, running with a volunteer buddy, monthly rock climbing, and yoga for people with disabilities.",
+    "one_line": "Free guided walks at Freedom Park, running with a volunteer buddy, and monthly rock climbing. Yoga is planned.",
     "service_area": {
       "counties": [
         "Mecklenburg"
@@ -10595,9 +10653,9 @@
         "notes": ""
       },
       {
-        "label": "Yoga and fitness classes",
-        "plain_language": "Group yoga and fitness sessions.",
-        "notes": ""
+        "label": "Yoga and fitness classes — yoga planned",
+        "plain_language": "Yoga is being developed and has not started. Ask about current fitness activities.",
+        "notes": "Partner confirmed yoga is not yet available; no start date provided."
       }
     ],
     "who_qualifies": [
@@ -10610,13 +10668,13 @@
     ],
     "cost": "Free (\"Participation is free for athletes\").",
     "typical_wait": "Same week — join the next weekly walk; matching to a volunteer depends on availability.",
-    "accepts_third_party_referral": "unclear",
+    "accepts_third_party_referral": "yes",
     "access_path": [
       {
         "order": 1,
         "actor": "person",
-        "action": "Message Limitless Para Athletes on Instagram at @limitlessparaathletes or on Facebook",
-        "detail": "Instagram https://www.instagram.com/limitlessparaathletes/ is live and posting as of 2026-09-03; the bio reads 'Empowering disabled individuals to live active, fulfilling and competitive lives through sports participation.' Facebook page: https://www.facebook.com/p/Limitless-Para-Athletes-61586026643043/. Direct message is the only published intake route — there is no phone number, email address or intake form anywhere in public.",
+        "action": "Email a referral or call/text Limitless Para Athletes directly",
+        "detail": "Send referrals to limitlessparaathletes@gmail.com. Individuals may call or text 980-208-9304. Instagram: https://www.instagram.com/limitlessparaathletes/; Facebook: https://www.facebook.com/p/Limitless-Para-Athletes-61586026643043/.",
         "requires": [],
         "duration": "Not published — verification call required",
         "blocking": true,
@@ -10624,7 +10682,7 @@
           {
             "condition": "No reply to the direct message",
             "goto_org_id": "lions-services",
-            "note": "Founder Eric Strong is reported to work at Lions Services; that is the only alternative route identified, and it has not been confirmed with either organisation."
+            "note": "Try the confirmed email or call/text number first. Eric Strong has been reported to work at Lions Services, but that alternative route remains unconfirmed."
           }
         ]
       },
@@ -10657,8 +10715,8 @@
       {
         "order": 4,
         "actor": "person",
-        "action": "Turn up to the walk; monthly rock climbing at Inner Peaks and yoga sessions are announced the same way",
-        "detail": "Participation is reported to be free for athletes.",
+        "action": "Attend the confirmed walk or monthly rock climbing session at Inner Peaks",
+        "detail": "Participation is free for athletes. Yoga is being developed and has not started; ask Limitless for a future start date.",
         "requires": [],
         "duration": "same week",
         "blocking": false,
@@ -10667,17 +10725,19 @@
     ],
     "contacts": {
       "website": "https://www.instagram.com/limitlessparaathletes/",
-      "named_staff": []
+      "named_staff": [],
+      "general_email": "limitlessparaathletes@gmail.com",
+      "general_phone": "980-208-9304"
     },
-    "last_verified": "2026-09-03",
+    "last_verified": "2026-09-11",
     "confidence": "medium",
-    "confidence_note": "NO STANDALONE WEBSITE EXISTS as of 2026-09-03. Searched deliberately and found none: the organisation appears only on Instagram (live, posting in 2026), Facebook, and in third-party nonprofit directories (Candid, Charity Navigator, Cause IQ) under EIN 41-2736533. Nothing was invented — the Instagram URL remains the website field because it is the only thing the organisation actually publishes. News coverage confirms the organisation is real and active: WFAE, 28 April 2026, on Eric Strong climbing at Inner Peaks with volunteer Jonathan Faryadi, and a Charlotte Ledger profile. Eric Strong's public_safe flag was corrected from true to false: he is named in press coverage, not on the organisation's own published pages, and the entry previously carried an empty source_url which would have been rejected at merge.",
+    "confidence_note": "Partner-confirmed September 10, 2026: Referral email, direct call/text number, agency referrals, and yoga availability. Other details retain their previously recorded sources; unresolved questions remain below.",
     "open_questions": [
-      "Message @limitlessparaathletes on Instagram and ask: is there a phone number or email for someone who cannot use social media? A blind person using a screen reader should not have to negotiate Instagram DMs to reach a disability sports organisation — this is the single biggest access barrier in this record.",
       "Ask Eric Strong: what day and time is the weekly Freedom Park walk, and where exactly does it meet?",
       "Ask Eric Strong: can you guarantee a sighted guide for a first-time walker who books in advance?",
-      "Ask Eric Strong: do you accept referrals from case managers and rehabilitation teachers, and what is your formal service area?",
-      "Ask Eric Strong: is the Braille Trail near NoDa now a regular monthly meeting point as previously planned?"
+      "Ask Limitless: what is your formal service area?",
+      "Ask Eric Strong: is the Braille Trail near NoDa now a regular monthly meeting point as previously planned?",
+      "Ask Limitless: when will yoga start?"
     ],
     "sources": [
       {
@@ -10693,6 +10753,11 @@
       {
         "report": "phase-2-verification",
         "heading": "Limitless Para Athletes on Instagram — live account, organisation bio, no website link",
+        "url": "https://www.instagram.com/limitlessparaathletes/"
+      },
+      {
+        "report": "partner-verification-2026-09-10",
+        "heading": "Referral email, direct call/text number, agency referrals, and yoga availability",
         "url": "https://www.instagram.com/limitlessparaathletes/"
       }
     ],
@@ -15936,5 +16001,211 @@
       }
     ],
     "needs_research": false
+  },
+  {
+    "id": "charlotte-mecklenburg-community-relations",
+    "name": "Charlotte-Mecklenburg Community Relations Department",
+    "also_known_as": [
+      "CMCRD"
+    ],
+    "org_type": "other",
+    "parent_org_id": null,
+    "is_program_of": null,
+    "programs": [
+      "charlotte-ada-program"
+    ],
+    "categories": [
+      "legal_advocacy",
+      "other"
+    ],
+    "one_line": "City department providing accessibility services, mediation, fair-housing support, and community engagement.",
+    "service_area": {
+      "counties": [
+        "Mecklenburg"
+      ],
+      "verdict": "in_area",
+      "note": "Charlotte-Mecklenburg department. ADA complaints described on the department website concern City of Charlotte services and programs; confirm jurisdiction for your concern."
+    },
+    "services": [
+      {
+        "label": "Accessibility services",
+        "plain_language": "Connect with the department’s ADA program.",
+        "notes": ""
+      },
+      {
+        "label": "Community relations services",
+        "plain_language": "The department also offers mediation, housing advocacy, community partnerships and conflict-resolution training.",
+        "notes": ""
+      }
+    ],
+    "who_qualifies": [
+      "People with accessibility concerns involving City of Charlotte programs or services; ask the department to confirm the correct route for other concerns."
+    ],
+    "documentation_required": [
+      "Not published — verification call required. Ask what information is needed for your specific request."
+    ],
+    "cost": "Not confirmed — ask the department about any cost for the specific service.",
+    "typical_wait": "Not confirmed — ask the department for response times.",
+    "accepts_third_party_referral": "unclear",
+    "access_path": [
+      {
+        "order": 1,
+        "actor": "person",
+        "action": "Contact Lezlie Briggs, ADA Program Manager",
+        "detail": "Email CharlotteADA@charlottenc.gov or call 704-336-1297. These are the department-provided contacts for this listing.",
+        "requires": [],
+        "duration": "Not confirmed",
+        "blocking": true,
+        "branches": []
+      },
+      {
+        "order": 2,
+        "actor": "organization",
+        "action": "Confirm the appropriate program and next steps",
+        "detail": "Ask whether the concern falls within the program, what documents are needed, and the expected response time.",
+        "requires": [],
+        "duration": "Not confirmed",
+        "blocking": true,
+        "branches": []
+      }
+    ],
+    "contacts": {
+      "website": "https://www.charlottenc.gov/City-Government/Departments/Charlotte-Mecklenburg-Community-Relations",
+      "general_email": "CharlotteADA@charlottenc.gov",
+      "general_phone": "704-336-1297",
+      "named_staff": [
+        {
+          "name": "Lezlie Briggs",
+          "title": "ADA Program Manager",
+          "email": "CharlotteADA@charlottenc.gov",
+          "phone": "704-336-1297",
+          "public_safe": true,
+          "source_url": "https://www.charlottenc.gov/City-Government/Accessibility/ADA-Program"
+        }
+      ]
+    },
+    "last_verified": "2026-09-11",
+    "confidence": "medium",
+    "confidence_note": "Partner confirmed department name and ADA program contact on September 10, 2026. Department website verified September 11. ADA program URL supplied by the department; page fetch was unavailable. Costs, paperwork, wait times and agency referral policy need confirmation.",
+    "open_questions": [
+      "Does the department accept a referral on someone’s behalf, and how should it be submitted?",
+      "What documentation, costs and response times apply to each service?",
+      "Which concerns and geographic areas does the ADA program handle?"
+    ],
+    "sources": [
+      {
+        "report": "partner-verification-2026-09-10",
+        "heading": "Department and ADA program contact",
+        "url": "https://www.charlottenc.gov/City-Government/Accessibility/ADA-Program"
+      },
+      {
+        "report": "web-verification-2026-09-11",
+        "heading": "Department services and City ADA grievance scope",
+        "url": "https://www.charlottenc.gov/City-Government/Departments/Charlotte-Mecklenburg-Community-Relations"
+      }
+    ],
+    "needs_research": true
+  },
+  {
+    "id": "charlotte-ada-program",
+    "name": "City of Charlotte ADA Program",
+    "also_known_as": [
+      "Charlotte ADA"
+    ],
+    "org_type": "other",
+    "parent_org_id": "charlotte-mecklenburg-community-relations",
+    "is_program_of": "Charlotte-Mecklenburg Community Relations Department",
+    "programs": [],
+    "categories": [
+      "legal_advocacy",
+      "other"
+    ],
+    "one_line": "Accessibility help and disability-related concerns about City of Charlotte services, activities, and programs.",
+    "service_area": {
+      "counties": [
+        "Mecklenburg"
+      ],
+      "verdict": "in_area",
+      "note": "Charlotte-Mecklenburg department. ADA complaints described on the department website concern City of Charlotte services and programs; confirm jurisdiction for your concern."
+    },
+    "services": [
+      {
+        "label": "ADA accessibility support",
+        "plain_language": "Ask about access to City of Charlotte programs and services.",
+        "notes": ""
+      },
+      {
+        "label": "City ADA grievances",
+        "plain_language": "Ask how to raise disability-discrimination concerns involving city services, activities, programs or benefits.",
+        "notes": ""
+      }
+    ],
+    "who_qualifies": [
+      "People with accessibility concerns involving City of Charlotte programs or services; ask the department to confirm the correct route for other concerns."
+    ],
+    "documentation_required": [
+      "Not published — verification call required. Ask what information is needed for your specific request."
+    ],
+    "cost": "Not confirmed — ask the department about any cost for the specific service.",
+    "typical_wait": "Not confirmed — ask the department for response times.",
+    "accepts_third_party_referral": "unclear",
+    "access_path": [
+      {
+        "order": 1,
+        "actor": "person",
+        "action": "Contact Lezlie Briggs, ADA Program Manager",
+        "detail": "Email CharlotteADA@charlottenc.gov or call 704-336-1297. These are the department-provided contacts for this listing.",
+        "requires": [],
+        "duration": "Not confirmed",
+        "blocking": true,
+        "branches": []
+      },
+      {
+        "order": 2,
+        "actor": "organization",
+        "action": "Confirm the appropriate program and next steps",
+        "detail": "Ask whether the concern falls within the program, what documents are needed, and the expected response time.",
+        "requires": [],
+        "duration": "Not confirmed",
+        "blocking": true,
+        "branches": []
+      }
+    ],
+    "contacts": {
+      "website": "https://www.charlottenc.gov/City-Government/Accessibility/ADA-Program",
+      "general_email": "CharlotteADA@charlottenc.gov",
+      "general_phone": "704-336-1297",
+      "named_staff": [
+        {
+          "name": "Lezlie Briggs",
+          "title": "ADA Program Manager",
+          "email": "CharlotteADA@charlottenc.gov",
+          "phone": "704-336-1297",
+          "public_safe": true,
+          "source_url": "https://www.charlottenc.gov/City-Government/Accessibility/ADA-Program"
+        }
+      ]
+    },
+    "last_verified": "2026-09-11",
+    "confidence": "medium",
+    "confidence_note": "Partner confirmed department name and ADA program contact on September 10, 2026. Department website verified September 11. ADA program URL supplied by the department; page fetch was unavailable. Costs, paperwork, wait times and agency referral policy need confirmation.",
+    "open_questions": [
+      "Does the department accept a referral on someone’s behalf, and how should it be submitted?",
+      "What documentation, costs and response times apply to each service?",
+      "Which concerns and geographic areas does the ADA program handle?"
+    ],
+    "sources": [
+      {
+        "report": "partner-verification-2026-09-10",
+        "heading": "Department and ADA program contact",
+        "url": "https://www.charlottenc.gov/City-Government/Accessibility/ADA-Program"
+      },
+      {
+        "report": "web-verification-2026-09-11",
+        "heading": "Department services and City ADA grievance scope",
+        "url": "https://www.charlottenc.gov/City-Government/Departments/Charlotte-Mecklenburg-Community-Relations"
+      }
+    ],
+    "needs_research": true
   }
 ]
