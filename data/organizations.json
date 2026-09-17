@@ -16207,5 +16207,193 @@
       }
     ],
     "needs_research": true
+  },
+  {
+    "id": "friends-nc-accessible-books-library-services",
+    "name": "Friends of the North Carolina Accessible Books and Library Services",
+    "also_known_as": [
+      "FNCABLS",
+      "Friends of NC ABLS",
+      "Friends of the Library"
+    ],
+    "org_type": "nonprofit",
+    "parent_org_id": null,
+    "is_program_of": null,
+    "programs": [
+      "friends-nc-abls-james-benton-braille-writer"
+    ],
+    "categories": [
+      "library_reading"
+    ],
+    "one_line": "Independent nonprofit supporting accessible reading across North Carolina through library support and literacy programs.",
+    "service_area": {
+      "counties": [],
+      "verdict": "in_area",
+      "note": "Supports accessible library services across North Carolina, including Charlotte-area residents."
+    },
+    "services": [
+      {
+        "label": "Accessible library support",
+        "plain_language": "Raises funds and advocates for accessible library materials, equipment and outreach.",
+        "notes": "The state-run ABLS library has a separate directory entry."
+      },
+      {
+        "label": "James Benton Braille Writer Program",
+        "plain_language": "Offers a separate Braille Writer program; see the linked program entry for requirements.",
+        "notes": ""
+      }
+    ],
+    "who_qualifies": [
+      "Citizens, volunteers and library patrons interested in supporting accessible reading; direct-program eligibility varies."
+    ],
+    "documentation_required": [
+      "Ask the Friends what information is needed for membership or a specific program."
+    ],
+    "cost": "Annual membership: individual $10, family $15, organization $50; additional giving levels are available. Membership donations support the library and are not required to receive its services.",
+    "typical_wait": "Response times are not published; contact the Friends.",
+    "accepts_third_party_referral": "unclear",
+    "access_path": [
+      {
+        "order": 1,
+        "actor": "person",
+        "action": "Contact Eddie Weaver",
+        "detail": "Call 910-619-4084 or email info@fncabls.org to discuss membership, library support or program questions.",
+        "requires": [],
+        "duration": "Not confirmed",
+        "blocking": true,
+        "branches": []
+      }
+    ],
+    "contacts": {
+      "website": "https://www.friendsnclbph.org/",
+      "general_phone": "910-619-4084",
+      "general_email": "info@fncabls.org",
+      "named_staff": [
+        {
+          "name": "Eddie Weaver",
+          "title": "President",
+          "email": "info@fncabls.org",
+          "phone": "910-619-4084",
+          "public_safe": true,
+          "source_url": "https://www.friendsnclbph.org/contact_us.php"
+        }
+      ]
+    },
+    "last_verified": "2026-09-16",
+    "confidence": "medium",
+    "confidence_note": "Organization and contact confirmed by the partner; role, public contact details, mission and membership checked against the official website. Referral policy and response times need confirmation.",
+    "open_questions": [
+      "Can another agency make a referral, and how should it be submitted?",
+      "What response time should people expect?"
+    ],
+    "sources": [
+      {
+        "report": "web-verification-2026-09-16",
+        "heading": "Mission and independent nonprofit status",
+        "url": "https://www.friendsnclbph.org/about_the_friends.php"
+      },
+      {
+        "report": "web-verification-2026-09-16",
+        "heading": "Published Friends contact",
+        "url": "https://www.friendsnclbph.org/contact_us.php"
+      },
+      {
+        "report": "web-verification-2026-09-16",
+        "heading": "Membership and library support",
+        "url": "https://www.friendsnclbph.org/membership.php"
+      }
+    ],
+    "needs_research": true
+  },
+  {
+    "id": "friends-nc-abls-james-benton-braille-writer",
+    "name": "Friends of NC ABLS — James Benton Braille Writer Program",
+    "also_known_as": [
+      "James Benton Braille Writer Program"
+    ],
+    "org_type": "nonprofit",
+    "parent_org_id": "friends-nc-accessible-books-library-services",
+    "is_program_of": "Friends of the North Carolina Accessible Books and Library Services",
+    "programs": [],
+    "categories": [
+      "library_reading",
+      "assistive_technology"
+    ],
+    "one_line": "Braille writers for qualifying people who have no other resources to obtain one for personal use.",
+    "service_area": {
+      "counties": [],
+      "verdict": "in_area",
+      "note": "North Carolina program; confirm individual eligibility with the Friends."
+    },
+    "services": [
+      {
+        "label": "Braille writer assistance",
+        "plain_language": "Provides refurbished braille writers for personal use.",
+        "notes": "Funding is limited; awards require committee approval."
+      }
+    ],
+    "who_qualifies": [
+      "People needing a personal braille writer who have no other resources to obtain one; eligibility is reviewed by a committee."
+    ],
+    "documentation_required": [
+      "Signed program application with contact and shipping information, a brief explanation of need, and acknowledgment that no other source can provide a braille writer. An authorized individual may sign if the applicant cannot."
+    ],
+    "cost": "Equipment is given to approved applicants. Recipients are responsible for later maintenance and repairs.",
+    "typical_wait": "No turnaround published; availability depends on limited funding and approval.",
+    "accepts_third_party_referral": "unclear",
+    "access_path": [
+      {
+        "order": 1,
+        "actor": "person",
+        "action": "Complete the program application",
+        "detail": "Mail the completed application to Friends of the NCLBPH, 1841 Capital Blvd., Raleigh, NC 27635. The form requires agreement to return the equipment if no longer needed. Contact Eddie Weaver with questions.",
+        "requires": [],
+        "duration": "Not confirmed",
+        "blocking": true,
+        "branches": []
+      }
+    ],
+    "contacts": {
+      "website": "https://www.friendsnclbph.org/james_benton_braille_writer.php",
+      "general_phone": "910-619-4084",
+      "general_email": "info@fncabls.org",
+      "named_staff": [
+        {
+          "name": "Eddie Weaver",
+          "title": "President",
+          "email": "info@fncabls.org",
+          "phone": "910-619-4084",
+          "public_safe": true,
+          "source_url": "https://www.friendsnclbph.org/contact_us.php"
+        }
+      ],
+      "intake_form_url": "https://www.friendsnclbph.org/docs/Braile_writer_application.docx"
+    },
+    "last_verified": "2026-09-16",
+    "confidence": "medium",
+    "confidence_note": "Program checked on the official website. Current availability, supporting documents and referral policy need confirmation.",
+    "open_questions": [
+      "Are braille writers currently available, and what is the expected turnaround?",
+      "Are any supporting documents required beyond the signed application?",
+      "Can an agency submit an application on someone’s behalf?"
+    ],
+    "sources": [
+      {
+        "report": "web-verification-2026-09-16",
+        "heading": "Program eligibility, application and equipment ownership",
+        "url": "https://www.friendsnclbph.org/james_benton_braille_writer.php"
+      },
+      {
+        "report": "web-verification-2026-09-16",
+        "heading": "Published Friends contact",
+        "url": "https://www.friendsnclbph.org/contact_us.php"
+      },
+      {
+        "report": "web-verification-2026-09-16",
+        "heading": "Official application: mailing address, signature and return agreement",
+        "url": "https://www.friendsnclbph.org/docs/Braile_writer_application.docx"
+      }
+    ],
+    "needs_research": true
   }
 ]
