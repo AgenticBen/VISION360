@@ -11571,19 +11571,19 @@
       "No vision-specific eligibility gate is published — this is a cross-disability Center for Independent Living, not a blindness agency"
     ],
     "documentation_required": [
-      "Not published — verification call required"
+      "Bring an ID card to the first appointment."
     ],
-    "cost": "Not published — verification call required. Centers for Independent Living are typically free to consumers, but DRR does not publish this and it must not be assumed.",
-    "typical_wait": "Not published — verification call required",
-    "accepts_third_party_referral": "unclear",
+    "cost": "Free — no cost for services.",
+    "typical_wait": "48–74 hours from referral to first appointment, depending on the services needed.",
+    "accepts_third_party_referral": "yes",
     "access_path": [
       {
         "order": 1,
         "actor": "person",
-        "action": "Call 704-537-0550, or email mailto@disability-rights.org, or use the contact form at https://disability-rights.org/contact/",
-        "detail": "Office hours published as Monday-Thursday 9:00am-5:00pm. The office is by appointment only — do not send anyone to drop in.",
+        "action": "Call 704-537-0550, or email info@disability-rights.org, or use the contact form at https://disability-rights.org/contact/",
+        "detail": "Office hours published as Monday-Thursday 9:00am-5:00pm. The office is by appointment only — do not send anyone to drop in. Referrals from other social service agencies are accepted. Bring an ID card to the first appointment.",
         "requires": [],
-        "duration": "same day",
+        "duration": "48–74 hours from referral to first appointment, depending on the services needed.",
         "blocking": true,
         "branches": [
           {
@@ -11602,7 +11602,7 @@
         "order": 2,
         "actor": "person",
         "action": "Say which programme you want, because DRR routes by department",
-        "detail": "Advocacy: martymusser@disability-rights.org. Let's All Go! travel training: jordanhayes@disability-rights.org. Youth services ages 14-24: cherinebentley@disability-rights.org. General: mailto@disability-rights.org.",
+        "detail": "Advocacy: martymusser@disability-rights.org. Let's All Go! travel training: jordanhayes@disability-rights.org. Youth services ages 14-24: cherinebentley@disability-rights.org. General: info@disability-rights.org.",
         "requires": [],
         "duration": "",
         "blocking": true,
@@ -11644,18 +11644,17 @@
     "contacts": {
       "website": "https://disability-rights.org",
       "general_phone": "704-537-0550; 800-755-5749",
-      "general_email": "mailto@disability-rights.org",
+      "general_email": "info@disability-rights.org",
       "address": "5801 Executive Center Dr., Suite 101, Charlotte, NC 28212 (by appointment only)",
       "intake_form_url": "https://disability-rights.org/contact/"
     },
-    "last_verified": "2026-09-03",
+    "last_verified": "2026-09-22",
     "confidence": "medium",
-    "confidence_note": "Upgraded from a brief unsourced mention. Verified 2026-09-03: the organization is live at disability-rights.org, is a 501(c)(3) Center for Independent Living established in 1980 and one of the first ten CILs in the US, and its published service area is Mecklenburg, Gaston, Union and Cabarrus counties. The phone 704-537-0550 and address 5801 Executive Center Dr., Suite 101 in the original record are both confirmed on DRR's own contact page. NOTE two data-quality cautions on DRR's own site: its homepage gives a different address (5501 Executive Center Dr, Rm 104) from its contact page (5801 Suite 101), and the contact page still shows a holiday banner saying the office reopens January 5th, which was stale when fetched in September. Confirm the address by phone before sending anyone. Confidence is medium not high because cost, documentation and wait time remain unpublished and the vision-specific peer mentoring question is still open.",
+    "confidence_note": "Upgraded from a brief unsourced mention. Verified 2026-09-03: the organization is live at disability-rights.org, is a 501(c)(3) Center for Independent Living established in 1980 and one of the first ten CILs in the US, and its published service area is Mecklenburg, Gaston, Union and Cabarrus counties. The phone 704-537-0550 and address 5801 Executive Center Dr., Suite 101 in the original record are both confirmed on DRR's own contact page. NOTE two data-quality cautions on DRR's own site: its homepage gives a different address (5501 Executive Center Dr, Rm 104) from its contact page (5801 Suite 101), and the contact page still shows a holiday banner saying the office reopens January 5th, which was stale when fetched in September. Confirm the address by phone before sending anyone. Partner confirmed September 22, 2026: services are free; bring an ID card to the first appointment; the typical wait is 48–74 hours depending on the services needed; social service agency referrals are accepted; referral email is info@disability-rights.org. Other published details were not individually revalidated. Confidence remains medium while vision-specific peer mentoring and other open questions remain unresolved.",
     "open_questions": [
       "Call Disability Rights & Resources (704-537-0550) and ask: can your peer mentoring programme pair a newly blind person with a mentor who is themselves blind or has low vision, or is it cross-disability only?",
-      "Call (704-537-0550) and ask: are your services free to consumers, and is there any documentation, income test or disability verification required to open a file?",
-      "Call (704-537-0550) and ask: what is the current wait between first contact and a first appointment, for advocacy and for Let's All Go! travel training?",
-      "Call (704-537-0550) and ask: can a case manager, social worker or family member refer someone, or must the person self-refer?",
+      "Beyond the ID card required at the first appointment, are any program-specific documents, income tests or disability verification required?",
+      "Can a family member refer someone? Referrals from other social service agencies are confirmed.",
       "Call (704-537-0550) and ask: which address is current — 5801 Executive Center Dr. Suite 101 on your contact page, or 5501 Executive Center Dr. Rm 104 on your homepage? They disagree.",
       "Call (704-537-0550) and ask: is Let's All Go! travel training suitable for someone who has stopped driving because of sight loss, and do trainers have orientation and mobility experience?",
       "Call (704-537-0550) and ask: is 800-755-5749 still a working toll-free line? It appears in directories but not on your current website."
@@ -11685,6 +11684,11 @@
         "report": "Phase 2 web verification 2026-09-03",
         "heading": "Contact page — address, phone, email, hours, by-appointment-only",
         "url": "https://disability-rights.org/contact/"
+      },
+      {
+        "report": "Partner verification 2026-09-22",
+        "heading": "Referral email, first-appointment ID card, free services, typical wait and agency referrals confirmed",
+        "url": ""
       }
     ],
     "needs_research": true
