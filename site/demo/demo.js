@@ -313,7 +313,9 @@
         if (attempt === 0 && (!e.status || e.status >= 500)) { attempt++; return setTimeout(go, 800); } // same clientTurnId: safe to retry
         app.busy = false;
         app.queue = [];
-        var msg = e.status === 409 ? "This session has ended." : "I couldn't reach the server, so that message wasn't processed. Your earlier answers are safe. Please try sending it again.";
+        var msg = e.status === 409 ? "This session has ended." :
+          (e.status === 404 || e.status === 410) ? "Sorry — the demo server lost this conversation. The hosted demo doesn't have a permanent database yet, so this can happen. Please press End session, then start a new one." :
+          "I couldn't reach the server, so that message wasn't processed. Your earlier answers are safe. Please try sending it again.";
         addMessage("bot", msg);
         alertNow(msg);
         setStatus("error", "Couldn't reach the server");
