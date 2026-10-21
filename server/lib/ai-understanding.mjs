@@ -126,3 +126,16 @@ export async function extractWithAI(env, fetchImpl, { questions, utterance, toda
   if (!r) return [];
   return validateOthers(r.answers, questions);
 }
+
+// Pull an email address out of a messy spoken reply. The result must look
+// like an address; it is always read back to the person for a yes.
+export async function extractEmailWithAI(env, fetchImpl, { utterance }) {
+  const user = {
+    person_said: String(utterance).slice(0, 300),
+    instruction: "The person was asked for their email address, possibly by voice (\"at\" = @, \"dot\" = .). Return only the address they gave, or null if there isn't a complete one. Do not guess missing parts.",
+    reply_format: { email: "address or null" },
+  };
+  const r = await callModel(env, fetchImpl, [{ role: "system", content: "You extract an email address from speech-to-text. Reply with JSON only." }, { role: "user", content: JSON.stringify(user) }]);
+  const e = r && typeof r.email === "string" ? r.email.trim().toLowerCase() : null;
+  return e && /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(e) ? e : null;
+}

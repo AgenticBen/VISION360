@@ -139,6 +139,8 @@ export function openStore(file) {
   const db = new DatabaseSync(dbPath);
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;");
   db.exec(SCHEMA);
+  // Migration: the exact words for an answer ("26", "Gaston County") for display.
+  try { db.exec("ALTER TABLE answers ADD COLUMN detail TEXT"); } catch (e) { /* already there */ }
   const q = (sql) => db.prepare(sql);
 
   const store = {
@@ -176,12 +178,12 @@ export function openStore(file) {
     // answers ----------------------------------------------------------
     getAnswers(sessionId) {
       return q(`SELECT * FROM answers WHERE session_id = ?`).all(sessionId)
-        .map((r) => ({ questionId: r.question_id, value: r.value_json === null ? null : JSON.parse(r.value_json), kind: r.kind, revision: r.revision, confirmedRevision: r.confirmed_revision, source: r.source, updatedAt: r.updated_at }));
+        .map((r) => ({ questionId: r.question_id, value: r.value_json === null ? null : JSON.parse(r.value_json), kind: r.kind, revision: r.revision, confirmedRevision: r.confirmed_revision, source: r.source, detail: r.detail || null, updatedAt: r.updated_at }));
     },
     putAnswer(sessionId, a) {
-      q(`INSERT INTO answers (session_id, question_id, value_json, kind, revision, confirmed_revision, source, updated_at) VALUES (?,?,?,?,?,?,?,?)
-         ON CONFLICT(session_id, question_id) DO UPDATE SET value_json=excluded.value_json, kind=excluded.kind, revision=excluded.revision, confirmed_revision=excluded.confirmed_revision, source=excluded.source, updated_at=excluded.updated_at`)
-        .run(sessionId, a.questionId, a.value === undefined || a.value === null ? null : JSON.stringify(a.value), a.kind, a.revision, a.confirmedRevision ?? null, a.source, nowIso());
+      q(`INSERT INTO answers (session_id, question_id, value_json, kind, revision, confirmed_revision, source, detail, updated_at) VALUES (?,?,?,?,?,?,?,?,?)
+         ON CONFLICT(session_id, question_id) DO UPDATE SET value_json=excluded.value_json, kind=excluded.kind, revision=excluded.revision, confirmed_revision=excluded.confirmed_revision, source=excluded.source, detail=excluded.detail, updated_at=excluded.updated_at`)
+        .run(sessionId, a.questionId, a.value === undefined || a.value === null ? null : JSON.stringify(a.value), a.kind, a.revision, a.confirmedRevision ?? null, a.source, a.detail || null, nowIso());
     },
     deleteAnswer(sessionId, questionId) {
       q(`DELETE FROM answers WHERE session_id=? AND question_id=?`).run(sessionId, questionId);

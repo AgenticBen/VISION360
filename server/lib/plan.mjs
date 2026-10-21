@@ -8,9 +8,10 @@ function esc(s) {
   return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
-export function buildPlan(corpus, results) {
+export function buildPlan(corpus, results, opts = {}) {
   const subject = "Your Vision 360 CONNECT plan (demo)";
   const lines = [];
+  if (opts.name) lines.push(`Hi ${opts.name},`, "");
   lines.push("Your Vision 360 CONNECT plan");
   lines.push("This is a DEMONSTRATION email from the Lions Services Vision 360 CONNECT prototype.");
   lines.push("");
@@ -59,6 +60,7 @@ export function buildPlan(corpus, results) {
     <p style="margin:0"><a href="${esc(m.url)}">Full listing in the directory</a></p>
   </section>`;
   const html = `<!doctype html><html lang="en"><body style="font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.5;color:#14171c;max-width:680px;margin:0 auto;padding:16px">
+  ${opts.name ? `<p>Hi ${esc(opts.name)},</p>` : ""}
   <h1 style="font-size:26px;margin:0 0 8px">Your Vision 360 CONNECT plan</h1>
   <p style="background:#fff2d6;border:1px solid #8a5300;padding:8px 12px;border-radius:6px">This is a demonstration email from the Lions Services Vision 360 CONNECT prototype.</p>
   <p>Here are ${results.matches.length} services suggested from the Lions Services directory, best match first. Each organization decides who qualifies — please contact them to confirm details.</p>

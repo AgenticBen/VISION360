@@ -9,8 +9,9 @@ import {
   newToken, tokenHash, tokenMatches, verifyPassword, parseCookies, staffCookie, clearStaffCookie, STAFF_COOKIE,
 } from "./auth.mjs";
 import { RETENTION_DAYS } from "./store.mjs";
-import { aiEnabled, interpretWithAI, extractWithAI, DEFAULT_MODEL } from "./ai-understanding.mjs";
-import { interpretAnswer, detectGlobal, looksLikeCorrection } from "./understand.mjs";
+import { ttsEnabled, ttsInfo, synthesize } from "./tts.mjs";
+import { aiEnabled, interpretWithAI, extractWithAI, extractEmailWithAI, DEFAULT_MODEL } from "./ai-understanding.mjs";
+import { interpretAnswer, detectGlobal, looksLikeCorrection, parseEmail } from "./understand.mjs";
 
 const MAX_BODY = 16 * 1024;
 
@@ -28,6 +29,9 @@ export async function createApp(opts = {}) {
   }
   const limiter = rateLimiter();
   const aiFetch = opts.aiFetch || globalThis.fetch;
+  const ttsFetch = opts.ttsFetch || globalThis.fetch;
+  const ttsCount = new Map();
+  const sampleCache = new Map();
 
   // Optional AI help, only where the rules can't tell. Failures fall back silently.
   async function prepareAi(session, input) {
@@ -36,7 +40,10 @@ export async function createApp(opts = {}) {
     const g = detectGlobal(input.text);
     if (g.repeat || g.help || g.staff || g.end || g.startOver || g.skipSection) return;
     try {
-      if (c.phase === "opening") {
+      if ((c.phase === "email_address" || c.phase === "staff_contact") && /@| at /i.test(input.text) && !parseEmail(input.text)) {
+        session.__aiEmail = await extractEmailWithAI(env, aiFetch, { utterance: input.text });
+        store.audit("system", session.id, "ai_email", { found: !!session.__aiEmail });
+      } else if (c.phase === "opening") {
         session.__aiExtract = await extractWithAI(env, aiFetch, { questions: c.openQuestions, utterance: input.text });
         store.audit("system", session.id, "ai_extract", { n: session.__aiExtract.length });
       } else if (c.phase === "intake" && c.currentQuestion && !c.pending && !looksLikeCorrection(input.text)) {
@@ -141,8 +148,20 @@ export async function createApp(opts = {}) {
           ok: true, corpusVersion: corpus.version, hashes: corpus.hashes, organizations: corpus.organizations.length,
           policyVersion: POLICY_VERSION, emailTransport: ctx.actions.transportName(), retentionDays: RETENTION_DAYS,
           storage: env.V360_STORAGE || "local",
+          tts: { provider: ttsInfo(env).provider },
           aiUnderstanding: aiEnabled(env) ? { on: true, model: env.V360_AI_MODEL || DEFAULT_MODEL } : { on: false },
         });
+      }
+
+      // Fixed sample sentence for the voice picker (never arbitrary text).
+      if (p === "/api/tts-sample" && method === "GET") {
+        if (!ttsEnabled(env)) throw httpError(404, "Natural voice is not set up");
+        const rate = Number(url.searchParams.get("rate")) || 1;
+        const key = String(rate);
+        if (!sampleCache.has(key)) sampleCache.set(key, await synthesize(env, ttsFetch, { text: "Hi, I'm the Vision 360 assistant. Tell me a little about what's going on, and I'll help you find the right services.", rate }));
+        const audio = sampleCache.get(key);
+        res.writeHead(200, { "Content-Type": "audio/mpeg", "Cache-Control": "no-store", "Content-Length": audio.length });
+        return res.end(audio);
       }
 
       // ---------------- conversation -------------------------------------
@@ -160,7 +179,7 @@ export async function createApp(opts = {}) {
         return send(res, 201, { sessionId: id, token, ...turnResponse(session, turn) });
       }
 
-      let m = p.match(/^\/api\/session\/([0-9a-f-]{36})(?:\/(turn|state|event|end))?$/);
+      let m = p.match(/^\/api\/session\/([0-9a-f-]{36})(?:\/(turn|state|event|end|tts))?$/);
       if (m) {
         const id = m[1], sub = m[2] || "state";
         if (sub === "state" && method === "GET") {
@@ -191,7 +210,7 @@ export async function createApp(opts = {}) {
             };
             await prepareAi(s, input);
             const turn = dialogue.handle(s, input);
-            delete s.__aiExtract; delete s.__aiInterp;
+            delete s.__aiExtract; delete s.__aiInterp; delete s.__aiEmail;
             store.saveSession(s);
             // Serverless has no background loop: finish the email job before replying.
             if (turn.actionId && env.V360_INLINE_WORKER !== "off" && env.V360_SERVERLESS) await processQueueSoon();
@@ -214,6 +233,18 @@ export async function createApp(opts = {}) {
               return send(res, 200, { ok: true, state: dialogue.snapshot(s) });
             }
             throw httpError(400, "Unknown event");
+          }
+          if (sub === "tts") {
+            // Voice ONLY the assistant's own latest reply for this session.
+            if (!ttsEnabled(env)) throw httpError(404, "Natural voice is not set up");
+            const last = s.state.lastAssistant;
+            if (!last || String(body.turnId || "") !== last.turnId) throw httpError(409, "That reply is no longer current");
+            const n = (ttsCount.get(id) || 0) + 1;
+            ttsCount.set(id, n);
+            if (n > 300) throw httpError(429, "Voice limit reached for this session");
+            const audio = await synthesize(env, ttsFetch, { text: last.speech || last.text, rate: body.rate });
+            res.writeHead(200, { "Content-Type": "audio/mpeg", "Cache-Control": "no-store", "Content-Length": audio.length });
+            return res.end(audio);
           }
           if (sub === "end") {
             s.status = "ended";

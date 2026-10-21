@@ -66,6 +66,8 @@
       var b = $("detail-body");
       b.textContent = "";
       var s = j.session, snap = j.snapshot;
+      var nm = snap.names || {};
+      b.appendChild(el("p", { style: "font-size:1.2rem;font-weight:700", text: "Caller: " + (nm.caller || "name not given") + (nm.subject ? " · Asking for: " + nm.subject : "") }));
       b.appendChild(el("p", { text: "Started " + when(s.created_at) + " · updated " + when(s.updated_at) + " · channels: " + s.channels.map(function (c) { return c.mode; }).join(" → ") + " · answer revision " + s.revision + " · data " + s.corpus_version }));
 
       var statusRow = el("div", { class: "action-row", role: "group", "aria-label": "Staff status" });
@@ -77,7 +79,7 @@
       b.appendChild(section("Staff status", [statusRow]));
 
       var reviews = j.reviews.length ? el("ul", null, j.reviews.map(function (r) {
-        var c = r.contact ? " · contact by " + r.contact.method + (r.contact.value ? ": " + r.contact.value : "") : " · no contact details";
+        var c = r.contact && r.contact.method ? " · contact by " + r.contact.method + (r.contact.value ? ": " + r.contact.value : "") : " · no contact details";
         return el("li", { text: when(r.created_at) + " — " + r.reason + c });
       })) : el("p", { text: "None." });
       b.appendChild(section("Requests and flags", [reviews]));

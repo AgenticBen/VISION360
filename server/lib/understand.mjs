@@ -58,7 +58,7 @@ export function findNumber(norm) {
 const GLOBAL = {
   repeat: ["repeat", "say that again", "say it again", "what was the question", "pardon", "come again", "didn't catch", "did not catch", "one more time", "what did you say"],
   help: ["what do you mean", "why do you ask", "why are you asking", "explain", "what does that mean", "i don't understand", "i do not understand", "help me understand"],
-  declined: ["rather not say", "rather not answer", "prefer not to say", "prefer not to answer", "don't want to say", "do not want to say", "don't want to answer", "decline", "none of your business", "private"],
+  declined: ["rather not say", "rather not answer", "prefer not to say", "prefer not to answer", "don't want to say", "do not want to say", "don't want to answer", "decline", "none of your business", "that's private", "that is private", "keep that private"],
   skip: ["skip", "pass", "next question", "move on", "skip it", "skip this"],
   skipSection: ["skip this section", "skip the section", "skip that section", "skip all of these", "skip these questions", "skip the whole section", "skip everything"],
   unknown: ["don't know", "do not know", "not sure", "no idea", "dunno", "unsure", "can't say", "cannot say", "i'm not certain"],
@@ -251,7 +251,8 @@ export function interpretAnswer(text, q, ctx = {}) {
   // Question-specific parsers first.
   if (q.id === "age_band") {
     const band = ageBand(n);
-    if (band) return { kind: "answer", value: band, phrase: "age" };
+    const num = findNumber(n);
+    if (band) return { kind: "answer", value: band, phrase: "age", detail: num !== null && !/\b(month|months|week|weeks)\b/.test(n) ? String(num) : null };
   }
   if (q.id === "eye_exam_recency") {
     const r = examRecency(n, today);
@@ -260,7 +261,7 @@ export function interpretAnswer(text, q, ctx = {}) {
   }
   if (q.id === "county") {
     const c = countyFromGeography(n, ctx.geography || { tiers: [] });
-    if (typeof c === "string") return { kind: "answer", value: c, phrase: "county" };
+    if (typeof c === "string") return { kind: "answer", value: c, phrase: "county", detail: countyDetail(n, ctx.geography) };
     if (c && c.regional) {
       // In the wider region but not next door: the options do not cover this
       // exactly, so ask rather than force it into a bucket.
@@ -294,7 +295,7 @@ export function interpretAnswer(text, q, ctx = {}) {
     // A yes and a no for the same question, or two equally strong options: ask.
     if (rivals.length) return { kind: "ambiguous", options: [top.value, ...rivals.map((r) => r.value)], reason: "I heard more than one answer" };
     if (top.value === "not_sure" || top.value === "never_or_unknown") return { kind: "unknown", value: top.value, phrase: top.phrase };
-    return { kind: "answer", value: top.value, phrase: top.phrase };
+    return { kind: "answer", value: top.value, phrase: top.phrase, detail: q.id === "county" ? placeDetail(top.phrase) : null };
   }
 
   if (g.unknown) return { kind: "unknown", value: notSure || null };
@@ -313,12 +314,13 @@ export function extractMany(text, assessment, ctx = {}) {
     if (q.id === "age_band") {
       if (/\b(years? old|yrs old|aged|age is|turning)\b/.test(n) || /\b(i'm|i am|she's|he's|they're|she is|he is|they are) (\d{1,3}|[a-z]+ty)\b/.test(n) || /\b\d{1,2} year/.test(n)) {
         const b = ageBand(n);
-        if (b) { found.push({ questionId: q.id, value: b, phrase: "age" }); continue; }
+        const num = findNumber(n);
+        if (b) { found.push({ questionId: q.id, value: b, phrase: "age", detail: num !== null ? String(num) : null }); continue; }
       }
     }
     if (q.id === "county") {
       const c = countyFromGeography(n, ctx.geography || { tiers: [] });
-      if (typeof c === "string") { found.push({ questionId: q.id, value: c, phrase: "county" }); continue; }
+      if (typeof c === "string") { found.push({ questionId: q.id, value: c, phrase: "county", detail: countyDetail(n, ctx.geography) }); continue; }
     }
     const matches = matchOptions(n, q, { distinctiveOnly: true });
     if (!matches.length) continue;
@@ -328,7 +330,7 @@ export function extractMany(text, assessment, ctx = {}) {
       const top = matches[0];
       if (matches.some((m) => m.value !== top.value && m.score === top.score)) continue; // ambiguous: ask later
       if (top.value === "not_sure" || top.value === "never_or_unknown") continue;
-      found.push({ questionId: q.id, value: top.value, phrase: top.phrase });
+      found.push({ questionId: q.id, value: top.value, phrase: top.phrase, detail: q.id === "county" ? placeDetail(top.phrase) : null });
     }
   }
   return found;
@@ -382,15 +384,52 @@ export function looksLikeCorrection(text) {
   return anyOf(n, ["change", "correct that", "correction", "actually", "i meant", "i mean", "go back", "that's wrong", "that is wrong", "not right", "update", "instead", "mistake", "misheard", "you got", "should be", "it's not", "it is not", "no wait", "wait"]);
 }
 
-// Spoken email: "ben at example dot com" -> ben@example.com
+// Spoken or typed email -> address. Keeps ONLY the address: "yeah my email
+// is ben at agentic arc dot ai" -> "ben@agenticarc.ai". Spoken pieces ("at",
+// "dot", "underscore", "dash") glue their neighbours together; spelled-out
+// letters before the "at" are joined; a domain said as two words is joined up
+// to its ".com"/".org" ending. The result is always read back for a yes.
 export function parseEmail(text) {
-  let t = String(text || "").toLowerCase().trim();
-  t = t.replace(/\s+at\s+/g, "@").replace(/\s+dot\s+/g, ".").replace(/\s+underscore\s+/g, "_").replace(/\s+(dash|hyphen)\s+/g, "-");
-  t = t.replace(/^(my email is|it's|it is|email|send it to|to)\s+/g, "");
-  t = t.replace(/\s+/g, "");
-  t = t.replace(/[.,;!?]+$/, "");
-  const m = t.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/);
+  let t = " " + String(text || "").toLowerCase().replace(/[,;!?"]/g, " ").replace(/\.(\s|$)/g, " $1") + " ";
+  t = t.replace(/ at sign /g, " @ ").replace(/ at /g, " @ ").replace(/ (dot|period|point) /g, " . ")
+    .replace(/ underscore /g, " _ ").replace(/ (dash|hyphen) /g, " - ").replace(/@/g, " @ ").replace(/(\S)\.(\S)/g, "$1 . $2");
+  const raw = t.split(/\s+/).filter(Boolean);
+  const glue = new Set(["@", ".", "_", "-"]);
+  const toks = [];
+  let join = false;
+  for (const w of raw) {
+    if (glue.has(w)) { if (toks.length) toks[toks.length - 1] += w; else toks.push(w); join = true; continue; }
+    if (join && toks.length) toks[toks.length - 1] += w; else toks.push(w);
+    join = false;
+  }
+  let i = toks.findIndex((x) => x.includes("@"));
+  if (i === -1) return null;
+  let tok = toks[i];
+  // spelled letters before the @: "b e n @ ..." -> "ben@..."
+  let j = i - 1;
+  while (j >= 0 && /^[a-z0-9]$/.test(toks[j])) { tok = toks[j] + tok; j--; }
+  // domain said in pieces: join following tokens until it has a dot ending
+  let k = i + 1;
+  while (!/@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(tok) && k < toks.length && k <= i + 3 && /^[a-z0-9.-]+$/.test(toks[k])) { tok += toks[k]; k++; }
+  tok = tok.replace(/^[^a-z0-9]+/, "").replace(/[.]+$/, "");
+  const m = tok.match(/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/);
   return m ? m[0] : null;
+}
+
+// First name from "Ben", "my name's Ben", "it's ben dudley", "call me Benny".
+const NAME_STOP = new Set(["yes", "yeah", "yep", "no", "nope", "okay", "ok", "sure", "hi", "hello", "hey", "um", "uh", "er", "well", "so", "oh", "just", "ask", "me", "questions", "its", "it's", "i'm", "im", "my", "name", "names", "is", "this", "call", "the", "a", "for", "i", "am", "you", "can", "skip", "not", "prefer", "rather", "say", "there", "thanks", "thank", "first", "and", "hiya", "sorry", "i'd", "id", "don't", "dont", "want", "to", "share", "pass", "no", "thanks"]);
+export function parseName(text) {
+  const t = String(text || "").replace(/[.!,?;:"()]/g, " ").replace(/\s+/g, " ").trim();
+  if (!t) return null;
+  let cand = null;
+  const m = t.match(/(?:my name is|my name's|name is|name's|i'm|i am|it's|it is|this is|call me|you can call me)\s+([A-Za-z][A-Za-z'-]*)/i);
+  if (m) cand = m[1];
+  else {
+    const words = t.split(" ").filter((w) => !NAME_STOP.has(w.toLowerCase()));
+    if (words.length >= 1 && words.length <= 3) cand = words[0];
+  }
+  if (!cand || NAME_STOP.has(cand.toLowerCase()) || !/^[A-Za-z][A-Za-z'-]{0,30}$/.test(cand)) return null;
+  return cand.charAt(0).toUpperCase() + cand.slice(1).toLowerCase();
 }
 
 // Spell an address for read-back so it can be checked by ear.
@@ -398,6 +437,17 @@ export function spellEmail(email) {
   const [user, domain] = email.split("@");
   const spell = (s) => s.split("").map((c) => (c === "." ? "dot" : c === "-" ? "dash" : c === "_" ? "underscore" : c)).join(" ");
   return `${spell(user)}, at, ${domain.split(".").join(" dot ")}`;
+}
+
+const NOT_PLACE = /county next|next door|nearby|elsewhere|another|other state|part of the state|not sure|dunno|don't know|unsure|eastern nc|^sc$|^meck$/;
+function placeDetail(phrase) {
+  if (!phrase || NOT_PLACE.test(phrase)) return null;
+  if (phrase === "mecklenburg") return "Mecklenburg County";
+  return titleCase(phrase.replace(/ county$/, " County"));
+}
+function countyDetail(n, geography) {
+  for (const t of (geography && geography.tiers) || []) for (const c of t.counties || []) if (has(n, c)) return `${c} County`;
+  return null;
 }
 
 function titleCase(s) {

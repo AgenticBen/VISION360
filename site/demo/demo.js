@@ -55,6 +55,12 @@
   var canSpeak = "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
   var canListen = !!SR;
 
+  // Natural voice (ElevenLabs) is generated on the server, only for the
+  // assistant's own replies; the key never reaches the browser.
+  var NATURAL = "__natural";
+  var natural = { available: false, audio: null, url: null };
+  function useNatural() { return natural.available && (settings.voiceName === NATURAL || !settings.voiceName); }
+
   // ----------------------------------------------------------- voices
   // Browsers expose the voices installed on the device. Quality varies hugely:
   // macOS ships novelty voices ("Albert", "Bad News", "Zarvox"…) next to very
@@ -91,13 +97,15 @@
     if (!sel) return;
     var list = rankedVoices();
     sel.textContent = "";
+    if (natural.available) sel.appendChild(el("option", { value: NATURAL, text: "Natural voice (ElevenLabs) — recommended" }));
+    if (!list.length && natural.available) { sel.value = useNatural() ? NATURAL : ""; return; }
     if (!list.length) { sel.appendChild(el("option", { value: "", text: "Default voice" })); $("voice-hint").textContent = "No voices are listed yet. Try again in a moment."; return; }
     var cur = currentVoice();
     list.forEach(function (v, i) {
-      var label = v.name + " (" + v.lang + ")" + (i === 0 ? " — recommended" : "");
+      var label = v.name + " (" + v.lang + ")" + (i === 0 && !natural.available ? " — recommended" : "");
       sel.appendChild(el("option", { value: v.name, text: label }));
     });
-    sel.value = cur ? cur.name : "";
+    sel.value = useNatural() ? NATURAL : (cur ? cur.name : "");
     var hint = "The most natural voices on this device are listed first.";
     if (!list.some(function (v) { return /premium|enhanced|natural|neural|google/i.test(v.name); })) {
       hint += " On a Mac you can add much better voices: System Settings → Accessibility → Spoken Content → System voice → Manage Voices, then download an English \u201cPremium\u201d or \u201cEnhanced\u201d voice (for example Ava or Zoe) and reload this page.";
@@ -140,6 +148,13 @@
   });
   $("open-settings").addEventListener("click", openSettings);
   $("voice-sample").addEventListener("click", function () {
+    if (useNatural()) {
+      stopNaturalAudio();
+      var a = new Audio("/api/tts-sample?rate=" + encodeURIComponent(settings.rate));
+      natural.audio = a;
+      a.play().catch(function () { alertNow("The natural voice couldn't play right now."); });
+      return;
+    }
     if (!canSpeak) return;
     try { window.speechSynthesis.cancel(); } catch (e) {}
     var u = new SpeechSynthesisUtterance("Hi, I'm the Vision 360 assistant. Tell me a little about what's going on, and I'll help you find the right services.");
@@ -157,6 +172,7 @@
 
   // Tell people plainly when this deployment can't keep data or send email.
   fetch("/api/health").then(function (r) { return r.json(); }).then(function (h) {
+    if (h.tts && h.tts.provider === "elevenlabs") { natural.available = true; fillVoiceSelect(); }
     var notes = [];
     if (h.storage === "ephemeral") notes.push("This preview has no permanent database yet, so a conversation can be lost if the server restarts.");
     if (h.emailTransport === "outbox") notes.push("Email isn't connected yet: an emailed plan goes to a test outbox and is not actually sent.");
@@ -315,14 +331,24 @@
     addMessage("bot", turn.text, { turnId: turn.turnId });
     announce(turn.text);
     renderPanel(turn, app.state);
-    if (turn.expect === "ended") { finishSession(false); return; }
-    if (app.mode === "voice" && settings.readAloud && canSpeak) speak(turn.speech || turn.text, turn.turnId);
+    // Typing help: email keyboard when an address is expected.
+    var box = $("message");
+    box.setAttribute("inputmode", turn.expect === "email" ? "email" : "text");
+    box.setAttribute("placeholder", turn.expect === "email" ? "Type your email address" : turn.expect === "name" ? "Type your first name" : "");
+    if (turn.expect === "ended") {
+      // Say goodbye first, then close everything down.
+      if (app.mode === "voice" && settings.readAloud && (canSpeak || natural.available)) { app.endAfterSpeech = true; speak(turn.speech || turn.text, turn.turnId); }
+      else finishSession(false);
+      return;
+    }
+    if (app.mode === "voice" && settings.readAloud && (canSpeak || natural.available)) speak(turn.speech || turn.text, turn.turnId);
     else afterAssistant();
     watchActions();
   }
 
   function afterAssistant() {
     if (app.ended) return;
+    if (app.endAfterSpeech) { app.endAfterSpeech = false; finishSession(false); return; }
     if (app.mode === "voice" && voice.on && !voice.muted) startListening();
     else if (app.mode === "voice" && voice.muted) setStatus("paused");
     else if (app.mode === "voice" && !voice.on) setStatus("disconnected", "Voice is off — press Start voice again, or type below");
@@ -440,6 +466,7 @@
     wrap.appendChild(el("div", { class: "action-row" }, [
       el("button", { type: "button", class: "btn btn-primary", text: "Email me this plan", onclick: function () { sendTurn({ action: "request_email" }, { text: "Email me this plan" }); } }),
       el("button", { type: "button", class: "btn", text: "Ask a staff member to follow up", onclick: function () { sendTurn({ action: "request_staff" }, { text: "Ask a staff member to follow up" }); } }),
+      el("button", { type: "button", class: "btn btn-secondary", text: "I'm all done", onclick: function () { sendTurn({ action: "finish" }, { text: "I'm all done" }); } }),
     ]));
     var ol = el("ol", { class: "results", style: "list-style:none;padding:0;margin:0.8rem 0 0" });
     results.matches.forEach(function (m) { ol.appendChild(el("li", null, [matchCard(m)])); });
@@ -710,7 +737,49 @@
 
   // Speech: split into sentences (long single utterances get cut off in some
   // browsers) and track how far we got so an interruption can be reported.
+  function stopNaturalAudio() {
+    if (natural.audio) { try { natural.audio.pause(); } catch (e) {} natural.audio = null; }
+    if (natural.url) { try { URL.revokeObjectURL(natural.url); } catch (e) {} natural.url = null; }
+  }
+
   function speak(text, turnId) {
+    if (useNatural() && app.sessionId && app.lastTurn && turnId === app.lastTurn.turnId) return speakNatural(text, turnId);
+    return speakDevice(text, turnId);
+  }
+
+  // Natural voice: fetch the audio for this exact reply, play it, and fall
+  // back to the device voice if anything goes wrong.
+  function speakNatural(text, turnId) {
+    stopSpeaking("new-turn", true);
+    voice.speaking = true;
+    voice.speakingTurn = turnId;
+    $("stop-speaking").disabled = false;
+    setStatus("speaking");
+    if (!settings.bargeIn) stopListening(true); else startListening();
+    fetch("/api/session/" + app.sessionId + "/tts", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + app.token }, body: JSON.stringify({ turnId: turnId, rate: settings.rate }) })
+      .then(function (r) { if (!r.ok) throw new Error("tts " + r.status); return r.blob(); })
+      .then(function (blob) {
+        if (!voice.speaking || voice.speakingTurn !== turnId) return;
+        natural.url = URL.createObjectURL(blob);
+        var a = new Audio(natural.url);
+        natural.audio = a;
+        a.onended = function () {
+          if (voice.speakingTurn !== turnId) return;
+          voice.speaking = false; voice.speakingTurn = null;
+          $("stop-speaking").disabled = true;
+          stopNaturalAudio();
+          afterAssistant();
+        };
+        return a.play();
+      })
+      .catch(function () {
+        if (voice.speakingTurn !== turnId) return;
+        voice.speaking = false; voice.speakingTurn = null;
+        speakDevice(text, turnId);
+      });
+  }
+
+  function speakDevice(text, turnId) {
     if (!canSpeak) { afterAssistant(); return; }
     stopSpeaking("new-turn", true);
     var chunks = String(text).match(/[^.!?]+[.!?]+["')]*|[^.!?]+$/g) || [text];
@@ -740,12 +809,13 @@
   }
 
   function stopSpeaking(reason, silent) {
-    if (!canSpeak) return;
+    if (!canSpeak && !natural.audio && !voice.speaking) return;
     var wasTurn = voice.speakingTurn;
     var was = voice.speaking;
     voice.speaking = false;
     voice.speakingTurn = null;
     try { window.speechSynthesis.cancel(); } catch (e) {}
+    stopNaturalAudio();
     $("stop-speaking").disabled = true;
     if (was && wasTurn && !silent) {
       markInterrupted(wasTurn);

@@ -217,7 +217,7 @@ test("a partial correction changes only that fact and is read back", async () =>
   const after = Object.fromEntries(c.state.answers.map((a) => [a.questionId, JSON.stringify(a.value)]));
   for (const k of Object.keys(before)) if (k !== "age_band") assert.equal(after[k], before[k], k + " should not change");
   assert.equal(after.age_band, JSON.stringify("55_plus"));
-  assert.match(c.turn.text, /changed age/i);
+  assert.match(c.turn.text, /changed that — you're 58/);
   assert.equal(c.state.phase, "recap");
 });
 

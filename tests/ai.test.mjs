@@ -64,7 +64,7 @@ test("AI cannot introduce a code that doesn't exist", async () => {
   const r = await say("hmm, well, it's a long story");
   assert.ok(!r.state.answers.some((a) => a.questionId === "actor"), "invalid code discarded");
   assert.ok(!r.state.answers.some((a) => a.questionId === "county"));
-  assert.match(r.turn.text, /didn't catch/);
+  assert.match(r.turn.text, /didn't (quite )?catch/);
 });
 
 test("AI failure falls back to the rules", async () => {
@@ -73,7 +73,7 @@ test("AI failure falls back to the rules", async () => {
   const say = talker(app, s);
   await say("just ask me questions");
   const r = await say("hmm, well, it's a long story");
-  assert.match(r.turn.text, /didn't catch/);
+  assert.match(r.turn.text, /didn't (quite )?catch/);
   const r2 = await say("myself");
   assert.equal(r2.state.answers.find((a) => a.questionId === "actor").value, "self");
 });

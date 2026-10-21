@@ -18,15 +18,26 @@ export function call(app, method, url, body, headers = {}) {
     const res = {
       status: 0, headers: {}, body: "",
       writeHead(s, h) { this.status = s; this.headers = h || {}; },
-      end(b) { this.body = b ? String(b) : ""; resolve({ status: this.status, headers: this.headers, json: this.body ? JSON.parse(this.body) : null }); },
+      end(b) {
+        const isJson = String((this.headers || {})["Content-Type"] || "").includes("json");
+        this.body = b ? (isJson ? String(b) : b) : "";
+        resolve({ status: this.status, headers: this.headers, json: isJson && this.body ? JSON.parse(this.body) : null, raw: this.body });
+      },
     };
     app.handle(req, res);
   });
 }
 
-export async function startSession(app, mode = "text") {
+// Starts a session and, by default, answers the first-name question ("Sam")
+// so tests begin at the "what's going on?" step. Pass name: null to skip that.
+export async function startSession(app, mode = "text", { name = "Sam" } = {}) {
   const r = await call(app, "POST", "/api/session", { noticeAccepted: true, mode });
-  return { id: r.json.sessionId, token: r.json.token, first: r.json };
+  const s = { id: r.json.sessionId, token: r.json.token, first: r.json };
+  if (name) {
+    const n = await call(app, "POST", `/api/session/${s.id}/turn`, { text: name, clientTurnId: "name-" + Math.random() }, { authorization: "Bearer " + s.token });
+    s.afterName = n.json;
+  }
+  return s;
 }
 
 export function talker(app, sess) {

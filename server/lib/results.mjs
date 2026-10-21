@@ -109,19 +109,19 @@ export function buildResults(corpus, engineState, answers) {
 }
 
 // What the assistant says aloud: one or two starting points, not the whole list.
-export function resultsSpeech(results) {
+export function resultsSpeech(results, opts = {}) {
   const m = results.matches;
-  const parts = ["Thank you for confirming."];
+  const parts = [opts.name ? `Thanks, ${opts.name}.` : "Thanks for confirming."];
   if (!m.length) {
-    parts.push("I couldn't find a strong match in the directory for those answers, and I won't guess. A staff member can help — just say talk to a person.");
+    parts.push("I couldn't find a strong match in the directory for those answers, and I don't want to guess. A staff member at Lions Services can help with that.");
   } else {
-    parts.push(`Based on what you told me, a good place to start is ${m[0].name}. ${m[0].reasons[0] || m[0].oneLine}`);
-    if (m[1]) parts.push(`Another good starting point is ${m[1].name}. ${m[1].reasons[0] || m[1].oneLine}`);
-    if (m.length > 2) parts.push(`I've listed ${m.length} suggestions on screen, with what each one does, how to start, costs and contacts.`);
+    parts.push(`Based on what you've told me, a good place to start is ${m[0].name}. ${m[0].reasons[0] || m[0].oneLine}`);
+    if (m[1]) parts.push(`Another good option is ${m[1].name}. ${m[1].reasons[0] || m[1].oneLine}`);
+    if (m.length > 2) parts.push(`I've put ${m.length} suggestions on the screen, with what each one does, how to get started, and how to reach them. You can ask me about any of them, like "tell me about number three."`);
   }
-  if (results.handoffs.length) parts.push(`You also mentioned something this directory doesn't cover, so I've added where to turn for that, and flagged it for staff.`);
-  if (results.unresolved.length) parts.push("Some answers weren't known, so a few suggestions may change once those are clearer.");
-  parts.push("Would you like me to email this plan, ask a staff member to follow up, or tell you more about one of them? For example, say: tell me about number two.");
+  if (results.handoffs.length) parts.push("You also mentioned something this directory doesn't cover, so I've added where to turn for that and flagged it for the staff.");
+  if (results.unresolved.length) parts.push("A few answers weren't certain, so some suggestions might change once those are clearer.");
+  parts.push(opts.closing || "Would you like me to email you this plan?");
   const text = parts.join(" ");
   return { text, speech: text };
 }
