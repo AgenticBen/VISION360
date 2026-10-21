@@ -78,6 +78,7 @@
       <button type="button" class="btn" id="stop-speaking" disabled>Stop speaking</button>
       <button type="button" class="btn" id="replay">Repeat last response</button>
       <button type="button" class="btn" id="reconnect" hidden>Start voice again</button>
+      <button type="button" class="btn btn-primary" id="done-talking" hidden>I'm done talking</button>
     </div>
 
     <div class="log-wrap">
@@ -140,13 +141,27 @@
       <legend>Voice</legend>
       <label class="check"><input type="checkbox" name="readAloud"> Read responses aloud</label>
       <div id="speed-row">
+        <label class="sub-legend" for="voice-select">Assistant's voice</label>
+        <div class="composer-row">
+          <select id="voice-select" name="voiceName" class="select"></select>
+          <button type="button" class="btn btn-secondary" id="voice-sample">Play a sample</button>
+        </div>
+        <p class="hint" id="voice-hint">The best voices on this device are listed first.</p>
         <p class="sub-legend">Speaking speed</p>
         <div class="radio-row">
+          <label><input type="radio" name="rate" value="0.85"> Slower</label>
           <label><input type="radio" name="rate" value="1"> Normal</label>
-          <label><input type="radio" name="rate" value="0.8"> Slower</label>
+          <label><input type="radio" name="rate" value="1.2"> Faster</label>
+          <label><input type="radio" name="rate" value="1.4"> Fastest</label>
         </div>
       </div>
-      <p id="speed-unsupported" class="hint" hidden>This browser can't speak responses aloud, so speed settings aren't available.</p>
+      <p id="speed-unsupported" class="hint" hidden>This browser can't speak responses aloud, so voice and speed settings aren't available.</p>
+      <p class="sub-legend">When I'm talking, wait this long after I stop before answering</p>
+      <div class="radio-row">
+        <label><input type="radio" name="endSilence" value="1200"> Short (1 second)</label>
+        <label><input type="radio" name="endSilence" value="2000"> Normal (2 seconds)</label>
+        <label><input type="radio" name="endSilence" value="3200"> Long (3 seconds)</label>
+      </div>
       <label class="check"><input type="checkbox" name="bargeIn"> Let me interrupt by talking <span class="hint-inline">(best with headphones, so the microphone doesn't hear the assistant)</span></label>
     </fieldset>
 

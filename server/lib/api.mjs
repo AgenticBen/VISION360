@@ -9,6 +9,8 @@ import {
   newToken, tokenHash, tokenMatches, verifyPassword, parseCookies, staffCookie, clearStaffCookie, STAFF_COOKIE,
 } from "./auth.mjs";
 import { RETENTION_DAYS } from "./store.mjs";
+import { aiEnabled, interpretWithAI, extractWithAI, DEFAULT_MODEL } from "./ai-understanding.mjs";
+import { interpretAnswer, detectGlobal, looksLikeCorrection } from "./understand.mjs";
 
 const MAX_BODY = 16 * 1024;
 
@@ -25,6 +27,28 @@ export async function createApp(opts = {}) {
     store.createStaffUser(env.V360_STAFF_USER, env.V360_STAFF_PASSWORD_HASH);
   }
   const limiter = rateLimiter();
+  const aiFetch = opts.aiFetch || globalThis.fetch;
+
+  // Optional AI help, only where the rules can't tell. Failures fall back silently.
+  async function prepareAi(session, input) {
+    if (!aiEnabled(env) || !input.text || input.choice || input.action) return;
+    const c = dialogue.aiContext(session);
+    const g = detectGlobal(input.text);
+    if (g.repeat || g.help || g.staff || g.end || g.startOver || g.skipSection) return;
+    try {
+      if (c.phase === "opening") {
+        session.__aiExtract = await extractWithAI(env, aiFetch, { questions: c.openQuestions, utterance: input.text });
+        store.audit("system", session.id, "ai_extract", { n: session.__aiExtract.length });
+      } else if (c.phase === "intake" && c.currentQuestion && !c.pending && !looksLikeCorrection(input.text)) {
+        const det = interpretAnswer(input.text, c.currentQuestion, { geography: corpus.geography });
+        if (det.kind !== "unclear") return;
+        const r = await interpretWithAI(env, aiFetch, { question: c.currentQuestion, utterance: input.text, otherQuestions: c.openQuestions.filter((x) => x.id !== c.currentQuestion.id) });
+        if (r) { session.__aiInterp = { ...r, questionId: c.currentQuestion.id }; store.audit("system", session.id, "ai_interpret", { kind: r.kind }); }
+      }
+    } catch (e) {
+      store.audit("system", session.id, "ai_unavailable", { error: String(e.message).slice(0, 80) });
+    }
+  }
   const locks = new Map();
 
   // One turn at a time per session, so a late request can't overwrite a newer one.
@@ -117,6 +141,7 @@ export async function createApp(opts = {}) {
           ok: true, corpusVersion: corpus.version, hashes: corpus.hashes, organizations: corpus.organizations.length,
           policyVersion: POLICY_VERSION, emailTransport: ctx.actions.transportName(), retentionDays: RETENTION_DAYS,
           storage: env.V360_STORAGE || "local",
+          aiUnderstanding: aiEnabled(env) ? { on: true, model: env.V360_AI_MODEL || DEFAULT_MODEL } : { on: false },
         });
       }
 
@@ -164,7 +189,9 @@ export async function createApp(opts = {}) {
               revision: body.revision === undefined ? null : Number(body.revision),
               mode,
             };
+            await prepareAi(s, input);
             const turn = dialogue.handle(s, input);
+            delete s.__aiExtract; delete s.__aiInterp;
             store.saveSession(s);
             // Serverless has no background loop: finish the email job before replying.
             if (turn.actionId && env.V360_INLINE_WORKER !== "off" && env.V360_SERVERLESS) await processQueueSoon();

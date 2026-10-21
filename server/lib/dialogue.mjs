@@ -461,12 +461,14 @@ export function createDialogue(ctx) {
     let lead = [];
     if (!justAsk) {
       const found = extractMany(text, corpus.assessment, { geography: corpus.geography });
+      // Optional AI extraction fills questions the rules didn't catch.
+      for (const a of (session.__aiExtract || [])) if (!found.some((f) => f.questionId === a.questionId)) found.push({ ...a, phrase: "ai", ai: true });
       // Only keep answers whose question would actually be asked, in order.
       for (const f of found) {
         const st = engineState(corpus, answersOf(session), session.state.skippedBlocks);
         const question = q(corpus, f.questionId);
         if (!corpus.engine.shouldAsk(st, question)) continue;
-        setAnswer(session, f.questionId, "answer", f.value, "opening");
+        setAnswer(session, f.questionId, "answer", f.value, f.ai ? "opening (AI-understood)" : "opening");
       }
       const got = answersOf(session);
       if (got.length) {
@@ -579,6 +581,17 @@ export function createDialogue(ctx) {
         if (narrowed.length === 1) interp = { kind: "answer", value: narrowed[0] };
       }
     }
+    const ai = session.__aiInterp;
+    if (interp.kind === "unclear" && ai && ai.questionId === question.id && ai.kind !== "unclear") {
+      const noted = [];
+      for (const o of ai.others || []) {
+        if (answersOf(session).some((a) => a.questionId === o.questionId)) continue;
+        setAnswer(session, o.questionId, "answer", o.value, "volunteered (AI-understood)");
+        noted.push(`${(RECAP_LABEL[o.questionId] || o.questionId).toLowerCase()}: ${optionLabel(q(corpus, o.questionId), o.value)}`);
+      }
+      if (ai.kind === "ambiguous") return clarify(session, question, { kind: "ambiguous", options: ai.options, reason: "I want to be sure I understood" });
+      return acceptAnswer(session, question, { kind: ai.kind, value: ai.value }, "intake (AI-understood)", noted);
+    }
     switch (interp.kind) {
       case "answer":
       case "unknown":
@@ -614,15 +627,16 @@ export function createDialogue(ctx) {
     return noted;
   }
 
-  function acceptAnswer(session, question, interp) {
+  function acceptAnswer(session, question, interp, source = "intake", alsoNoted = []) {
     const st = session.state;
     st.pending = null;
-    setAnswer(session, question.id, interp.kind, interp.value ?? null, "intake");
+    setAnswer(session, question.id, interp.kind, interp.value ?? null, source);
     let ack;
     if (interp.kind === "answer") ack = `Got it. ${RECAP_LABEL[question.id] || "Answer"}: ${optionLabel(question, interp.value)}.`;
     else if (interp.kind === "unknown") ack = "That's fine — I'll note that as not known, not as a no.";
     else if (interp.kind === "declined") ack = "No problem, I'll leave that out.";
     else ack = "Okay, skipping that one.";
+    if (alsoNoted.length) ack += ` I've also noted ${joinList(alsoNoted)}.`;
     return askNext(session, [ack]);
   }
 
@@ -825,7 +839,21 @@ export function createDialogue(ctx) {
     ], { expect: "free" });
   }
 
-  return { handle, greeting, snapshot, speechInterrupted, answersOf, recapPayload };
+  // What the optional AI helper may be asked about right now.
+  function aiContext(session) {
+    const st = session.state;
+    const answered = new Set(answersOf(session).map((a) => a.questionId));
+    const eng = engineState(corpus, answersOf(session), st.skippedBlocks);
+    const open = corpus.assessment.questions.filter((x) => !answered.has(x.id) && corpus.engine.shouldAsk(eng, x));
+    return {
+      phase: st.phase,
+      pending: st.pending ? st.pending.type : null,
+      currentQuestion: st.phase === "intake" && st.currentQuestion ? q(corpus, st.currentQuestion) : null,
+      openQuestions: open,
+    };
+  }
+
+  return { handle, greeting, snapshot, speechInterrupted, answersOf, recapPayload, aiContext };
 }
 
 export function hashPayload(s) {

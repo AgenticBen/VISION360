@@ -16,7 +16,9 @@
   "use strict";
 
   var SETTINGS_KEY = "v360-demo-settings";
-  var DEFAULTS = { textSize: "100", theme: "standard", readAloud: true, rate: "1", bargeIn: false, announce: true };
+  var DEFAULTS = { textSize: "100", theme: "standard", readAloud: true, rate: "1", bargeIn: false, announce: true, voiceName: "", endSilence: "2000" };
+  var RATES = ["0.85", "1", "1.2", "1.4"];
+  var SILENCES = ["1200", "2000", "3200"];
 
   var $ = function (id) { return document.getElementById(id); };
   var el = function (tag, attrs, kids) {
@@ -38,6 +40,8 @@
     try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); } catch (e) {}
     var out = {};
     Object.keys(DEFAULTS).forEach(function (k) { out[k] = s[k] !== undefined ? s[k] : DEFAULTS[k]; });
+    if (RATES.indexOf(String(out.rate)) === -1) out.rate = Number(out.rate) < 1 ? "0.85" : "1";
+    if (SILENCES.indexOf(String(out.endSilence)) === -1) out.endSilence = DEFAULTS.endSilence;
     return out;
   }
   function saveSettings() {
@@ -51,6 +55,60 @@
   var canSpeak = "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
   var canListen = !!SR;
 
+  // ----------------------------------------------------------- voices
+  // Browsers expose the voices installed on the device. Quality varies hugely:
+  // macOS ships novelty voices ("Albert", "Bad News", "Zarvox"…) next to very
+  // natural "Premium"/"Enhanced" ones, and Chrome adds Google network voices.
+  // Rank them so the most natural English voice is chosen by default.
+  var NOVELTY = /^(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|deranged|hysterical|pipe organ|fred|junior|ralph|kathy|grandma|grandpa|rocko|shelley|flo|eddy|reed|sandy)\b/i;
+  var GOOD_NAMES = /(ava|zoe|samantha|allison|evan|nathan|joelle|noelle|serena|susan|tom|nicky|aaron|daniel|karen|moira|tessa|jenny|aria|guy|emma|brian)/i;
+  function voiceScore(v) {
+    var n = v.name || "", sc = 0;
+    if (!/^en/i.test(v.lang || "")) return -100;
+    if (NOVELTY.test(n)) return -50;
+    if (/premium/i.test(n)) sc += 40;
+    if (/enhanced/i.test(n)) sc += 30;
+    if (/natural|neural|online/i.test(n)) sc += 30;
+    if (/^google/i.test(n)) sc += 25;
+    if (GOOD_NAMES.test(n)) sc += 10;
+    if (/^en[-_]US/i.test(v.lang || "")) sc += 5;
+    if (v.default) sc += 2;
+    return sc;
+  }
+  function rankedVoices() {
+    if (!canSpeak) return [];
+    return window.speechSynthesis.getVoices().filter(function (v) { return voiceScore(v) > -50; })
+      .sort(function (a, b) { return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name); });
+  }
+  function currentVoice() {
+    var list = rankedVoices();
+    if (!list.length) return null;
+    for (var i = 0; i < list.length; i++) if (list[i].name === settings.voiceName) return list[i];
+    return list[0];
+  }
+  function fillVoiceSelect() {
+    var sel = $("voice-select");
+    if (!sel) return;
+    var list = rankedVoices();
+    sel.textContent = "";
+    if (!list.length) { sel.appendChild(el("option", { value: "", text: "Default voice" })); $("voice-hint").textContent = "No voices are listed yet. Try again in a moment."; return; }
+    var cur = currentVoice();
+    list.forEach(function (v, i) {
+      var label = v.name + " (" + v.lang + ")" + (i === 0 ? " — recommended" : "");
+      sel.appendChild(el("option", { value: v.name, text: label }));
+    });
+    sel.value = cur ? cur.name : "";
+    var hint = "The most natural voices on this device are listed first.";
+    if (!list.some(function (v) { return /premium|enhanced|natural|neural|google/i.test(v.name); })) {
+      hint += " On a Mac you can add much better voices: System Settings → Accessibility → Spoken Content → System voice → Manage Voices, then download an English \u201cPremium\u201d or \u201cEnhanced\u201d voice (for example Ava or Zoe) and reload this page.";
+    }
+    $("voice-hint").textContent = hint;
+  }
+  if (canSpeak) {
+    try { window.speechSynthesis.onvoiceschanged = fillVoiceSelect; } catch (e) {}
+    setTimeout(fillVoiceSelect, 300);
+  }
+
   var dlg = $("settings");
   var settingsReturnFocus = null;
   function openSettings() {
@@ -59,6 +117,8 @@
     f.theme.value = settings.theme;
     f.readAloud.checked = !!settings.readAloud;
     f.rate.value = settings.rate;
+    f.endSilence.value = settings.endSilence;
+    fillVoiceSelect();
     f.bargeIn.checked = !!settings.bargeIn;
     f.announce.checked = !!settings.announce;
     $("speed-row").hidden = !canSpeak;
@@ -79,6 +139,15 @@
     if (settingsReturnFocus && settingsReturnFocus.focus) settingsReturnFocus.focus();
   });
   $("open-settings").addEventListener("click", openSettings);
+  $("voice-sample").addEventListener("click", function () {
+    if (!canSpeak) return;
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    var u = new SpeechSynthesisUtterance("Hi, I'm the Vision 360 assistant. Tell me a little about what's going on, and I'll help you find the right services.");
+    var v = currentVoice();
+    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "en-US";
+    u.rate = Number(settings.rate) || 1;
+    window.speechSynthesis.speak(u);
+  });
 
   // ------------------------------------------------------------- app state
   var app = {
@@ -91,7 +160,8 @@
     var notes = [];
     if (h.storage === "ephemeral") notes.push("This preview has no permanent database yet, so a conversation can be lost if the server restarts.");
     if (h.emailTransport === "outbox") notes.push("Email isn't connected yet: an emailed plan goes to a test outbox and is not actually sent.");
-    if (notes.length) { var n = $("env-notice"); n.hidden = false; n.textContent = "Preview limits: " + notes.join(" "); }
+    if (h.aiUnderstanding && h.aiUnderstanding.on) notes.push("AI understanding is on: when the assistant can't follow an answer, your words are sent to an AI model (through Vercel AI Gateway) to work out which choice you meant. You still confirm everything before anything is suggested.");
+    if (notes.length) { var n = $("env-notice"); n.hidden = false; n.textContent = "Please note: " + notes.join(" "); }
   }).catch(function () {
     var n = $("env-notice"); n.hidden = false; n.textContent = "The demo server isn't reachable right now. Please try again in a moment.";
   });
@@ -104,7 +174,7 @@
 
   // ---------------------------------------------------------------- status
   var STATUS_TEXT = {
-    connecting: "Connecting…", listening: "Listening — speak when you're ready", thinking: "Thinking…",
+    connecting: "Connecting…", listening: "Listening — take your time; I'll answer when you pause", thinking: "Thinking…",
     speaking: "Speaking — press Stop speaking to interrupt", paused: "Microphone muted", ready: "Ready — type your message",
     disconnected: "Voice disconnected", error: "Problem", ended: "Session ended", waiting: "Waiting for you",
   };
@@ -491,17 +561,7 @@
   var voice = { on: false, muted: false, rec: null, listening: false, speaking: false, speakingTurn: null, finalText: "", pendingLi: null, sendTimer: null, spokenChars: 0, interruptedTurn: null };
 
   function startVoice() {
-    // Tell people plainly when this deployment can't keep data or send email.
-  fetch("/api/health").then(function (r) { return r.json(); }).then(function (h) {
-    var notes = [];
-    if (h.storage === "ephemeral") notes.push("This preview has no permanent database yet, so a conversation can be lost if the server restarts.");
-    if (h.emailTransport === "outbox") notes.push("Email isn't connected yet: an emailed plan goes to a test outbox and is not actually sent.");
-    if (notes.length) { var n = $("env-notice"); n.hidden = false; n.textContent = "Preview limits: " + notes.join(" "); }
-  }).catch(function () {
-    var n = $("env-notice"); n.hidden = false; n.textContent = "The demo server isn't reachable right now. Please try again in a moment.";
-  });
-
-  if (!canListen) { fallbackToText("Talking isn't available in this browser, so I've switched to typing. Your conversation continues below."); return; }
+    if (!canListen) { fallbackToText("Talking isn't available in this browser, so I've switched to typing. Your conversation continues below."); return; }
     setStatus("connecting", "Asking for your microphone…");
     var gum = navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? navigator.mediaDevices.getUserMedia({ audio: true }) : Promise.resolve(null);
     gum.then(function (stream) {
@@ -509,7 +569,7 @@
       if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
       voice.on = true; voice.muted = false;
       updateModeUi();
-      if (!voice.speaking) afterAssistant();
+      if (!voice.speaking) afterAssistant(); else setStatus("speaking");
     }).catch(function (err) {
       var name = err && err.name;
       var why = name === "NotAllowedError" || name === "SecurityError" ? "Microphone permission was not given" :
@@ -534,7 +594,9 @@
     var r = new SR();
     r.lang = "en-US";
     r.interimResults = true;
-    r.continuous = false;
+    // Keep listening through short pauses; the end of the person's turn is
+    // decided below by a silence timer (Settings: wait 1, 2 or 3 seconds).
+    r.continuous = true;
     r.maxAlternatives = 1;
     r.onresult = function (ev) {
       var interim = "", fin = "";
@@ -546,7 +608,9 @@
         stopSpeaking("barge-in");
       }
       if (fin) voice.finalText = (voice.finalText + " " + fin).trim();
+      voice.interimText = interim.trim();
       showPending((voice.finalText + " " + interim).trim());
+      armSilenceTimer();
     };
     r.onerror = function (ev) {
       if (ev.error === "no-speech" || ev.error === "aborted") return;
@@ -561,7 +625,21 @@
     };
     r.onend = function () {
       voice.listening = false;
-      var text = voice.finalText.trim();
+      clearSilenceTimer();
+      // If the browser ended the capture mid-sentence (it does after long
+      // stretches), keep what we have and carry on listening rather than
+      // sending half an answer — unless the person's turn is over.
+      if (!voice.turnOver && voice.on && !voice.muted && !app.ended && app.mode === "voice" && (voice.finalText || voice.interimText)) {
+        if (voice.interimText) voice.finalText = (voice.finalText + " " + voice.interimText).trim();
+        voice.interimText = "";
+        var keep = voice.finalText;
+        setTimeout(function () { if (!voice.listening && voice.on && !voice.muted) { startListening(true); voice.finalText = keep; showPending(keep); armSilenceTimer(); } }, 150);
+        return;
+      }
+      voice.turnOver = false;
+      if (voice.interimText) voice.finalText = (voice.finalText + " " + voice.interimText).trim();
+      voice.interimText = "";
+      var text = voice.finalText.replace(/\s+/g, " ").trim();
       voice.finalText = "";
       if (text) {
         clearPending();
@@ -577,11 +655,29 @@
     return r;
   }
 
+  // End of turn: once the person has said something, wait for a pause of
+  // settings.endSilence ms with no new words, then finish the turn.
+  function clearSilenceTimer() { if (voice.silenceTimer) { clearTimeout(voice.silenceTimer); voice.silenceTimer = null; } }
+  function armSilenceTimer() {
+    clearSilenceTimer();
+    if (!(voice.finalText || voice.interimText)) return;
+    $("done-talking").hidden = false;
+    voice.silenceTimer = setTimeout(endTurn, Number(settings.endSilence) || 2000);
+  }
+  function endTurn() {
+    clearSilenceTimer();
+    if (!voice.listening) return;
+    voice.turnOver = true;
+    $("done-talking").hidden = true;
+    try { voice.rec.stop(); } catch (e) {}  // stop() (not abort) delivers the last words, then onend sends them
+  }
+  $("done-talking").addEventListener("click", endTurn);
+
   function showPending(text) {
     if (!text) return;
     if (!voice.pendingLi) {
       voice.pendingLi = addMessage("you", text, { pending: true, voice: true });
-      voice.pendingLi.querySelector(".who").textContent = "You (still listening — not sent yet)";
+      voice.pendingLi.querySelector(".who").textContent = "You (still listening — I'll answer when you pause)";
     } else {
       voice.pendingLi.querySelector("p").textContent = text;
     }
@@ -590,12 +686,12 @@
     if (voice.pendingLi) { voice.pendingLi.remove(); voice.pendingLi = null; }
   }
 
-  function startListening() {
+  function startListening(resume) {
     if (!voice.on || voice.muted || voice.listening || app.ended) return;
     if (voice.speaking && !settings.bargeIn) return;
     try {
       voice.rec = voice.rec || makeRecognizer();
-      voice.finalText = "";
+      if (!resume) { voice.finalText = ""; voice.interimText = ""; voice.turnOver = false; }
       voice.rec.start();
       voice.listening = true;
       if (!voice.speaking) setStatus("listening");
@@ -603,6 +699,9 @@
   }
 
   function stopListening(keepOn) {
+    clearSilenceTimer();
+    $("done-talking").hidden = true;
+    voice.turnOver = true;  // an abort is never "mid-sentence": don't auto-resume
     if (voice.rec && voice.listening) { try { voice.rec.abort(); } catch (e) {} }
     voice.listening = false;
     clearPending();
@@ -631,7 +730,8 @@
         return;
       }
       var u = new SpeechSynthesisUtterance(chunks[i].trim());
-      u.lang = "en-US";
+      var v = currentVoice();
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "en-US";
       u.rate = Number(settings.rate) || 1;
       u.onend = function () { voice.spokenChars += chunks[i].length; i++; next(); };
       u.onerror = function () { i++; next(); };
@@ -679,17 +779,7 @@
     $("message").focus();
   });
   $("to-voice").addEventListener("click", function () {
-    // Tell people plainly when this deployment can't keep data or send email.
-  fetch("/api/health").then(function (r) { return r.json(); }).then(function (h) {
-    var notes = [];
-    if (h.storage === "ephemeral") notes.push("This preview has no permanent database yet, so a conversation can be lost if the server restarts.");
-    if (h.emailTransport === "outbox") notes.push("Email isn't connected yet: an emailed plan goes to a test outbox and is not actually sent.");
-    if (notes.length) { var n = $("env-notice"); n.hidden = false; n.textContent = "Preview limits: " + notes.join(" "); }
-  }).catch(function () {
-    var n = $("env-notice"); n.hidden = false; n.textContent = "The demo server isn't reachable right now. Please try again in a moment.";
-  });
-
-  if (!canListen) { alertNow("Talking isn't available in this browser."); return; }
+    if (!canListen) { alertNow("Talking isn't available in this browser."); return; }
     app.mode = "voice"; updateModeUi();
     api("POST", "/api/session/" + app.sessionId + "/event", { type: "mode_switch", mode: "voice" }).then(function (j) { if (j.state) app.state = j.state; }).catch(function () {});
     addMessage("bot", "Switched to talking. Everything so far is kept.");
