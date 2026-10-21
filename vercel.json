@@ -22,6 +22,48 @@
           "value": "noindex, nofollow, noarchive, nosnippet, noimageindex"
         }
       ]
+    },
+    {
+      "source": "/demo/(.*)",
+      "headers": [
+        {
+          "key": "Permissions-Policy",
+          "value": "microphone=(self), camera=()"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
     }
-  ]
+  ],
+  "rewrites": [
+    {
+      "source": "/demo",
+      "destination": "/demo/index.html"
+    },
+    {
+      "source": "/staff",
+      "destination": "/staff/index.html"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/v360?__path=/api/:path*"
+    }
+  ],
+  "functions": {
+    "api/v360.mjs": {
+      "includeFiles": "{site/data/**,site/quiz-engine.js,server/**}",
+      "maxDuration": 30
+    }
+  }
 }

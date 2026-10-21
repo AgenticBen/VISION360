@@ -8,7 +8,10 @@
     "build-public": "node scripts/build-public.mjs",
     "smoke": "node scripts/assessment-smoke.mjs",
     "check": "npm run data && npm run validate && npm run smoke",
-    "data": "node scripts/build-public.mjs"
+    "data": "node scripts/build-public.mjs",
+    "demo": "node --no-warnings server/dev-server.mjs",
+    "test:demo": "node --no-warnings --test tests/*.test.mjs",
+    "staff:create": "node --no-warnings server/create-staff.mjs"
   },
   "_comment": "There is deliberately NO \"build\" script. This site is plain static files and scripts/ is excluded from the deployment by .vercelignore, so a script named \"build\" makes Vercel try to run something it does not have. Data files under site/data/ are generated locally with \"npm run data\" and committed."
 }

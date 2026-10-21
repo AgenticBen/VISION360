@@ -23,6 +23,15 @@ Search is available above all three views. It matches names, aliases, services, 
 
 The persistent feedback button opens an accessible dialog. Feedback is handed to the visitor's email app, addressed to ben@agenticarc.ai, for review; the visitor must press Send in that app. There is a copy fallback. This static version does not store submissions or provide server-side delivery confirmation. It includes neither search terms nor assessment answers in feedback. Feedback never edits a listing automatically.
 
+## Voice and chat demo
+
+A demonstration of talking or typing to get referrals lives at `/demo`, with a protected staff queue at `/staff`. It reads this dataset and the existing assessment engine without changing them. See `docs/voice-chat-demo.md`.
+
+```sh
+npm run demo        # http://localhost:8360/demo
+npm run test:demo
+```
+
 ## Updating records
 
 Edit `data/organizations.json`, then run `npm run check`. The data build generates `site/data/organizations.json`, which is the only organization dataset deployed. Commit both copies. Keep organization IDs and parent/program relationships stable. Clearly distinguish unknown requirements from confirmed absence of requirements. Preserve clinical-service limitations and published referral paths.

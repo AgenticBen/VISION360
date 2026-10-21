@@ -1,0 +1,25 @@
+// Vercel function for the Vision 360 CONNECT demo API. All /api/* requests are
+// rewritten here (see vercel.json) and handled by the same code as the local
+// server. Without a hosted database it uses SQLite in /tmp, which is
+// TEMPORARY: the page says so on screen.
+import { createApp } from "../server/lib/api.mjs";
+
+let appPromise = null;
+
+export default async function handler(req, res) {
+  if (!appPromise) {
+    appPromise = createApp({
+      dbPath: process.env.V360_DB_PATH || "/tmp/v360-demo.sqlite",
+      env: { V360_OUTBOX_DIR: "/tmp/v360-outbox", ...process.env, V360_SERVERLESS: "1", V360_STORAGE: process.env.V360_DB_PATH ? "configured" : "ephemeral" },
+    });
+  }
+  const app = await appPromise;
+  const u = new URL(req.url, "http://localhost");
+  const original = u.searchParams.get("__path");
+  if (original) {
+    u.searchParams.delete("__path");
+    const qs = u.searchParams.toString();
+    req.url = original + (qs ? "?" + qs : "");
+  }
+  return app.handle(req, res);
+}

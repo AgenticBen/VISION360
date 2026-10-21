@@ -24,3 +24,7 @@
 # .env.local holds a live VERCEL_OIDC_TOKEN. Git ignores it; Vercel would not.
 .env
 .env.*
+
+# Demo server private data (sessions, test outbox)
+/.data/
+/tests/
