@@ -53,7 +53,7 @@ test("AI maps a free-form answer the rules can't parse, and it is only proposed"
   assert.equal(r.state.answers.find((a) => a.questionId === "county").value, "mecklenburg");
   assert.equal(r.state.results, null, "no suggestions without the recap");
   assert.ok(log.length >= 1);
-  assert.equal(log[0].body.model, "anthropic/claude-haiku-5.5");
+  assert.equal(log[0].body.model, "google/gemini-2.5-flash");
 });
 
 test("AI cannot introduce a code that doesn't exist", async () => {

@@ -12,7 +12,8 @@
 // If the call fails or is slow, the rule-based parser's result stands.
 
 const GATEWAY_URL = "https://ai-gateway.vercel.sh/v1/chat/completions";
-export const DEFAULT_MODEL = "anthropic/claude-haiku-5.5";
+// Gemini 2.5 Flash works on the free AI Gateway tier; Anthropic models need paid credits.
+export const DEFAULT_MODEL = "google/gemini-2.5-flash";
 
 export function aiEnabled(env) {
   return env.V360_AI_UNDERSTANDING === "on" && !!(env.AI_GATEWAY_API_KEY || env.VERCEL_OIDC_TOKEN);
@@ -42,7 +43,8 @@ async function callModel(env, fetchImpl, messages) {
   const res = await fetchImpl(GATEWAY_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: env.V360_AI_MODEL || DEFAULT_MODEL, messages, temperature: 0, max_tokens: 400 }),
+    // Generous limit: some models spend part of it reasoning before they answer.
+    body: JSON.stringify({ model: env.V360_AI_MODEL || DEFAULT_MODEL, messages, temperature: 0, max_tokens: Number(env.V360_AI_MAX_TOKENS || 2000) }),
     signal: AbortSignal.timeout(Number(env.V360_AI_TIMEOUT_MS || 6000)),
   });
   if (!res.ok) throw new Error("AI gateway " + res.status);
