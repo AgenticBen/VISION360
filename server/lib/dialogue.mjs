@@ -802,6 +802,13 @@ export function createDialogue(ctx) {
     }
     const yn = yesNo(text);
     const done = /that's all|that is all|i'm done|im done|all done|nothing else|i'm good|im good|that's it|no thanks|no thank you|we're done|finished/.test(n);
+    // "Yes, I live in Gaston" while the email question is open: that changes an
+    // answer, so the old suggestions must not carry on as if nothing happened.
+    if (yn !== "no" && !done && !strictConfirm(text)) {
+      const corr = tryCorrection(session, text, { requireCue: false });
+      if (corr && corr.applied) return afterCorrection(session, corr.ack);
+      if (corr) return corr;
+    }
     switch (st.wrapStep) {
       case "email":
         if (yn === "yes") return beginEmail(session);
@@ -862,7 +869,8 @@ export function createDialogue(ctx) {
         return reply(session, [`Okay, ${newAddr}. That's ${spellEmail(newAddr)}. Is that right?`], { expect: "yes_no", speech: `Okay. ${spellEmail(newAddr)}. Is that right?` });
       }
       if (yn === "no") { st.phase = "email_address"; st.email = { step: "address" }; return reply(session, ["Okay, let's try again. What's the email address? Typing it in the box below works too."], { expect: "email" }); }
-      if (yn !== "yes") return reply(session, [`Is ${st.email.address} right? Just say yes or no.`], { expect: "yes_no" });
+      // Only a clear yes: "yes but it's dot org" or "yes, wait" is not.
+      if (!strictConfirm(text)) return reply(session, [`Is ${st.email.address} exactly right? Say yes, or tell me the correct address.`], { expect: "yes_no" });
       const allowed = ctx.actions.recipientAllowed(st.email.address);
       if (!allowed.ok) return leaveEmail(session, [allowed.reason, "Everything is still on the screen."]);
       const plan = buildPlan(corpus, results, { name: st.names.caller });
@@ -879,6 +887,14 @@ export function createDialogue(ctx) {
         st.email.consentInterrupted = false;
         const consent = `Before I send anything, let me finish that question, since it was cut off. I'll send one email to ${st.email.address} with ${st.email.matchCount} suggested services and their contact details, and nothing personal about you. Shall I send it?`;
         return reply(session, [consent], { expect: "consent", consent: { recipient: st.email.address, matchCount: st.email.matchCount, payloadHash: st.email.payloadHash, revision: session.revision } });
+      }
+      // "Yes, send it to bob at example dot com": a different address must be
+      // read back and confirmed before anything is sent.
+      const otherAddr = parseEmail(text);
+      if (otherAddr && otherAddr !== st.email.address) {
+        st.email = { step: "confirm_address", address: otherAddr };
+        st.phase = "email_confirm_address";
+        return reply(session, [`Okay, ${otherAddr} instead. That's ${spellEmail(otherAddr)}. Is that right?`], { expect: "yes_no", speech: `Okay. ${spellEmail(otherAddr)}. Is that right?` });
       }
       if (!strictConfirm(text)) {
         if (yn === "no") return leaveEmail(session, ["Okay, I won't send it."]);

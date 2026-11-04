@@ -19,6 +19,7 @@ export class SessionConflict extends Error {
   constructor() {
     super("This conversation was updated somewhere else at the same moment. Please try that again.");
     this.status = 409;
+    this.code = "conflict";
   }
 }
 
@@ -67,9 +68,10 @@ export function createSessionWork({ sessionId, answers, recommendations, actions
     },
     saveRecommendation(revision, corpusVersion, result) {
       const id = randomUUID();
+      const saved = JSON.parse(JSON.stringify(result)); // a snapshot, not a live reference
       st.recommendations.forEach((r) => { r.stale = 1; });
-      st.recommendations.push({ id, revision, corpus_version: corpusVersion, stale: 0, created_at: nowIso(), result });
-      op("saveRecommendation", revision, corpusVersion, result, id);
+      st.recommendations.push({ id, revision, corpus_version: corpusVersion, stale: 0, created_at: nowIso(), result: saved });
+      op("saveRecommendation", revision, corpusVersion, saved, id);
       return id;
     },
     markRecommendationsStale() {

@@ -261,7 +261,7 @@
     return fetch(path, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, credentials: "same-origin" })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (j) {
-          if (!r.ok) { var e = new Error(j.error || ("Server error " + r.status)); e.status = r.status; throw e; }
+          if (!r.ok) { var e = new Error(j.error || ("Server error " + r.status)); e.status = r.status; e.code = j.code || null; throw e; }
           return j;
         });
       });
@@ -311,9 +311,13 @@
         pump();
       }).catch(function (e) {
         if (attempt === 0 && (!e.status || e.status >= 500)) { attempt++; return setTimeout(go, 800); } // same clientTurnId: safe to retry
+        // A save collided with another save of this conversation: nothing was
+        // stored, so sending the same turn again is safe.
+        if (e.code === "conflict" && attempt < 2) { attempt++; return setTimeout(go, 300); }
         app.busy = false;
         app.queue = [];
-        var msg = e.status === 409 ? "This session has ended." :
+        var msg = e.code === "conflict" ? "Your conversation was busy, so that message wasn't saved. Please send it again." :
+          e.status === 409 ? "This session has ended." :
           (e.status === 404 || e.status === 410) ? "Sorry — the demo server lost this conversation. The hosted demo doesn't have a permanent database yet, so this can happen. Please press End session, then start a new one." :
           "I couldn't reach the server, so that message wasn't processed. Your earlier answers are safe. Please try sending it again.";
         addMessage("bot", msg);

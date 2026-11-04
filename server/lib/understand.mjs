@@ -61,7 +61,7 @@ const GLOBAL = {
   declined: ["rather not say", "rather not answer", "prefer not to say", "prefer not to answer", "don't want to say", "do not want to say", "don't want to answer", "decline", "none of your business", "that's private", "that is private", "keep that private"],
   skip: ["skip", "pass", "next question", "move on", "skip it", "skip this"],
   skipSection: ["skip this section", "skip the section", "skip that section", "skip all of these", "skip these questions", "skip the whole section", "skip everything"],
-  unknown: ["don't know", "do not know", "not sure", "no idea", "dunno", "unsure", "can't say", "cannot say", "i'm not certain"],
+  unknown: ["don't know", "do not know", "not sure", "no idea", "no clue", "dunno", "unsure", "can't say", "cannot say", "i'm not certain", "not certain", "don't remember", "do not remember", "can't remember", "cannot remember", "can't recall", "no recollection", "not that i know"],
   staff: ["talk to a person", "speak to a person", "talk to someone real", "real person", "a human", "talk to staff", "speak to staff", "staff member", "someone call me", "call me back", "speak to someone at lions", "talk to a navigator", "need a person"],
   startOver: ["start over", "start again", "begin again", "restart"],
   end: ["end the session", "end session", "goodbye", "good bye", "i'm done", "that's all", "hang up", "end the conversation"],
@@ -70,10 +70,23 @@ const GLOBAL = {
   results: ["show results", "see results", "my suggestions", "what do you suggest", "recommendations", "show me the list"],
 };
 
+const END_FILLER = new Set(["no", "nope", "thanks", "thank", "you", "so", "okay", "ok", "bye", "for", "now", "then", "really", "i", "think", "please", "and"]);
+
+// True when the text is made only of these phrases plus filler words.
+function onlyPhrases(norm, phrases, filler) {
+  let n = norm;
+  const sorted = phrases.map((p) => normalize(p)).filter((p) => p.trim()).sort((a, b) => b.length - a.length);
+  for (const p of sorted) while (n.includes(p)) n = n.replace(p, " ");
+  return n.trim().split(/\s+/).filter((w) => w && !filler.has(w)).length === 0;
+}
+
 export function detectGlobal(text) {
   const n = normalize(text);
   const hits = {};
   for (const [k, list] of Object.entries(GLOBAL)) if (anyOf(n, list)) hits[k] = true;
+  // "that's all" ends the session only when that is all the person said
+  // ("no, that's all, thanks"), never inside "that's all correct".
+  if (hits.end && !onlyPhrases(n, GLOBAL.end, END_FILLER)) delete hits.end;
   // "skip this section" is more specific than "skip".
   if (hits.skipSection) delete hits.skip;
   if (hits.noEmail) delete hits.email;
@@ -85,10 +98,11 @@ const YES = ["yes", "yeah", "yep", "yup", "yes please", "correct", "that's right
 const NO = ["no", "nope", "nah", "not really", "never", "i don't", "i do not", "they don't", "he doesn't", "she doesn't", "not at all", "negative", "don't", "do not", "wrong", "that's wrong", "not right", "incorrect", "cancel", "no thanks", "no thank you"];
 
 export function yesNo(text) {
-  const n = normalize(text);
-  const y = anyOf(n, YES);
-  // "not sure" contains "not" but is not a no.
-  const stripped = n.replace(/ not sure /g, " ").replace(/ don't know /g, " ").replace(/ do not know /g, " ");
+  // "not sure" contains "sure" and "no idea" contains "no", but neither is a
+  // yes or a no: take every "don't know" phrase out before looking.
+  let stripped = normalize(text);
+  for (const p of GLOBAL.unknown.map((x) => normalize(x))) while (stripped.includes(p)) stripped = stripped.replace(p, " ");
+  const y = anyOf(stripped, YES);
   const no = anyOf(stripped, NO);
   if (y && !no) return "yes";
   if (no && !y) return "no";
@@ -99,14 +113,18 @@ export function yesNo(text) {
 // Strict confirmation used for the final recap and action authorisation:
 // a short, clear yes with no correction attached. "Yes but change the county"
 // is not a confirmation.
+//
+// It must be a BARE yes: only yes-words and filler ("yes, that's right",
+// "yep, sounds good"). Anything else ("yes I'm 70", "yes but it's dot org",
+// "I do have an eye doctor", "yes, wait") is new information or a hesitation,
+// so it is never taken as confirmation.
+const CONFIRM_FILLER = new Set(["that's", "thats", "that", "is", "it's", "its", "it", "all", "good", "sounds", "looks", "please", "thanks", "thank", "you", "ma'am", "maam", "sir", "so", "well", "oh", "um", "uh", "ah", "just", "everything", "great", "perfect", "totally", "really", "very", "much", "the", "summary", "fine", "and", "send"]);
+
 export function strictConfirm(text) {
   const n = normalize(text);
-  const words = n.trim().split(" ").filter(Boolean);
-  const yn = yesNo(text);
-  if (yn !== "yes") return false;
-  const correctionWords = ["but", "except", "change", "actually", "wrong", "not", "instead", "although", "however", "wait"];
-  if (words.some((w) => correctionWords.includes(w))) return false;
-  return words.length <= 12;
+  if (yesNo(text) !== "yes") return false;
+  if (n.trim().split(" ").filter(Boolean).length > 12) return false;
+  return onlyPhrases(n, YES, CONFIRM_FILLER);
 }
 
 // ---------------------------------------------------------------- options
@@ -173,6 +191,39 @@ function ordinalChoice(n, q) {
 }
 
 // Special handling for questions where people answer with a number or a date.
+// All numbers in the text, digits or words ("13 or 14", "between 50 and 60").
+function allNumbers(norm) {
+  const out = (norm.match(/\b\d{1,3}\b/g) || []).map(Number);
+  const words = norm.trim().split(" ");
+  for (let i = 0; i < words.length; i++) {
+    const v = NUMBER_WORDS[words[i]];
+    if (v === undefined || words[i] === "one") continue;
+    const next = NUMBER_WORDS[words[i + 1]];
+    if (v >= 20 && next !== undefined && next < 10) { out.push(v + next); i++; } else out.push(v);
+  }
+  return out;
+}
+
+const BAND_EDGES = [[0, 2, "under_3"], [3, 13, "3_to_13"], [14, 21, "14_to_21"], [22, 54, "22_to_54"], [55, 120, "55_plus"]];
+const bandOf = (age) => (BAND_EDGES.find(([lo, hi]) => age >= lo && age <= hi) || [])[2] || null;
+
+// "under 55", "over 50", "13 or 14", "my mom is 80 but I'm 50". Returns
+//   { bands: [...] } when the words allow more than one age band (ask), or
+//   { band } when an open range still lands in exactly one band ("over 60").
+// null means the plain number can be used as said.
+export function ageAmbiguity(n) {
+  if (/\b(month|months|week|weeks)\b/.test(n)) return null;
+  const nums = allNumbers(n);
+  if (!nums.length) return null;
+  const spread = (ages) => [...new Set(ages.filter((a) => a >= 0 && a <= 120).map(bandOf).filter(Boolean))];
+  let bands = null;
+  if (nums.length > 1) bands = spread(nums);
+  else if (/ (under|below|younger than|less than|almost|nearly|not quite) /.test(n)) bands = spread([nums[0] - 1, nums[0] - 5, nums[0] - 15]);
+  else if (/ (over|above|older than|more than|at least) /.test(n)) bands = spread([nums[0] + 1, nums[0] + 5, nums[0] + 15]);
+  if (!bands) return null;
+  return bands.length > 1 ? { bands } : { band: bands[0] };
+}
+
 function ageBand(n) {
   const age = findNumber(n);
   if (age === null) return null;
@@ -190,6 +241,12 @@ function ageBand(n) {
 // can pin it.
 function examRecency(n, today) {
   const year = today.getFullYear();
+  // "not this year", "not recently", "hasn't been in the last year": a
+  // negation flips the meaning, so ask rather than guess either way.
+  if (/ (not|never|hasn't|haven't|wasn't|didn't|isn't|no) /.test(n) && / (year|recent|recently|month|months|lately) /.test(n)) {
+    return { ambiguous: true, reason: "I want to be sure which side of a year that was" };
+  }
+  if (/ less than (two|2|a couple of|three|3|\d+) years /.test(n)) return { ambiguous: true, reason: "that could be more or less than a year ago" };
   // Clear relative phrases first: "within the last year" contains "last year".
   if (/ (within|in) the (last|past) (year|twelve months|12 months) | less than a year | (earlier )?this year | under a year /.test(n)) return { value: "within_year" };
   if (/ (more than|over) a year | (more than|over) (one|1) year | (several|a few|two|three|\d+) years (ago|back) /.test(n)) return { value: "more_than_year" };
@@ -248,8 +305,17 @@ export function interpretAnswer(text, q, ctx = {}) {
 
   if (g.declined && (q.sensitive || q.skippable)) return { kind: "declined" };
 
+  // "no idea", "not sure", "I don't remember": the person doesn't know. Check
+  // this before yes/no, so "no idea" is never a no and "not sure" never a yes.
+  if (g.unknown && !matchOptions(n, q, { distinctiveOnly: true }).some((m) => m.value !== "not_sure" && m.value !== "never_or_unknown")) {
+    return { kind: "unknown", value: notSure || null };
+  }
+
   // Question-specific parsers first.
   if (q.id === "age_band") {
+    const amb = ageAmbiguity(n);
+    if (amb && amb.bands) return { kind: "ambiguous", options: amb.bands, reason: "I heard more than one possible age" };
+    if (amb && amb.band) return { kind: "answer", value: amb.band, phrase: "age", detail: null };
     const band = ageBand(n);
     const num = findNumber(n);
     if (band) return { kind: "answer", value: band, phrase: "age", detail: num !== null && !/\b(month|months|week|weeks)\b/.test(n) ? String(num) : null };

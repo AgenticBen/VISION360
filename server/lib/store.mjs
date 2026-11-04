@@ -144,6 +144,8 @@ export function openStore(file) {
   // Migration: a save counter, so two saves of the same session can't silently overwrite each other.
   try { db.exec("ALTER TABLE sessions ADD COLUMN version INTEGER NOT NULL DEFAULT 0"); } catch (e) { /* already there */ }
   const q = (sql) => db.prepare(sql);
+  const bumpSessionOf = (actionId) =>
+    q(`UPDATE sessions SET version=version+1 WHERE id=(SELECT session_id FROM actions WHERE id=?)`).run(actionId);
 
   const store = {
     db,
@@ -270,11 +272,16 @@ export function openStore(file) {
       if (!row) return null;
       const lease = new Date(Date.now() + leaseMs).toISOString();
       const ch = q(`UPDATE actions SET status='running', lease_until=?, attempts=attempts+1, updated_at=? WHERE id=? AND status IN ('queued','retrying')`).run(lease, t, row.id).changes;
+      if (ch) bumpSessionOf(row.id);
       return ch ? q(`SELECT * FROM actions WHERE id=?`).get(row.id) : null;
     },
+    // Used by the email worker. Any change it makes also bumps the session's
+    // save counter, so a turn that loaded the session before the change is
+    // refused (409) and retried on fresh data instead of saving stale state.
     updateAction(id, fields) {
       const cols = Object.keys(fields);
       q(`UPDATE actions SET ${cols.map((c) => c + "=?").join(", ")}, updated_at=? WHERE id=?`).run(...cols.map((c) => fields[c]), nowIso(), id);
+      bumpSessionOf(id);
     },
     cancelStaleActions(sessionId, revision) {
       return q(`UPDATE actions SET status='cancelled', error='Answers changed after this was authorised', updated_at=? WHERE session_id=? AND revision < ? AND status IN ('prepared','awaiting_authorization','queued','retrying')`)

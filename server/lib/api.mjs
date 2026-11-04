@@ -264,7 +264,7 @@ export async function createApp(opts = {}) {
     } catch (e) {
       const status = e.status || 500;
       if (status === 500) console.error(e);
-      return send(res, status, { error: status === 500 ? "Something went wrong on the server. Nothing was sent or submitted." : e.message });
+      return send(res, status, { error: status === 500 ? "Something went wrong on the server. Nothing was sent or submitted." : e.message, ...(e.code ? { code: e.code } : {}) });
     }
   }
 
