@@ -8,14 +8,9 @@ import { createHash } from "node:crypto";
 import { makeApp, call, startSession, talker } from "./helpers.mjs";
 import { hashPassword } from "../server/lib/auth.mjs";
 
-const BASELINE = {
-  "site/data/organizations.json": "9bd5c2e78e33c689e4d0965fc15a6d6fa88e5413b7c03c83dc46d449962dccc9",
-  "data/organizations.json": "9bd5c2e78e33c689e4d0965fc15a6d6fa88e5413b7c03c83dc46d449962dccc9",
-  "site/data/assessment.json": "1c4756a88d537928b6a14554cd2698b4fae9a4b95d223c6fa2e2188d963f5d0d",
-  "site/data/geography.json": "a30bcf37769e510a72a669f557b8c7923e4a77376cfd109eba3faa09be4db905",
-  "site/data/pathways.json": "5c514ef541ffd43d677a26478c37946bba34e22229ab7449892ba4855f67b6f0",
-  "site/quiz-engine.js": "32645aec71fafdcb4123c34e0573bd261b8bde2b45c5d0e0dc07d349012ffd55",
-};
+// The data and rules this demo runs on are recorded in data/corpus.lock.json.
+// Changing them is fine when deliberate: `npm run lock`, review, commit.
+const LOCK = JSON.parse(readFileSync(new URL("../data/corpus.lock.json", import.meta.url)));
 
 // Fictional personas (from the PRD scenarios): an opening sentence, then what
 // the person says to each question if it is asked. The driver answers whatever
@@ -62,10 +57,10 @@ async function toResults(app, persona, mode = "text") {
   return { s, say, r: done };
 }
 
-test("source data and rules are unchanged (hash check)", () => {
-  for (const [file, hash] of Object.entries(BASELINE)) {
+test("data and rules match the reviewed corpus lock", () => {
+  for (const [file, hash] of Object.entries(LOCK.files)) {
     const got = createHash("sha256").update(readFileSync(new URL("../" + file, import.meta.url))).digest("hex");
-    assert.equal(got, hash, file + " changed");
+    assert.equal(got, hash, `${file} changed since the last lock. If intended, run \`npm run lock\` and review the golden routing output.`);
   }
 });
 

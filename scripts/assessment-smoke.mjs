@@ -77,7 +77,7 @@ check("there is a first question", !!first, "assessment produced none");
 // Nothing answered: no ranking signal, and still every record present.
 const empty = run({});
 check("no answers ranks nothing above zero", empty.ranked.every((r) => r.points === 0));
-check("no answers still ranks all 96", empty.ranked.length === orgs.length);
+check(`no answers still ranks all ${orgs.length}`, empty.ranked.length === orgs.length);
 
 // A veteran should surface VA routes.
 const vet = run({ veteran: "yes" });
