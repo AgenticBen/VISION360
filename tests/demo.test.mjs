@@ -129,6 +129,76 @@ test("no personalised matching before an explicit recap confirmation", async () 
   void s;
 });
 
+// Someone with no eye doctor, used to check that a correction at the summary
+// is never mistaken for "yes, that's right".
+const NO_EYE_DOCTOR = {
+  opening: "just ask me questions",
+  section: "skip this section",
+  answers: { actor: "myself", county: "Charlotte", goals: "reading", age_band: "60", hearing_loss: "no", eye_doctor: "no", eye_exam_recency: "within the last year", insurance: "Medicare", veteran: "no" },
+};
+const eyeDoctor = (r) => r.state.answers.find((a) => a.questionId === "eye_doctor").value;
+
+test("a correction that sounds like yes is applied, not taken as confirmation", async () => {
+  const app = await makeApp();
+  const { say, r } = await runPersona(app, NO_EYE_DOCTOR);
+  assert.equal(r.state.phase, "recap");
+  assert.equal(eyeDoctor(r), "none");
+  // "I do ..." contains a yes-word, but it names an answer: it is a correction.
+  // The wording isn't a clear yes/no, so the eye-doctor question is asked again.
+  const c = await say("I do have an eye doctor", { revision: r.state.revision });
+  assert.equal(c.state.results, null, "no suggestions from a correction");
+  assert.match(c.turn.text, /eye doctor/i, "it asks about the eye doctor again");
+  const fixed = await say("yes", { revision: c.state.revision });
+  assert.equal(eyeDoctor(fixed), "has", "the answer was changed");
+  assert.equal(fixed.state.phase, "recap", "the new summary is read back");
+  assert.equal(fixed.state.results, null, "still nothing suggested until the summary is confirmed");
+  const done = await say("yes", { revision: fixed.state.revision });
+  assert.equal(done.state.phase, "results");
+});
+
+test("after 'what should I change?', the same correction is applied too", async () => {
+  const app = await makeApp();
+  const { say, r } = await runPersona(app, NO_EYE_DOCTOR);
+  const ask = await say("no", { revision: r.state.revision });
+  assert.match(ask.turn.text, /What should I change/);
+  const c = await say("I do have an eye doctor", { revision: ask.state.revision });
+  assert.equal(c.state.results, null, "no suggestions from a correction");
+  assert.match(c.turn.text, /eye doctor/i, "it asks about the eye doctor again");
+  const fixed = await say("yes", { revision: c.state.revision });
+  assert.equal(eyeDoctor(fixed), "has", "the answer was changed");
+  assert.equal(fixed.state.results, null);
+});
+
+test("a correction with a clear answer is applied straight away", async () => {
+  const app = await makeApp();
+  const { say, r } = await runPersona(app, NO_EYE_DOCTOR);
+  const c = await say("yes I have an eye doctor", { revision: r.state.revision });
+  assert.equal(c.state.results, null, "not taken as confirmation");
+  assert.equal(eyeDoctor(c), "has");
+  assert.equal(c.state.phase, "recap");
+});
+
+test("after 'what should I change?', a bare yes reads the summary back instead of confirming", async () => {
+  const app = await makeApp();
+  const { say, r } = await runPersona(app, NO_EYE_DOCTOR);
+  const ask = await say("no", { revision: r.state.revision });
+  const y = await say("yes", { revision: ask.state.revision });
+  assert.equal(y.state.results, null, "an unrelated yes does not confirm");
+  assert.equal(y.state.phase, "recap");
+  assert.match(y.turn.text, /sound right/i, "the summary is offered again");
+  const done = await say("yes", { revision: y.state.revision });
+  assert.equal(done.state.phase, "results", "a yes to the re-read summary confirms");
+});
+
+test("a plain yes at the summary still confirms", async () => {
+  const app = await makeApp();
+  const { say, r } = await runPersona(app, NO_EYE_DOCTOR);
+  for (const words of ["yes that's right"]) {
+    const done = await say(words, { revision: r.state.revision });
+    assert.equal(done.state.phase, "results", words);
+  }
+});
+
 test("a stale confirmation is rejected after a correction", async () => {
   const app = await makeApp();
   const { say, r } = await runPersona(app, PERSONAS.A_low_vision_phone);

@@ -360,6 +360,13 @@ const TOPICS = {
   devices: ["smartphone", "computer", "tablet", "devices", "iphone", "android"],
 };
 
+// Which of these answers does the text talk about? "I do have an eye doctor"
+// mentions eye_doctor, so it is a statement about an answer, not a bare yes.
+export function mentionedTopics(text, askableIds) {
+  const n = normalize(text);
+  return askableIds.filter((qid) => (TOPICS[qid] || []).some((t) => has(n, t)));
+}
+
 export function findCorrectionTarget(text, assessment, askableIds, ctx = {}) {
   const n = normalize(text);
   const candidates = [];

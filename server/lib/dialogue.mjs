@@ -15,7 +15,7 @@
 // natural acknowledgements. It never changes questions, options or routing.
 import { createHash } from "node:crypto";
 import {
-  interpretAnswer, extractMany, detectGlobal, yesNo, strictConfirm, findCorrectionTarget,
+  interpretAnswer, extractMany, detectGlobal, yesNo, strictConfirm, findCorrectionTarget, mentionedTopics,
   looksLikeCorrection, parseEmail, parseName, spellEmail, normalize,
 } from "./understand.mjs";
 import { buildResults, resultsSpeech } from "./results.mjs";
@@ -300,6 +300,7 @@ export function createDialogue(ctx) {
     st.phase = "recap";
     st.currentQuestion = null;
     st.pending = null;
+    st.recapAwaitingChange = false;
     st.recapRevision = session.revision;
     const recap = recapPayload(session);
     const name = st.names.caller;
@@ -737,7 +738,13 @@ export function createDialogue(ctx) {
   function handleRecap(session, text, input) {
     const st = session.state;
     if (detectGlobal(text).email) return beginEmail(session);
-    if (strictConfirm(text)) {
+    // A reply that talks about one of the answers ("I do have an eye doctor")
+    // is a correction even if it contains a yes-word. Never treat it as "yes".
+    const namesAnswer = mentionedTopics(text, answersOf(session).map((a) => a.questionId)).length > 0;
+    if (strictConfirm(text) && !namesAnswer) {
+      // We just asked "what should I change?", so a bare yes doesn't answer
+      // that. Read the summary back and ask again rather than confirming.
+      if (st.recapAwaitingChange) return startRecap(session, ["Thanks."]);
       // A typed/spoken yes must be for the summary currently on screen.
       const offered = input.revision === undefined || input.revision === null ? session.revision : Number(input.revision);
       if (offered !== session.revision || st.recapRevision !== session.revision) {
@@ -751,6 +758,7 @@ export function createDialogue(ctx) {
     if (corr) return corr;
     const yn = yesNo(text);
     if (yn === "no" || yn === "mixed") {
+      st.recapAwaitingChange = true;
       return reply(session, ["No problem. What should I change? For example, you could say: change the county to Gaston. You can also use the Change buttons."], { expect: "free", recap: recapPayload(session) });
     }
     return reply(session, ["I just need a clear yes before I suggest anything. Does the summary sound right? Say yes, or tell me what to change."], { expect: "confirm_recap", recap: recapPayload(session) });
