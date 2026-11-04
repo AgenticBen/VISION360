@@ -88,7 +88,9 @@ function answerText(corpus, a, screen = false) {
   const question = q(corpus, a.questionId);
   if (a.kind === "answer" && a.detail && ["age_band", "county"].includes(a.questionId)) return a.detail;
   if (a.kind === "answer") return optionLabel(question, a.value, screen);
-  if (a.kind === "unknown" && a.value) return optionLabel(question, a.value, screen);
+  // "I don't know" shows as "not sure" everywhere, matching what the assistant said,
+  // even when the closest option reads differently ("Never, or cannot remember").
+  if (a.kind === "unknown") return KIND_TEXT.unknown;
   return KIND_TEXT[a.kind] || a.kind;
 }
 

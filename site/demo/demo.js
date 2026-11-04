@@ -336,7 +336,14 @@
     app.lastTurn = turn;
     addMessage("bot", turn.text, { turnId: turn.turnId });
     announce(turn.text);
+    var panelEl = $("panel");
+    var focusWasInPanel = panelEl.contains(document.activeElement);
     renderPanel(turn, app.state);
+    // The button that was pressed is gone now. Keep keyboard and screen-reader
+    // users in place: move focus to the message box rather than the page top.
+    if (focusWasInPanel && !panelEl.contains(document.activeElement) && !$("composer").hidden) {
+      try { $("message").focus({ preventScroll: false }); } catch (e) {}
+    }
     // Typing help: email keyboard when an address is expected.
     var box = $("message");
     box.setAttribute("inputmode", turn.expect === "email" ? "email" : "text");

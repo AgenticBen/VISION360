@@ -148,8 +148,8 @@
           <button type="button" class="btn btn-secondary" id="voice-sample">Play a sample</button>
         </div>
         <p class="hint" id="voice-hint">The best voices on this device are listed first.</p>
-        <p class="sub-legend">Speaking speed</p>
-        <div class="radio-row">
+        <p class="sub-legend" id="rate-label">Speaking speed</p>
+        <div class="radio-row" role="radiogroup" aria-labelledby="rate-label">
           <label><input type="radio" name="rate" value="0.85"> Slower</label>
           <label><input type="radio" name="rate" value="1"> Normal</label>
           <label><input type="radio" name="rate" value="1.2"> Faster</label>
@@ -157,8 +157,8 @@
         </div>
       </div>
       <p id="speed-unsupported" class="hint" hidden>This browser can't speak responses aloud, so voice and speed settings aren't available.</p>
-      <p class="sub-legend">When I'm talking, wait this long after I stop before answering</p>
-      <div class="radio-row">
+      <p class="sub-legend" id="pause-label">When I'm talking, wait this long after I stop before answering</p>
+      <div class="radio-row" role="radiogroup" aria-labelledby="pause-label">
         <label><input type="radio" name="endSilence" value="1200"> Short (1 second)</label>
         <label><input type="radio" name="endSilence" value="2000"> Normal (2 seconds)</label>
         <label><input type="radio" name="endSilence" value="3200"> Long (3 seconds)</label>

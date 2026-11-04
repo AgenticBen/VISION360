@@ -1,4 +1,4 @@
-/* "What's new" button and tour. Uses each page's own colour tokens, so it
+/* "What's new" button and tour. Uses each page's own color tokens, so it
    follows normal, dark and high-contrast themes. Fallbacks are the Lions navy. */
 .wn-button {
   font: inherit; font-size: 1rem; font-weight: 700; line-height: 1.3;
@@ -8,58 +8,66 @@
   cursor: pointer; display: inline-flex; align-items: center; gap: .5rem;
 }
 .wn-button:hover { background: var(--accent-wash, #eaeef7); }
-.wn-button:focus-visible, .wn-btn:focus-visible, .wn-dialog a:focus-visible, .wn-highlight:focus {
+.wn-button:focus-visible, .wn-btn:focus-visible, .wn-back:focus-visible, .wn-dialog a:focus-visible, .wn-changes summary:focus-visible, .wn-highlight:focus {
   outline: 3px solid var(--focus, #1c3879); outline-offset: 2px; box-shadow: 0 0 0 6px var(--focus-halo, #fff);
 }
 .wn-dot { width: .6rem; height: .6rem; border-radius: 50%; background: currentColor; }
 .wn-short { display: none; }
-/* Same breakpoint as the directory's feedback bar, so both share one row. */
+
+/* Demo and staff: top-right corner of the header, next to Settings / Sign out. */
+.wn-header-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+
+/* Directory: share the feedback bar, left side. Same breakpoint as that bar. */
+.feedback-dock.wn-docked { justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
 @media (max-width: 34rem) {
-  .wn-long { display: none; }
-  .wn-short { display: inline; }
+  .wn-button:not(.wn-in-header) .wn-long { display: none; }
+  .wn-button:not(.wn-in-header) .wn-short { display: inline; }
   .feedback-dock.wn-docked { flex-wrap: nowrap; }
   .feedback-dock.wn-docked #feedback-open { width: auto; flex: 1 1 auto; }
 }
-@media print { .wn-button, .wn-dialog { display: none; } body.wn-has-floating { padding-bottom: 0; } }
 
-/* Directory: share the feedback bar, left side. */
-.feedback-dock.wn-docked { justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
-
-/* Demo and staff: fixed bottom-left corner, with room left below the page. */
+/* Fallback only (a page with neither a header nor a dock). */
 .wn-floating { position: fixed; z-index: 30; left: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom)); box-shadow: 0 2px 8px rgba(0,0,0,.18); }
-body.wn-has-floating { padding-bottom: 5rem; }
 
 .wn-dialog {
   width: min(38rem, calc(100% - 1rem)); max-height: calc(100dvh - 1rem); overflow: auto;
   padding: 1rem 1.25rem; border: 2px solid var(--accent, #1c3879); border-radius: 8px;
   color: var(--ink, #16191d); background: var(--page, #fff); font: inherit;
+  overflow-wrap: anywhere;
 }
+@media (max-width: 34rem) { .wn-dialog { padding: .75rem; width: calc(100% - .5rem); } }
 .wn-dialog::backdrop { background: rgba(0,0,0,.6); }
 .wn-dialog h2 { margin: 0; font-size: 1.4rem; }
-.wn-dialog h3 { margin: 1.1rem 0 .4rem; font-size: 1.1rem; }
+.wn-dialog h3 { margin: .9rem 0 .4rem; font-size: 1.1rem; }
 .wn-dialog h4 { margin: .2rem 0 .3rem; font-size: 1.05rem; text-transform: none; letter-spacing: normal; color: inherit; }
 .wn-header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; }
-.wn-list { margin: 0; padding-left: 1.2rem; }
-.wn-list li { margin: 0 0 .4rem; }
 .wn-progress { margin: 0; color: var(--ink-muted, var(--muted, #525a63)); font-size: .95rem; }
+/* Read by screen readers, not shown (the step title and text are on screen below). */
+.wn-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .wn-step { min-height: 6rem; }
 .wn-note { color: var(--ink-muted, var(--muted, #525a63)); font-style: italic; }
 .wn-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
-.wn-btn {
+.wn-btn, .wn-back {
   font: inherit; font-size: 1rem; font-weight: 600; min-height: 44px; min-width: 44px; padding: .4rem .9rem;
   border: 2px solid var(--line, #7f8992); border-radius: 8px; background: var(--page, #fff); color: var(--ink, #16191d); cursor: pointer;
 }
 .wn-btn[disabled] { opacity: .5; cursor: default; }
 .wn-btn[hidden] { display: none; }
 .wn-btn-primary { background: var(--accent, #1c3879); border-color: var(--accent, #1c3879); color: var(--accent-ink, #fff); }
+.wn-back { display: block; margin: .5rem 0; border-color: var(--accent, #1c3879); color: var(--accent, #1c3879); font-weight: 700; }
+.wn-changes { margin-top: 1rem; border-top: 1px solid var(--line-soft, #d7dce2); padding-top: .5rem; }
+.wn-changes summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+.wn-list { margin: .25rem 0 0; padding-left: 1.2rem; }
+.wn-list li { margin: 0 0 .4rem; }
 .wn-links { margin: 1rem 0 0; border-top: 1px solid var(--line-soft, #d7dce2); padding-top: .75rem; }
 .wn-dialog a { color: var(--accent, #1c3879); }
 
 .wn-highlight { outline: 4px solid var(--accent, #1c3879) !important; outline-offset: 4px; border-radius: 6px; }
 
-@media (prefers-reduced-motion: reduce) { .wn-button, .wn-btn { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .wn-button, .wn-btn, .wn-back { transition: none; } }
 @media (forced-colors: active) {
-  .wn-button, .wn-btn, .wn-dialog { border: 2px solid ButtonText; }
+  .wn-button, .wn-btn, .wn-back, .wn-dialog { border: 2px solid ButtonText; }
   .wn-dot { background: ButtonText; }
   .wn-highlight { outline-color: Highlight !important; }
 }
+@media print { .wn-button, .wn-dialog, .wn-back { display: none; } }
