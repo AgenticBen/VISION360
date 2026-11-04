@@ -145,7 +145,7 @@ export async function createApp(opts = {}) {
 
       if (p === "/api/health" && method === "GET") {
         return send(res, 200, {
-          ok: true, corpusVersion: corpus.version, hashes: corpus.hashes, organizations: corpus.organizations.length,
+          ok: true, commit: env.VERCEL_GIT_COMMIT_SHA || "local", corpusVersion: corpus.version, hashes: corpus.hashes, organizations: corpus.organizations.length,
           policyVersion: POLICY_VERSION, emailTransport: ctx.actions.transportName(), retentionDays: RETENTION_DAYS,
           storage: env.V360_STORAGE || "local",
           tts: { provider: ttsInfo(env).provider },
@@ -305,7 +305,7 @@ export async function createApp(opts = {}) {
         return send(res, 200, {
           session: { id: s.id, created_at: s.created_at, updated_at: s.updated_at, status: s.status, staff_status: s.staff_status, revision: s.revision, channels: s.channels, corpus_version: s.corpus_version, expires_at: s.expires_at },
           snapshot: { ...snap, lastAssistant: undefined },
-          recommendations: store.recommendations(s.id).map((r) => ({ id: r.id, revision: r.revision, corpusVersion: r.corpus_version, stale: !!r.stale, createdAt: r.created_at, matches: r.result.matches.map((x) => ({ rank: x.rank, id: x.id, name: x.name, points: x.points, reasons: x.reasons })), handoffs: r.result.handoffs.map((h) => h.headline), unresolved: r.result.unresolved })),
+          recommendations: store.recommendations(s.id).map((r) => ({ id: r.id, revision: r.revision, corpusVersion: r.corpus_version, commit: r.result.commit || null, stale: !!r.stale, createdAt: r.created_at, matches: r.result.matches.map((x) => ({ rank: x.rank, id: x.id, name: x.name, points: x.points, reasons: x.reasons })), handoffs: r.result.handoffs.map((h) => h.headline), unresolved: r.result.unresolved })),
           actions: store.actionsForSession(s.id),
           reviews: store.staffReviews(s.id),
           answerEvents: store.answerEvents(s.id),

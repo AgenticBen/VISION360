@@ -384,6 +384,23 @@ test("staff view distinguishes confirmed answers, unknowns, actions and versione
   assert.ok(!JSON.stringify(d.json).includes("lastAssistant"), "staff view holds no transcript");
 });
 
+test("health and saved recommendations say which code and data produced them", async () => {
+  const local = await makeApp();
+  const h1 = await call(local, "GET", "/api/health");
+  assert.equal(h1.json.commit, "local", "no Vercel commit outside a deployment");
+
+  const app = await makeApp({ VERCEL_GIT_COMMIT_SHA: "abc1234def" });
+  const h2 = await call(app, "GET", "/api/health");
+  assert.equal(h2.json.commit, "abc1234def");
+  assert.ok(h2.json.corpusVersion.startsWith("corpus-"));
+
+  const { s } = await toResults(app, PERSONAS.A_low_vision_phone);
+  const rec = app.store.currentRecommendation(s.id);
+  assert.equal(rec.result.commit, "abc1234def");
+  assert.equal(rec.result.corpusVersion, rec.corpus_version);
+  assert.ok(rec.result.policyVersion);
+});
+
 test("repeat returns the same assistant turn without changing state", async () => {
   const app = await makeApp();
   const s = await startSession(app);

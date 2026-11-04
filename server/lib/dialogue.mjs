@@ -322,6 +322,8 @@ export function createDialogue(ctx) {
     results.revision = session.revision;
     results.corpusVersion = corpus.version;
     results.policyVersion = POLICY_VERSION;
+    // Which deployed code produced this result (set by Vercel; "local" otherwise).
+    results.commit = (ctx.env || process.env).VERCEL_GIT_COMMIT_SHA || "local";
     const recId = store.saveRecommendation(session.id, session.revision, corpus.version, results);
     results.recommendationId = recId;
     if (results.handoffs.length && !store.staffReviews(session.id).some((r) => r.reason.startsWith("Automatic: needs help"))) {

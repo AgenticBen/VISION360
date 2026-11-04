@@ -1,0 +1,22 @@
+name: verify
+
+# Runs the same checks as `npm run verify` on every push and pull request:
+# data validation, assessment smoke tests, demo tests, fitness checks, and a
+# check that the generated site/data copy is committed. No secrets needed.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm run verify
