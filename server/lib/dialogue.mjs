@@ -22,7 +22,7 @@ import { buildResults, resultsSpeech } from "./results.mjs";
 import { buildPlan } from "./plan.mjs";
 import { who, askOpen, askWithChoices, sectionIntro, ack, recapLine, screenLabel, greetingText, joinList, noConcernTopic } from "./phrasing.mjs";
 
-export const POLICY_VERSION = "dialogue-2026-10-21.2";
+export const POLICY_VERSION = "dialogue-2026-11-04.1";
 
 const KIND_TEXT = { unknown: "not sure", declined: "preferred not to say", skipped: "skipped" };
 
