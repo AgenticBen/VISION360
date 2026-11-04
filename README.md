@@ -11,11 +11,11 @@ The app is plain HTML, CSS, and JavaScript. Its Directory, Pathways, and Find se
 Use Node.js 24 and Python 3:
 
 ```sh
-npm run check
+npm run verify
 python3 -m http.server 8000 --directory site
 ```
 
-Open http://localhost:8000. The checks validate records, linked programs, geography configuration, and assessment routing scenarios.
+Open http://localhost:8000. `npm run verify` validates records, linked programs, geography configuration and assessment routing scenarios, runs every test (including golden routing for fixed sample people), runs the architecture fitness checks, and confirms the generated `site/data` copy is committed. `npm run check` runs only the data checks. GitHub Actions runs `npm run verify` on every push.
 
 ## Search and feedback
 
@@ -34,7 +34,7 @@ npm run test:demo
 
 ## Updating records
 
-Edit `data/organizations.json`, then run `npm run data` and `npm run lock`, and review the lock diff and the golden routing output from `npm run test:demo` (regenerate expected results with `node scripts/golden-update.mjs` only when a routing change is intended). Then run `npm run check`. The data build generates `site/data/organizations.json`, which is the only organization dataset deployed. Commit both copies. Keep organization IDs and parent/program relationships stable. Clearly distinguish unknown requirements from confirmed absence of requirements. Preserve clinical-service limitations and published referral paths.
+Edit `data/organizations.json`, then run `npm run data` and `npm run lock`, and review the lock diff and the golden routing output from `npm run test:demo` (regenerate expected results with `node scripts/golden-update.mjs` only when a routing change is intended). Then run `npm run verify`. The data build generates `site/data/organizations.json`, which is the only organization dataset deployed. Commit both copies. Keep organization IDs and parent/program relationships stable. Clearly distinguish unknown requirements from confirmed absence of requirements. Preserve clinical-service limitations and published referral paths.
 
 For partner corrections, retain the source correspondence and exact before/after audit privately. Reconcile current values before applying a change, run the checks, and verify the actual production webpage after deployment. Source emails, acknowledgment logs, and private research do not belong in this public repository.
 
@@ -44,11 +44,11 @@ This repository uses the existing Vercel project `lions-vision-referral` in `age
 
 ```sh
 vercel link --project lions-vision-referral --scope agenticbens-projects
-npm run check
+npm run verify
 vercel --prod
 ```
 
-After deployment, reload the live site, search for the updated organization, inspect its expanded entry and affected views, and compare the displayed fields and contact links against the change record. A successful deployment alone does not complete verification.
+After deployment, check that `/api/health` reports the deployed `commit` and that its data hashes match `data/corpus.lock.json`. Then reload the live site, search for the updated organization, inspect its expanded entry and affected views, and compare the displayed fields and contact links against the change record. A successful deployment alone does not complete verification.
 
 ## Source and limitations
 

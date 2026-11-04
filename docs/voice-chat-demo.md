@@ -16,6 +16,8 @@ Flow: one question at a time (from `site/data/assessment.json`) → answers are 
 npm run demo            # http://localhost:8360/demo  and  /staff
 npm run test:demo       # acceptance tests (in-memory database)
 npm run check           # existing directory checks
+npm run verify          # everything: checks, all tests, fitness checks (also runs in CI)
+npm run lock            # after a deliberate data or rule change; review the diff
 npm run staff:create -- <username>   # writes a random password to ../private-audit/staff-login.txt
 ```
 
@@ -49,7 +51,11 @@ Production deploys change the live directory site. Follow `CLAUDE.md`: run check
 
 ## Guarantees the tests check
 
-- The directory, assessment, geography, pathways and engine files are byte-identical to the baseline (hash test).
+- The directory, assessment, geography, pathways and engine files match the reviewed corpus lock (`data/corpus.lock.json`). Changing them is allowed on purpose: `npm run lock`, review, commit.
+- Golden routing: fixed sample people get the same recommendations unless the rules change on purpose; a failure prints which services moved. The chat (typed and voice) reaches the same results as the engine.
+- Geography ranking and result selection exist only in `site/quiz-engine.js`, shared by the directory, chat and voice (fitness check FC5).
+- A turn loads the session once and saves once. A save that conflicts with another save of the same session is rejected (409), never silently overwritten. The conversation code never touches storage directly (fitness check FC6).
+- A reply at the summary that mentions an answer ("I do have an eye doctor") is treated as a correction, never as a yes.
 - No suggestions before an explicit recap confirmation. A stale "yes" is rejected.
 - Unknown, declined, skipped and not-asked never become "no".
 - Corrections invalidate earlier suggestions and cancel unstarted emails. An email already sent is flagged for staff, not hidden.
