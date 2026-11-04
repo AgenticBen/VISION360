@@ -1,13 +1,9 @@
 // Grounded results: every name, reason, contact, cost and step below is copied
 // from a directory record or from the assessment's own "because" text. The
-// existing engine (site/quiz-engine.js) does the ranking; nothing here
-// re-weights or filters records by rules of its own, except choosing how many
-// of the top-ranked records to show so weak matches are not padded in.
+// existing engine (site/quiz-engine.js) does the ranking AND decides how many
+// of the top-ranked records to show (its "conversation" policy: strong matches
+// only, so weak ones are not padded in). Nothing here re-weights or filters.
 import { canonicalUrl } from "./corpus.mjs";
-
-export const MAX_RESULTS = 8;
-export const MIN_POINTS = 30;          // below this a match rests on one weak signal
-export const RELATIVE_FLOOR = 0.4;     // and must be within 40% of the top match
 
 const NOT_PUBLISHED = /not published|verification call required|unknown/i;
 
@@ -75,9 +71,7 @@ export function recordView(corpus, org) {
 export function buildResults(corpus, engineState, answers) {
   const E = corpus.engine;
   const ranked = E.score(engineState, corpus.organizations, corpus.geoRank);
-  const top = ranked[0] ? ranked[0].points : 0;
-  const floor = Math.max(MIN_POINTS, Math.round(top * RELATIVE_FLOOR));
-  const chosen = ranked.filter((r) => r.points >= floor).slice(0, MAX_RESULTS);
+  const { top: chosen, floor } = E.selectResults(ranked, "conversation", corpus.assessment.settings);
 
   const matches = chosen.map((r, i) => {
     const view = recordView(corpus, r.org);

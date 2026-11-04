@@ -899,8 +899,11 @@
   function quizResults() {
     var E = QE();
     var ranked = E.score(QUIZ, ORGS, GEO ? geoRank : null);
-    var hits = ranked.filter(function (r) { return r.points > 0; });
-    var top = hits.slice(0, 8);
+    /* How many to show is the engine's "directory" policy: everything that
+       scored, the first 8 here and the rest behind "show the other N". */
+    var picked = E.selectResults(ranked, "directory", ASSESS && ASSESS.settings);
+    var top = picked.top;
+    var more = picked.rest;
     var handoffs = E.handoffs(QUIZ);
 
     var out = [el("h3", { id: "quiz-results-heading", tabindex: "-1" }, "What might fit")];
@@ -919,12 +922,11 @@
       out.push(el("ol", { class: "quiz-results", role: "list" },
         top.map(function (t, i) { return resultCard(t, i + 1); })));
 
-      var rest = hits.length - top.length;
-      if (rest > 0) {
+      if (more.length > 0) {
         out.push(el("details", { class: "quiz-more" }, [
-          el("summary", null, "Show the other " + rest + " that matched, in the same order"),
+          el("summary", null, "Show the other " + more.length + " that matched, in the same order"),
           el("ol", { class: "quiz-results", role: "list" },
-            hits.slice(8).map(function (t, i) { return resultCard(t, i + 9); }))
+            more.map(function (t, i) { return resultCard(t, i + top.length + 1); }))
         ]));
       }
     }
@@ -1195,50 +1197,22 @@
      those today, so they rank just below the explicitly-local records rather
      than falling to the bottom.
 
-     Rank on (counties ∩ config) FIRST and verdict SECOND, never on counties
-     alone: a county the config has never heard of (Anson and Montgomery are
-     in the data and not in the doc) must not demote an in_area record.
+     The tier rules themselves live in quiz-engine.js (geoTier / geoRank), so
+     the directory, the chat and the voice demo always order records the same
+     way. These two wrappers only supply this page's geography.json.
      --------------------------------------------------------------------- */
   var GEO = null;          /* data/geography.json, or null if it failed to load */
 
-  var GEO_RANK = {
-    home: 0, statewide: 1, adjacent: 2, region: 3, travel: 4, elsewhere: 5
-  };
-
-  function tierCounties(id) {
-    if (!GEO || !GEO.tiers) return [];
-    for (var i = 0; i < GEO.tiers.length; i++) {
-      if (GEO.tiers[i].id === id) return GEO.tiers[i].counties || [];
-    }
-    return [];
-  }
-
-  function intersects(counties, list) {
-    for (var i = 0; i < counties.length; i++) {
-      if (list.indexOf(counties[i]) !== -1) return true;
-    }
-    return false;
-  }
-
-  /* Returns a tier id. Kept separate from GEO_RANK so the caption lookup and
-     the sort order read from the same decision. */
+  /* Returns a tier id, used for both the caption lookup and the sort order. */
   function geoTier(org) {
-    var area = org.service_area || {};
-    var counties = area.counties || [];
-    var verdict = area.verdict;
-
-    if (GEO && counties.indexOf(GEO.home_county) !== -1) return "home";
-    if (!counties.length && verdict === "in_area") return "statewide";
-    if (counties.length && intersects(counties, tierCounties("adjacent"))) return "adjacent";
-    if (counties.length && intersects(counties, tierCounties("region"))) return "region";
-    if (verdict === "statewide_travel_required") return "travel";
-    /* A county we do not recognise, or partial/out_of_area. Fall back to the
-       verdict so an unlisted-county in_area record is not buried. */
-    if (verdict === "in_area") return "statewide";
-    return "elsewhere";
+    var E = QE();
+    return E ? E.geoTier(org, GEO) : "elsewhere";
   }
 
-  function geoRank(org) { return GEO_RANK[geoTier(org)]; }
+  function geoRank(org) {
+    var E = QE();
+    return E ? E.geoRank(GEO)(org) : 0;
+  }
 
   function sorter() {
     var s = state.sort;

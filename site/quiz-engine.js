@@ -253,6 +253,83 @@
     return null;
   }
 
+  /* ---------------------------------------------------------------------
+     Geography. CLAUDE.md rule 3: geography SORTS, it never excludes.
+     Every channel (directory, chat, voice, phone) ranks with these, so the
+     order cannot drift between them. `geography` is site/data/geography.json
+     or null; without it, ranking falls back to each record's verdict.
+
+     Rank on (counties ∩ config) FIRST and verdict SECOND, never on counties
+     alone: a county the config has never heard of must not demote an in_area
+     record.
+     --------------------------------------------------------------------- */
+  var GEO_RANK = { home: 0, statewide: 1, adjacent: 2, region: 3, travel: 4, elsewhere: 5 };
+
+  function tierCounties(geography, id) {
+    var tiers = (geography && geography.tiers) || [];
+    for (var i = 0; i < tiers.length; i++) if (tiers[i].id === id) return tiers[i].counties || [];
+    return [];
+  }
+
+  function intersects(counties, list) {
+    for (var i = 0; i < counties.length; i++) if (list.indexOf(counties[i]) !== -1) return true;
+    return false;
+  }
+
+  function geoTier(org, geography) {
+    var area = (org && org.service_area) || {};
+    var counties = area.counties || [];
+    var verdict = area.verdict;
+    if (geography && counties.indexOf(geography.home_county) !== -1) return "home";
+    if (!counties.length && verdict === "in_area") return "statewide";
+    if (counties.length && intersects(counties, tierCounties(geography, "adjacent"))) return "adjacent";
+    if (counties.length && intersects(counties, tierCounties(geography, "region"))) return "region";
+    if (verdict === "statewide_travel_required") return "travel";
+    /* A county we do not recognise, or partial/out_of_area. Fall back to the
+       verdict so an unlisted-county in_area record is not buried. */
+    if (verdict === "in_area") return "statewide";
+    return "elsewhere";
+  }
+
+  /* Returns a rank function for score(); rank.tier(org) gives the tier id. */
+  function geoRank(geography) {
+    function rank(org) { return GEO_RANK[geoTier(org, geography)]; }
+    rank.tier = function (org) { return geoTier(org, geography); };
+    return rank;
+  }
+
+  /* ---------------------------------------------------------------------
+     Result selection: how many of the ranked records each channel shows.
+     Ranking is the same everywhere; only how much is shown differs.
+       conversation  spoken/chat: up to 8 strong matches, no padding
+       directory     Find services page: everything that scored, first 8
+                     shown, the rest behind "show the other N"
+     A policy can be overridden per name via settings.results[name].
+     --------------------------------------------------------------------- */
+  var RESULT_POLICIES = {
+    conversation: { max: 8, minPoints: 30, relativeFloor: 0.4, showRest: false },
+    directory: { max: 8, minPoints: 0, relativeFloor: 0, showRest: true }
+  };
+
+  function resultPolicy(name, settings) {
+    var base = RESULT_POLICIES[name];
+    if (!base) throw new Error("Unknown result policy: " + name);
+    var over = (settings && settings.results && settings.results[name]) || {};
+    var out = {};
+    for (var k in base) out[k] = Object.prototype.hasOwnProperty.call(over, k) ? over[k] : base[k];
+    return out;
+  }
+
+  function selectResults(ranked, name, settings) {
+    var p = resultPolicy(name, settings);
+    var top = ranked[0] ? ranked[0].points : 0;
+    var floor = Math.max(p.minPoints, Math.round(top * p.relativeFloor));
+    /* Nothing at or below zero is ever "a match"; suppress never excludes it
+       from the directory, but it is not suggested. */
+    var hits = ranked.filter(function (r) { return r.points > 0 && r.points >= floor; });
+    return { top: hits.slice(0, p.max), rest: p.showRest ? hits.slice(p.max) : [], floor: floor, policy: p };
+  }
+
   return {
     create: create,
     nextQuestion: nextQuestion,
@@ -265,6 +342,10 @@
     score: score,
     handoffs: handoffs,
     explain: explain,
-    condTrue: condTrue
+    condTrue: condTrue,
+    geoTier: geoTier,
+    geoRank: geoRank,
+    resultPolicy: resultPolicy,
+    selectResults: selectResults
   };
 });

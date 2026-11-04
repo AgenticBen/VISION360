@@ -51,7 +51,8 @@ export async function loadCorpus() {
     byId,
     hashes: Object.freeze(hashes),
     version,
-    geoRank: makeGeoRank(geography),
+    // Same geography ordering as the public site: both use the engine's rules.
+    geoRank: engine.geoRank(geography),
     questionById: new Map(assessment.questions.map((q) => [q.id, q])),
   });
   return cached;
@@ -63,30 +64,6 @@ function deepFreeze(o) {
     for (const v of Object.values(o)) deepFreeze(v);
   }
   return o;
-}
-
-// Port of geoTier()/geoRank() in site/app.js so the demo orders results the
-// same way the public quiz does. Geography sorts; it never excludes.
-const GEO_RANK = { home: 0, statewide: 1, adjacent: 2, region: 3, travel: 4, elsewhere: 5 };
-
-function makeGeoRank(geo) {
-  const tierCounties = (id) => (geo.tiers.find((t) => t.id === id) || {}).counties || [];
-  const intersects = (a, b) => a.some((c) => b.includes(c));
-  function tier(org) {
-    const area = org.service_area || {};
-    const counties = area.counties || [];
-    const verdict = area.verdict;
-    if (counties.includes(geo.home_county)) return "home";
-    if (!counties.length && verdict === "in_area") return "statewide";
-    if (counties.length && intersects(counties, tierCounties("adjacent"))) return "adjacent";
-    if (counties.length && intersects(counties, tierCounties("region"))) return "region";
-    if (verdict === "statewide_travel_required") return "travel";
-    if (verdict === "in_area") return "statewide";
-    return "elsewhere";
-  }
-  const rank = (org) => GEO_RANK[tier(org)];
-  rank.tier = tier;
-  return rank;
 }
 
 export function canonicalUrl(orgId) {
