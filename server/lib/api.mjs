@@ -3,15 +3,16 @@
 // random session token the server only stores as a hash.
 import { loadCorpus } from "./corpus.mjs";
 import { openStore } from "./store.mjs";
-import { createDialogue, newDialogueState, POLICY_VERSION } from "./dialogue.mjs";
+import { createDialogue, POLICY_VERSION } from "./dialogue.mjs";
+import { createSqliteSessionRepo } from "./session-repo.mjs";
+import { createTurnService } from "./turn-service.mjs";
 import { createActions } from "./actions.mjs";
 import {
   newToken, tokenHash, tokenMatches, verifyPassword, parseCookies, staffCookie, clearStaffCookie, STAFF_COOKIE,
 } from "./auth.mjs";
 import { RETENTION_DAYS } from "./store.mjs";
 import { ttsEnabled, ttsInfo, synthesize } from "./tts.mjs";
-import { aiEnabled, interpretWithAI, extractWithAI, extractEmailWithAI, DEFAULT_MODEL } from "./ai-understanding.mjs";
-import { interpretAnswer, detectGlobal, looksLikeCorrection, parseEmail } from "./understand.mjs";
+import { aiEnabled, DEFAULT_MODEL } from "./ai-understanding.mjs";
 
 const MAX_BODY = 16 * 1024;
 
@@ -33,29 +34,11 @@ export async function createApp(opts = {}) {
   const ttsCount = new Map();
   const sampleCache = new Map();
 
-  // Optional AI help, only where the rules can't tell. Failures fall back silently.
-  async function prepareAi(session, input) {
-    if (!aiEnabled(env) || !input.text || input.choice || input.action) return;
-    const c = dialogue.aiContext(session);
-    const g = detectGlobal(input.text);
-    if (g.repeat || g.help || g.staff || g.end || g.startOver || g.skipSection) return;
-    try {
-      if ((c.phase === "email_address" || c.phase === "staff_contact") && /@| at /i.test(input.text) && !parseEmail(input.text)) {
-        session.__aiEmail = await extractEmailWithAI(env, aiFetch, { utterance: input.text });
-        store.audit("system", session.id, "ai_email", { found: !!session.__aiEmail });
-      } else if (c.phase === "opening") {
-        session.__aiExtract = await extractWithAI(env, aiFetch, { questions: c.openQuestions, utterance: input.text });
-        store.audit("system", session.id, "ai_extract", { n: session.__aiExtract.length });
-      } else if (c.phase === "intake" && c.currentQuestion && !c.pending && !looksLikeCorrection(input.text)) {
-        const det = interpretAnswer(input.text, c.currentQuestion, { geography: corpus.geography });
-        if (det.kind !== "unclear") return;
-        const r = await interpretWithAI(env, aiFetch, { question: c.currentQuestion, utterance: input.text, otherQuestions: c.openQuestions.filter((x) => x.id !== c.currentQuestion.id) });
-        if (r) { session.__aiInterp = { ...r, questionId: c.currentQuestion.id }; store.audit("system", session.id, "ai_interpret", { kind: r.kind }); }
-      }
-    } catch (e) {
-      store.audit("system", session.id, "ai_unavailable", { error: String(e.message).slice(0, 80) });
-    }
-  }
+  // Sessions are loaded once and saved once per request (see session-repo.mjs);
+  // the turn service runs the conversation itself, independent of HTTP.
+  const repo = createSqliteSessionRepo(store);
+  const turns = createTurnService({ corpus, store, repo, dialogue, actions: ctx.actions, env, aiFetch });
+
   const locks = new Map();
 
   // One turn at a time per session, so a late request can't overwrite a newer one.
@@ -103,8 +86,8 @@ export async function createApp(opts = {}) {
     return req.headers["x-forwarded-proto"] === "https" || !!(req.socket && req.socket.encrypted);
   }
 
-  function loadSession(req, id) {
-    const s = store.getSession(id);
+  async function loadSession(req, id) {
+    const s = await repo.load(id);
     const auth = String(req.headers.authorization || "");
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
     if (!s || !tokenMatches(token, s.token_hash)) throw httpError(404, "Session not found");
@@ -169,71 +152,33 @@ export async function createApp(opts = {}) {
         const body = await readJson(req);
         if (body.noticeAccepted !== true) throw httpError(400, "The demo notice must be accepted first.");
         const token = newToken();
-        const id = store.createSession({ tokenHash: tokenHash(token), corpusVersion: corpus.version, state: newDialogueState() });
-        const session = store.getSession(id);
-        session.notice_ack_at = new Date().toISOString();
-        session.channels = [{ mode: body.mode === "voice" ? "voice" : "text", at: session.notice_ack_at }];
-        const turn = dialogue.greeting(session);
-        store.saveSession(session);
-        store.audit("caller", id, "session_started", { mode: body.mode });
-        return send(res, 201, { sessionId: id, token, ...turnResponse(session, turn) });
+        const { session, turn } = await turns.start({ mode: body.mode, tokenHash: tokenHash(token) });
+        return send(res, 201, { sessionId: session.id, token, ...turnResponse(session, turn) });
       }
 
       let m = p.match(/^\/api\/session\/([0-9a-f-]{36})(?:\/(turn|state|event|end|tts))?$/);
       if (m) {
         const id = m[1], sub = m[2] || "state";
         if (sub === "state" && method === "GET") {
-          const s = loadSession(req, id);
+          const s = await loadSession(req, id);
           return send(res, 200, { state: dialogue.snapshot(s) });
         }
         if (method !== "POST") throw httpError(405, "Method not allowed");
         const body = await readJson(req);
         return await withLock(id, async () => {
-          const s = loadSession(req, id);
+          const s = await loadSession(req, id);
           if (sub === "turn") {
-            if (s.status === "ended") throw httpError(409, "This session has ended.");
             const clientTurnId = String(body.clientTurnId || "").slice(0, 64);
             if (clientTurnId) {
               const cached = store.cachedTurn(id, clientTurnId);
               if (cached) return send(res, 200, { ...cached, replayed: true });
             }
-            const mode = body.mode === "voice" ? "voice" : "text";
-            const last = s.channels[s.channels.length - 1];
-            if (!last || last.mode !== mode) s.channels.push({ mode, at: new Date().toISOString() });
-            const input = {
-              text: typeof body.text === "string" ? body.text : "",
-              choice: body.choice && typeof body.choice === "object" ? { questionId: String(body.choice.questionId || ""), value: body.choice.value } : null,
-              action: typeof body.action === "string" ? body.action : null,
-              questionId: typeof body.questionId === "string" ? body.questionId : null,
-              revision: body.revision === undefined ? null : Number(body.revision),
-              mode,
-            };
-            await prepareAi(s, input);
-            const turn = dialogue.handle(s, input);
-            delete s.__aiExtract; delete s.__aiInterp; delete s.__aiEmail;
-            store.saveSession(s);
-            // Serverless has no background loop: finish the email job before replying.
-            if (turn.actionId && env.V360_INLINE_WORKER !== "off" && env.V360_SERVERLESS) await processQueueSoon();
-            const out = turnResponse(s, turn);
+            const { reply, session } = await turns.turn(s, body);
+            const out = turnResponse(session, reply);
             if (clientTurnId) store.cacheTurn(id, clientTurnId, out);
-            if (turn.actionId && env.V360_INLINE_WORKER !== "off" && !env.V360_SERVERLESS) processQueueSoon();
             return send(res, 200, out);
           }
-          if (sub === "event") {
-            if (body.type === "speech_interrupted") {
-              const changed = dialogue.speechInterrupted(s, String(body.turnId || ""));
-              store.saveSession(s);
-              return send(res, 200, { ok: true, consentMustBeRepeated: changed });
-            }
-            if (body.type === "mode_switch") {
-              const mode = body.mode === "voice" ? "voice" : "text";
-              s.channels.push({ mode, at: new Date().toISOString() });
-              store.audit("caller", id, "mode_switch", { mode });
-              store.saveSession(s);
-              return send(res, 200, { ok: true, state: dialogue.snapshot(s) });
-            }
-            throw httpError(400, "Unknown event");
-          }
+          if (sub === "event") return send(res, 200, await turns.event(s, body));
           if (sub === "tts") {
             // Voice ONLY the assistant's own latest reply for this session.
             if (!ttsEnabled(env)) throw httpError(404, "Natural voice is not set up");
@@ -246,13 +191,7 @@ export async function createApp(opts = {}) {
             res.writeHead(200, { "Content-Type": "audio/mpeg", "Cache-Control": "no-store", "Content-Length": audio.length });
             return res.end(audio);
           }
-          if (sub === "end") {
-            s.status = "ended";
-            s.state.phase = "closed";
-            store.audit("caller", id, "session_ended", null);
-            store.saveSession(s);
-            return send(res, 200, { ok: true });
-          }
+          if (sub === "end") return send(res, 200, await turns.end(s));
           throw httpError(404, "Not found");
         });
       }
@@ -288,14 +227,14 @@ export async function createApp(opts = {}) {
       m = p.match(/^\/api\/staff\/sessions\/([0-9a-f-]{36})(?:\/(status))?$/);
       if (m) {
         const u = requireStaff(req);
-        const s = store.getSession(m[1]);
+        const s = await repo.load(m[1]);
         if (!s) throw httpError(404, "Not found");
         if (m[2] === "status" && method === "POST") {
           const body = await readJson(req);
           const allowed = ["pending", "reviewed", "needs_follow_up"];
           if (!allowed.includes(body.staffStatus)) throw httpError(400, "Invalid status");
-          s.staff_status = body.staffStatus;
-          store.saveSession(s);
+          // Only the staff column changes; the conversation itself is untouched.
+          store.setStaffStatus(s.id, body.staffStatus);
           store.audit("staff:" + u.username, s.id, "staff_status", { staffStatus: body.staffStatus });
           return send(res, 200, { ok: true });
         }

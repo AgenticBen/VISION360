@@ -141,6 +141,8 @@ export function openStore(file) {
   db.exec(SCHEMA);
   // Migration: the exact words for an answer ("26", "Gaston County") for display.
   try { db.exec("ALTER TABLE answers ADD COLUMN detail TEXT"); } catch (e) { /* already there */ }
+  // Migration: a save counter, so two saves of the same session can't silently overwrite each other.
+  try { db.exec("ALTER TABLE sessions ADD COLUMN version INTEGER NOT NULL DEFAULT 0"); } catch (e) { /* already there */ }
   const q = (sql) => db.prepare(sql);
 
   const store = {
@@ -167,8 +169,18 @@ export function openStore(file) {
       return { ...r, state: JSON.parse(r.state_json), channels: JSON.parse(r.channels) };
     },
     saveSession(s) {
-      q(`UPDATE sessions SET updated_at=?, status=?, revision=?, notice_ack_at=?, staff_status=?, channels=?, state_json=? WHERE id=?`)
+      q(`UPDATE sessions SET updated_at=?, status=?, revision=?, notice_ack_at=?, staff_status=?, channels=?, state_json=?, version=version+1 WHERE id=?`)
         .run(nowIso(), s.status, s.revision, s.notice_ack_at || null, s.staff_status, JSON.stringify(s.channels || []), JSON.stringify(s.state || {}), s.id);
+    },
+    // Saves only if nobody else saved this session since it was loaded
+    // (same save counter). Returns rows changed: 0 means another save won.
+    saveSessionGuarded(s, expectedVersion) {
+      return q(`UPDATE sessions SET updated_at=?, status=?, revision=?, notice_ack_at=?, channels=?, state_json=?, version=version+1 WHERE id=? AND version=?`)
+        .run(nowIso(), s.status, s.revision, s.notice_ack_at || null, JSON.stringify(s.channels || []), JSON.stringify(s.state || {}), s.id, expectedVersion).changes;
+    },
+    // Staff changes only their own column, never the conversation state.
+    setStaffStatus(id, staffStatus) {
+      q(`UPDATE sessions SET staff_status=?, updated_at=? WHERE id=?`).run(staffStatus, nowIso(), id);
     },
     listSessions(limit = 200) {
       return q(`SELECT id, created_at, updated_at, status, revision, staff_status, channels, corpus_version, state_json FROM sessions ORDER BY updated_at DESC LIMIT ?`).all(limit)
@@ -203,8 +215,7 @@ export function openStore(file) {
     },
 
     // recommendations ----------------------------------------------------
-    saveRecommendation(sessionId, revision, corpusVersion, result) {
-      const id = randomUUID();
+    saveRecommendation(sessionId, revision, corpusVersion, result, id = randomUUID()) {
       q(`UPDATE recommendations SET stale=1 WHERE session_id=?`).run(sessionId);
       q(`INSERT INTO recommendations (id, session_id, revision, corpus_version, result_json, created_at) VALUES (?,?,?,?,?,?)`)
         .run(id, sessionId, revision, corpusVersion, JSON.stringify(result), nowIso());
@@ -224,7 +235,7 @@ export function openStore(file) {
 
     // authorizations / actions -----------------------------------------
     saveAuthorization(a) {
-      const id = randomUUID();
+      const id = a.id || randomUUID();
       q(`INSERT INTO authorizations (id, session_id, action_type, destination, payload_hash, purpose, revision, recommendation_id, method, granted_at) VALUES (?,?,?,?,?,?,?,?,?,?)`)
         .run(id, a.sessionId, a.actionType, a.destination, a.payloadHash, a.purpose, a.revision, a.recommendationId || null, a.method, nowIso());
       return id;
@@ -236,7 +247,7 @@ export function openStore(file) {
     enqueueAction(a) {
       const existing = q(`SELECT * FROM actions WHERE idempotency_key=?`).get(a.idempotencyKey);
       if (existing) return { action: existing, duplicate: true };
-      const id = randomUUID();
+      const id = a.id || randomUUID();
       const t = nowIso();
       q(`INSERT INTO actions (id, session_id, type, status, idempotency_key, authorization_id, revision, payload_json, next_attempt_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
         .run(id, a.sessionId, a.type, a.status || "queued", a.idempotencyKey, a.authorizationId || null, a.revision, JSON.stringify(a.payload), t, t, t);
@@ -247,6 +258,10 @@ export function openStore(file) {
     },
     actionsForSession(sessionId) {
       return q(`SELECT id, type, status, attempts, provider, provider_receipt, error, revision, created_at, updated_at FROM actions WHERE session_id=? ORDER BY created_at`).all(sessionId);
+    },
+    // Same as actionsForSession plus the idempotency key (for a unit of work).
+    actionRowsForSession(sessionId) {
+      return q(`SELECT id, type, status, attempts, provider, provider_receipt, error, revision, idempotency_key, created_at, updated_at FROM actions WHERE session_id=? ORDER BY created_at`).all(sessionId);
     },
     // Claim one due action with a lease so two workers never run it at once.
     claimDueAction(leaseMs = 60000) {
@@ -267,8 +282,7 @@ export function openStore(file) {
     },
 
     // staff reviews -------------------------------------------------------
-    createStaffReview(sessionId, reason, contact, callbackOk) {
-      const id = randomUUID();
+    createStaffReview(sessionId, reason, contact, callbackOk, id = randomUUID()) {
       const t = nowIso();
       q(`INSERT INTO staff_reviews (id, session_id, reason, contact_json, callback_ok, created_at, updated_at) VALUES (?,?,?,?,?,?,?)`)
         .run(id, sessionId, reason, contact ? JSON.stringify(contact) : null, callbackOk ? 1 : 0, t, t);

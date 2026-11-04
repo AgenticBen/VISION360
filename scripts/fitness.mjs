@@ -47,6 +47,19 @@ const CHECKS = [
       [/\bGEO_RANK\b/, /\btierCounties\b/, /\bmakeGeoRank\b/, /\b(MIN_POINTS|RELATIVE_FLOOR|MAX_RESULTS|minPoints|relativeFloor)\b/],
     ),
   },
+  {
+    id: "FC6",
+    title: "The conversation core never touches storage, providers or HTTP, and no hidden AI fields remain",
+    run: () => [
+      ...findAll([path.join("server", "lib", "dialogue.mjs")], [
+        /from\s+["']\.\/(store|actions|ai-understanding|tts|session-repo|api)\.mjs["']/,
+        /from\s+["']node:(sqlite|fs|http|https)["']/,
+        /\bstore\./,
+        /\bfetch\(/,
+      ]),
+      ...findAll(sourceFiles(["server", "api"]), [/__ai/]),
+    ],
+  },
 ];
 
 let failed = 0;

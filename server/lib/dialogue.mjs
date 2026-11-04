@@ -125,11 +125,14 @@ function questionPayload(question, w) {
 
 // ------------------------------------------------------------------ engine
 export function createDialogue(ctx) {
-  const { corpus, store } = ctx;
+  const { corpus } = ctx;
+  // Optional AI readings for the current turn, passed in explicitly by the
+  // turn service (never stored on the session). Empty when AI is off.
+  let turnAi = {};
 
   function answersOf(session) {
     const order = corpus.assessment.questions.map((x) => x.id);
-    return store.getAnswers(session.id).sort((a, b) => order.indexOf(a.questionId) - order.indexOf(b.questionId));
+    return session.work.getAnswers().sort((a, b) => order.indexOf(a.questionId) - order.indexOf(b.questionId));
   }
 
   function whoFor(session) {
@@ -141,15 +144,15 @@ export function createDialogue(ctx) {
     // Any change after a confirmation invalidates the confirmation, the results
     // built from it, and any action not yet started.
     if (session.state.confirmedRevision !== null || session.state.recapRevision !== null) {
-      const staleRecs = store.markRecommendationsStale(session.id);
-      const cancelled = store.cancelStaleActions(session.id, session.revision);
+      const staleRecs = session.work.markRecommendationsStale();
+      const cancelled = session.work.cancelStaleActions(session.revision);
       // Anything already handed over can't be unsent: flag it for staff to reconcile.
-      const sent = store.actionsForSession(session.id).filter((a) => ["provider_accepted", "mock_written", "running"].includes(a.status) && a.revision < session.revision);
-      if (sent.length && !store.staffReviews(session.id).some((r) => r.reason.startsWith("Automatic: answers changed after"))) {
-        store.createStaffReview(session.id, "Automatic: answers changed after an email plan was already sent — please reconcile", null, false);
+      const sent = session.work.actionsForSession().filter((a) => ["provider_accepted", "mock_written", "running"].includes(a.status) && a.revision < session.revision);
+      if (sent.length && !session.work.staffReviews().some((r) => r.reason.startsWith("Automatic: answers changed after"))) {
+        session.work.createStaffReview("Automatic: answers changed after an email plan was already sent — please reconcile", null, false);
         session.state.sentBeforeChange = true;
       }
-      if (staleRecs || cancelled) store.audit("system", session.id, "invalidated", { staleRecommendations: staleRecs, cancelledActions: cancelled, revision: session.revision });
+      if (staleRecs || cancelled) session.work.audit("system", "invalidated", { staleRecommendations: staleRecs, cancelledActions: cancelled, revision: session.revision });
     }
     session.state.confirmedRevision = null;
     session.state.recapRevision = null;
@@ -157,8 +160,8 @@ export function createDialogue(ctx) {
 
   function setAnswer(session, questionId, kind, value, source, detail = null) {
     bumpRevision(session);
-    store.putAnswer(session.id, { questionId, kind, value: value ?? null, revision: session.revision, source, detail });
-    store.answerEvent(session.id, questionId, "proposed", value ?? null, kind, session.revision);
+    session.work.putAnswer({ questionId, kind, value: value ?? null, revision: session.revision, source, detail });
+    session.work.answerEvent(questionId, "proposed", value ?? null, kind, session.revision);
     pruneNotApplicable(session);
   }
 
@@ -172,8 +175,8 @@ export function createDialogue(ctx) {
       const st = engineState(corpus, answers, session.state.skippedBlocks);
       for (const a of answers) {
         if (!corpus.engine.shouldAsk(st, q(corpus, a.questionId))) {
-          store.deleteAnswer(session.id, a.questionId);
-          store.answerEvent(session.id, a.questionId, "removed_not_applicable", null, null, session.revision);
+          session.work.deleteAnswer(a.questionId);
+          session.work.answerEvent(a.questionId, "removed_not_applicable", null, null, session.revision);
           changed = true;
           break;
         }
@@ -213,7 +216,7 @@ export function createDialogue(ctx) {
       status: a.confirmedRevision !== null && a.confirmedRevision !== undefined && a.confirmedRevision === session.state.confirmedRevision ? "confirmed" : "proposed",
       source: a.source,
     }));
-    const rec = store.currentRecommendation(session.id);
+    const rec = session.work.currentRecommendation();
     return {
       sessionId: session.id,
       revision: session.revision,
@@ -225,8 +228,8 @@ export function createDialogue(ctx) {
       answers,
       progress: progress(session),
       results: rec && rec.revision === session.revision ? rec.result : null,
-      actions: store.actionsForSession(session.id).map(publicAction),
-      staffRequested: store.staffReviews(session.id).some((r) => r.reason.startsWith("Requested")),
+      actions: session.work.actionsForSession().map(publicAction),
+      staffRequested: session.work.staffReviews().some((r) => r.reason.startsWith("Requested")),
       email: session.state.email ? { address: session.state.email.address || null, step: session.state.email.step } : null,
       corpusVersion: session.corpus_version,
       policyVersion: POLICY_VERSION,
@@ -307,14 +310,14 @@ export function createDialogue(ctx) {
   function confirmRecap(session) {
     const st = session.state;
     st.confirmedRevision = session.revision;
-    store.confirmAllAnswers(session.id, session.revision);
-    store.answerEvent(session.id, null, "recap_confirmed", null, null, session.revision);
-    store.audit("caller", session.id, "recap_confirmed", { revision: session.revision });
+    session.work.confirmAllAnswers(session.revision);
+    session.work.answerEvent(null, "recap_confirmed", null, null, session.revision);
+    session.work.audit("caller", "recap_confirmed", { revision: session.revision });
     let results;
     try {
       results = buildResults(corpus, engineState(corpus, answersOf(session), st.skippedBlocks), answersOf(session));
     } catch (e) {
-      store.createStaffReview(session.id, "Automatic: matching failed — " + String(e.message).slice(0, 120), null, false);
+      session.work.createStaffReview("Automatic: matching failed — " + String(e.message).slice(0, 120), null, false);
       st.phase = "results";
       st.wrapStep = "staff";
       return reply(session, ["Thank you. Something went wrong on my side while finding services, so I can't give you suggestions right now, and I won't guess.", "I've flagged this for a Lions Services staff member to review.", staffQuestion(session)], { expect: "yes_no" });
@@ -324,10 +327,10 @@ export function createDialogue(ctx) {
     results.policyVersion = POLICY_VERSION;
     // Which deployed code produced this result (set by Vercel; "local" otherwise).
     results.commit = (ctx.env || process.env).VERCEL_GIT_COMMIT_SHA || "local";
-    const recId = store.saveRecommendation(session.id, session.revision, corpus.version, results);
+    const recId = session.work.saveRecommendation(session.revision, corpus.version, results);
     results.recommendationId = recId;
-    if (results.handoffs.length && !store.staffReviews(session.id).some((r) => r.reason.startsWith("Automatic: needs help"))) {
-      store.createStaffReview(session.id, "Automatic: needs help this directory does not cover — " + results.handoffs.map((h) => h.id).join(", "), null, false);
+    if (results.handoffs.length && !session.work.staffReviews().some((r) => r.reason.startsWith("Automatic: needs help"))) {
+      session.work.createStaffReview("Automatic: needs help this directory does not cover — " + results.handoffs.map((h) => h.id).join(", "), null, false);
     }
     st.phase = "results";
     st.wrapStep = "email";
@@ -351,12 +354,12 @@ export function createDialogue(ctx) {
     const st = session.state;
     const name = st.names.caller;
     const bits = [];
-    if (store.actionsForSession(session.id).some((a) => a.type === "email_plan" && !["cancelled", "failed"].includes(a.status))) bits.push("your plan is on its way by email");
-    if (store.staffReviews(session.id).some((r) => r.reason.startsWith("Requested"))) bits.push("your request is with the Lions Services team");
+    if (session.work.actionsForSession().some((a) => a.type === "email_plan" && !["cancelled", "failed"].includes(a.status))) bits.push("your plan is on its way by email");
+    if (session.work.staffReviews().some((r) => r.reason.startsWith("Requested"))) bits.push("your request is with the Lions Services team");
     st.phase = "closed";
     st.wrapStep = "done";
     session.status = "ended";
-    store.audit("caller", session.id, "session_completed", null);
+    session.work.audit("caller", "session_completed", null);
     return reply(session, [...lead, `You're all set${name ? ", " + name : ""}.`, `Your suggestions will stay on the screen${bits.length ? ", and " + joinList(bits) : ""}.`, "Thanks so much for talking with me. Take care!"], { expect: "ended" });
   }
 
@@ -375,7 +378,7 @@ export function createDialogue(ctx) {
     const interp = target.interpretation;
     if (interp.kind === "answer" || interp.kind === "unknown" || interp.kind === "declined") {
       setAnswer(session, target.questionId, interp.kind, interp.value ?? null, "correction", interp.detail || null);
-      store.answerEvent(session.id, target.questionId, "corrected", interp.value ?? null, interp.kind, session.revision);
+      session.work.answerEvent(target.questionId, "corrected", interp.value ?? null, interp.kind, session.revision);
       const now = answersOf(session).find((a) => a.questionId === target.questionId);
       return { applied: true, questionId: target.questionId, ack: `Okay, I've changed that — ${now ? lineFor(session, now) : "noted"}.` };
     }
@@ -387,6 +390,11 @@ export function createDialogue(ctx) {
   // ------------------------------------------------------------------ turn
   // input: {text, choice?: {questionId, value}, action?, revision?, mode}
   function handle(session, input) {
+    turnAi = (input && input.interpretations) || {};
+    try { return handleTurn(session, input); } finally { turnAi = {}; }
+  }
+
+  function handleTurn(session, input) {
     const text = String(input.text || "").slice(0, 1000);
     const st = session.state;
     if (!st.names) st.names = { caller: null, subject: null };
@@ -396,7 +404,7 @@ export function createDialogue(ctx) {
     if (input.action === "confirm_recap") {
       if (st.phase !== "recap") return reply(session, ["There's no summary waiting for confirmation right now."], { expect: "free" });
       if (Number(input.revision) !== session.revision || st.recapRevision !== session.revision) {
-        store.audit("system", session.id, "stale_confirmation_rejected", { offered: input.revision, current: session.revision });
+        session.work.audit("system", "stale_confirmation_rejected", { offered: input.revision, current: session.revision });
         return startRecap(session, ["Something changed since that summary, so I can't use that confirmation."]);
       }
       return confirmRecap(session);
@@ -444,8 +452,8 @@ export function createDialogue(ctx) {
       st.pending = null;
       if (yn === "yes") {
         bumpRevision(session);
-        store.deleteAllAnswers(session.id);
-        store.answerEvent(session.id, null, "restarted", null, null, session.revision);
+        session.work.deleteAllAnswers();
+        session.work.answerEvent(null, "restarted", null, null, session.revision);
         const keep = { turnSeq: st.turnSeq, lastAssistant: st.lastAssistant, names: { caller: st.names.caller, subject: null } };
         session.state = Object.assign(newDialogueState(), keep);
         session.state.phase = "intake";
@@ -470,7 +478,7 @@ export function createDialogue(ctx) {
       const resume = st.pending.resumePhase;
       st.pending = null;
       setAnswer(session, question.id, interp.kind, interp.value ?? null, "correction", interp.detail || null);
-      store.answerEvent(session.id, question.id, "corrected", interp.value ?? null, interp.kind, session.revision);
+      session.work.answerEvent(question.id, "corrected", interp.value ?? null, interp.kind, session.revision);
       const after = answersOf(session).find((a) => a.questionId === question.id);
       const ackText = `Okay, I've changed that — ${after ? lineFor(session, after) : "noted"}.`;
       if (resume === "intake") return askNext(session, [ackText]);
@@ -548,7 +556,7 @@ export function createDialogue(ctx) {
     if (!justAsk) {
       const found = extractMany(text, corpus.assessment, { geography: corpus.geography });
       // Optional AI extraction fills questions the rules didn't catch.
-      for (const a of (session.__aiExtract || [])) if (!found.some((f) => f.questionId === a.questionId)) found.push({ ...a, phrase: "ai", ai: true });
+      for (const a of (turnAi.extract || [])) if (!found.some((f) => f.questionId === a.questionId)) found.push({ ...a, phrase: "ai", ai: true });
       for (const f of found) {
         const est = engineState(corpus, answersOf(session), st.skippedBlocks);
         if (!corpus.engine.shouldAsk(est, q(corpus, f.questionId))) continue;
@@ -592,7 +600,7 @@ export function createDialogue(ctx) {
       if (detectGlobal(text).skipSection || detectGlobal(text).skip || / skip /.test(n) || yesNo(text) === "no") {
         bumpRevision(session);
         st.skippedBlocks.push(blockId);
-        store.answerEvent(session.id, null, "section_skipped:" + blockId, null, "skipped", session.revision);
+        session.work.answerEvent(null, "section_skipped:" + blockId, null, "skipped", session.revision);
         return askNext(session, ["No problem, we'll skip those."]);
       }
       const nq = nextQuestion(session);
@@ -615,8 +623,8 @@ export function createDialogue(ctx) {
         bumpRevision(session);
         st.skippedBlocks.push(block.id);
         // Drop anything already answered in that section.
-        for (const id of block.questions) if (answersOf(session).some((a) => a.questionId === id)) store.deleteAnswer(session.id, id);
-        store.answerEvent(session.id, null, "section_skipped:" + block.id, null, "skipped", session.revision);
+        for (const id of block.questions) if (answersOf(session).some((a) => a.questionId === id)) session.work.deleteAnswer(id);
+        session.work.answerEvent(null, "section_skipped:" + block.id, null, "skipped", session.revision);
         return askNext(session, ["Okay, we'll skip the rest of those."]);
       }
       return reply(session, ["This section can't be skipped as a whole, but you can skip any single question by saying skip."], { expect: "answer", question: questionPayload(q(corpus, st.currentQuestion), whoFor(session)) });
@@ -669,7 +677,7 @@ export function createDialogue(ctx) {
         if (narrowed.length === 1) interp = { kind: "answer", value: narrowed[0] };
       }
     }
-    const ai = session.__aiInterp;
+    const ai = turnAi.interp;
     if (interp.kind === "unclear" && ai && ai.questionId === question.id && ai.kind !== "unclear") {
       const noted = [];
       for (const o of ai.others || []) {
@@ -733,7 +741,7 @@ export function createDialogue(ctx) {
       // A typed/spoken yes must be for the summary currently on screen.
       const offered = input.revision === undefined || input.revision === null ? session.revision : Number(input.revision);
       if (offered !== session.revision || st.recapRevision !== session.revision) {
-        store.audit("system", session.id, "stale_confirmation_rejected", { offered, current: session.revision });
+        session.work.audit("system", "stale_confirmation_rejected", { offered, current: session.revision });
         return startRecap(session, ["Something changed since that summary, so I need you to check it again."]);
       }
       return confirmRecap(session);
@@ -749,7 +757,7 @@ export function createDialogue(ctx) {
   }
 
   function currentResults(session) {
-    const rec = store.currentRecommendation(session.id);
+    const rec = session.work.currentRecommendation();
     return rec && rec.revision === session.revision ? { ...rec.result, recommendationId: rec.id } : null;
   }
 
@@ -830,7 +838,7 @@ export function createDialogue(ctx) {
     const yn = yesNo(text);
     if (normalize(text).includes(" cancel ") || detectGlobal(text).noEmail) return leaveEmail(session, ["Okay, I won't send anything."]);
     if (st.phase === "email_address") {
-      const addr = parseEmail(text) || (session.__aiEmail || null);
+      const addr = parseEmail(text) || (turnAi.email || null);
       if (!addr) {
         if (yn === "no") return leaveEmail(session, ["Okay, no email."]);
         return reply(session, ["Sorry, I didn't catch the email address. Could you say it again, slowly — like \"sam at example dot com\"? Or type it in the box below."], { expect: "email" });
@@ -871,7 +879,7 @@ export function createDialogue(ctx) {
       if (st.email.consentRevision !== session.revision) return leaveEmail(session, ["Your answers changed after I asked, so I haven't sent anything."]);
       const plan = buildPlan(corpus, results, { name: st.names.caller });
       if (plan.hash !== st.email.payloadHash) return leaveEmail(session, ["The plan changed after I asked, so I haven't sent anything."]);
-      const res = ctx.actions.authorizeAndEnqueueEmail(session, { recipient: st.email.address, plan, recommendationId: results.recommendationId, method: "explicit_yes" });
+      const res = session.work.enqueueEmail(session, { recipient: st.email.address, plan, recommendationId: results.recommendationId, method: "explicit_yes" });
       const addr = st.email.address;
       st.phase = "results";
       st.wrapStep = "staff";
@@ -901,7 +909,7 @@ export function createDialogue(ctx) {
     const g = detectGlobal(text);
     if (st.phase === "staff_contact") {
       const known = st.email && st.email.address;
-      const email = parseEmail(text) || session.__aiEmail || null;
+      const email = parseEmail(text) || turnAi.email || null;
       const digits = text.replace(/[^0-9]/g, "");
       let contact = null;
       if (email) contact = { method: "email", value: email };
@@ -923,8 +931,8 @@ export function createDialogue(ctx) {
       if (yn !== "yes") return reply(session, ["Just say yes or no."], { expect: "yes_no" });
       const c = st.staff.contact;
       const people = { callerName: st.names.caller || null, subjectName: st.names.subject || null };
-      store.createStaffReview(session.id, "Requested by the person during the conversation", c.method === "none" ? people : { ...c, ...people }, c.method !== "none");
-      store.audit("caller", session.id, "staff_review_requested", { contactMethod: c.method });
+      session.work.createStaffReview("Requested by the person during the conversation", c.method === "none" ? people : { ...c, ...people }, c.method !== "none");
+      session.work.audit("caller", "staff_review_requested", { contactMethod: c.method });
       const resume = st.staff.resumePhase;
       st.staff = { requested: true };
       st.phase = resume;
@@ -938,7 +946,7 @@ export function createDialogue(ctx) {
   // Browser event: assistant speech was interrupted before it finished.
   function speechInterrupted(session, turnId) {
     const st = session.state;
-    store.audit("caller", session.id, "speech_interrupted", { turnId });
+    session.work.audit("caller", "speech_interrupted", { turnId });
     // An authorisation question that wasn't fully heard can't be answered yes.
     if (st.phase === "email_consent" && st.lastAssistant && st.lastAssistant.turnId === turnId) {
       st.email.consentInterrupted = true;

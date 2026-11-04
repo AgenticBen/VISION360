@@ -18,6 +18,14 @@ function sha(s) {
   return createHash("sha256").update(s).digest("hex");
 }
 
+export const EMAIL_PURPOSE = "Send the confirmed referral plan to the person";
+
+// The same person, address, plan and answer revision always give the same
+// key, so a retried "yes" can never queue a second email.
+export function emailIdempotencyKey(sessionId, recipient, planHash, revision) {
+  return sha([sessionId, "email_plan", recipient.toLowerCase(), planHash, revision].join("|"));
+}
+
 export function createActions(ctx) {
   const { store } = ctx;
   const env = ctx.env || process.env;
@@ -40,12 +48,11 @@ export function createActions(ctx) {
 
   function authorizeAndEnqueueEmail(session, { recipient, plan, recommendationId, method }) {
     return store.tx(() => {
-      const purpose = "Send the confirmed referral plan to the person";
       const authId = store.saveAuthorization({
         sessionId: session.id, actionType: "email_plan", destination: recipient, payloadHash: plan.hash,
-        purpose, revision: session.revision, recommendationId, method,
+        purpose: EMAIL_PURPOSE, revision: session.revision, recommendationId, method,
       });
-      const idempotencyKey = sha([session.id, "email_plan", recipient.toLowerCase(), plan.hash, session.revision].join("|"));
+      const idempotencyKey = emailIdempotencyKey(session.id, recipient, plan.hash, session.revision);
       const res = store.enqueueAction({
         sessionId: session.id, type: "email_plan", idempotencyKey, authorizationId: authId, revision: session.revision,
         payload: { to: recipient, subject: plan.subject, text: plan.text, html: plan.html, hash: plan.hash, recommendationId },
