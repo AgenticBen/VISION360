@@ -35,7 +35,9 @@
   color: var(--ink, #16191d); background: var(--page, #fff); font: inherit;
   overflow-wrap: anywhere;
 }
-@media (max-width: 34rem) { .wn-dialog { padding: .75rem; width: calc(100% - .5rem); } }
+/* The browser's own dialog style caps width at 100% - 2em, which at 200% text
+   leaves a phone with very little room; use nearly the full width instead. */
+@media (max-width: 34rem) { .wn-dialog { padding: .75rem; width: calc(100% - .5rem); max-width: calc(100% - .5rem); } }
 .wn-dialog::backdrop { background: rgba(0,0,0,.6); }
 .wn-dialog h2 { margin: 0; font-size: 1.4rem; }
 .wn-dialog h3 { margin: .9rem 0 .4rem; font-size: 1.1rem; }
@@ -47,6 +49,11 @@
 .wn-step { min-height: 6rem; }
 .wn-note { color: var(--ink-muted, var(--muted, #525a63)); font-style: italic; }
 .wn-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+/* On wider screens keep Back / Show me / Next in view while the dialog scrolls.
+   On phones they would cover most of the dialog, so they simply follow the step. */
+@media (min-width: 34.01rem) {
+  .wn-actions { position: sticky; bottom: 0; z-index: 1; background: var(--page, #fff); padding: .5rem 0; border-top: 1px solid var(--line-soft, #d7dce2); }
+}
 .wn-btn, .wn-back {
   font: inherit; font-size: 1rem; font-weight: 600; min-height: 44px; min-width: 44px; padding: .4rem .9rem;
   border: 2px solid var(--line, #7f8992); border-radius: 8px; background: var(--page, #fff); color: var(--ink, #16191d); cursor: pointer;

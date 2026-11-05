@@ -35,7 +35,7 @@ html[data-textsize="200"] { font-size: 36px; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--page); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 1rem; line-height: 1.55; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 1rem; line-height: 1.55; overflow-wrap: break-word; }
 a { color: var(--accent); text-underline-offset: 0.15em; }
 .wrap { max-width: 56rem; margin: 0 auto; padding: 0 16px; }
 .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -65,7 +65,8 @@ h3 { font-size: 1.12rem; line-height: 1.3; margin: 0 0 0.4rem; }
 .notice ul { margin: 0.3rem 0; padding-left: 1.2rem; }
 .notice li { margin: 0.35rem 0; }
 .choose-lead { margin-top: 1.2rem; font-weight: 600; }
-.choose { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
+/* min(…, 100%): at 200% text 14rem is wider than a phone, so never exceed the screen. */
+.choose { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: 1rem; }
 .btn-big { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 1rem 1.2rem; min-height: 6rem; border-width: 3px; }
 .big-label { font-size: 1.6rem; font-weight: 800; }
 .big-sub { font-weight: 500; color: var(--ink); }

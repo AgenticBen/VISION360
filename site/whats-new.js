@@ -220,6 +220,15 @@
     apply();
     if (window.ResizeObserver) new ResizeObserver(apply).observe(bar);
     window.addEventListener("resize", apply);
+    /* Browsers don't always honour scroll padding when focus moves, so also
+       nudge the page whenever a newly focused control ends up under the bar. */
+    document.addEventListener("focusin", function (ev) {
+      var t = ev.target;
+      if (!t || bar.contains(t) || dialog.contains(t)) return;
+      var barTop = bar.getBoundingClientRect().top;
+      var r = t.getBoundingClientRect();
+      if (r.height && r.bottom > barTop - 8) window.scrollBy({ top: r.bottom - barTop + 16, behavior: "instant" });
+    });
   }
 
   function mount() {
