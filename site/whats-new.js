@@ -32,7 +32,7 @@
   var TOURS = {
     directory: {
       title: "Using the directory",
-      links: [["/demo", "Try the voice and chat demo"]],
+      links: [["/guide.html", "Read the full guide"], ["/demo", "Try the voice and chat demo"]],
       steps: [
         { target: "#q", title: "Search everything", body: "Type an organization, a service, a county or a need. Search looks at names, services, eligibility, contacts and referral steps, and filters the Directory list." },
         { target: "#views", title: "Three views", body: "Directory lists every organization. Pathways shows common routes through services. Find services asks a few questions and suggests where to start." },
@@ -45,7 +45,7 @@
     },
     demo: {
       title: "Using the voice and chat demo",
-      links: [["/", "Back to the directory"]],
+      links: [["/guide.html", "Read the full guide"], ["/", "Back to the directory"]],
       steps: [
         { target: "#start", hint: "You've already started; this choice is at the top when you begin.", title: "Talk or type", body: "Choose Talk to use your microphone, or Type to chat. You can switch at any time without losing anything. This is a demo: please use made-up details." },
         { target: "#open-settings", title: "Make it comfortable", body: "Settings change text size, colors and contrast, whether replies are read aloud, and the voice speed. They are saved on this device only." },
@@ -57,7 +57,7 @@
     },
     staff: {
       title: "Using the staff queue",
-      links: [["/", "Open the directory"], ["/demo", "Open the demo"]],
+      links: [["/guide.html", "Read the full guide"], ["/", "Open the directory"], ["/demo", "Open the demo"]],
       steps: [
         { target: "#login", hint: "You're signed in.", title: "Sign in", body: "Staff sign in with their own account. Everything here is fictional demo data." },
         { target: "#list", hint: "The list appears after signing in.", title: "The conversation list", body: "Newest first. Each row shows the stage, the staff status, anything that needs attention, and whether an email was sent." },
