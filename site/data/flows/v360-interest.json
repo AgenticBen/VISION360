@@ -1,0 +1,703 @@
+{
+  "version": 1,
+  "_comment": "The V360 TECH community interest form (https://lionsservices.org/programs/lions-denn/v360-interest/) as an editable workflow. Field order, labels, options and required flags follow the live form; voice wording is a first draft. Not used by the assistant yet.",
+  "title": "V360 TECH interest form",
+  "intro": "Thank you for your interest in V360 TECH (Technology Empowering Choice & Hope): assistive technology training and digital skills support for people who are blind or have low vision. A team member will follow up.",
+  "privacy_notice": "Your information is kept private and used only to follow up about V360 TECH.",
+  "blocks": [
+    {
+      "id": "contact",
+      "title": "Contact information",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "full_name",
+        "phone",
+        "email",
+        "home_address",
+        "date_of_birth",
+        "contact_method",
+        "contact_time"
+      ]
+    },
+    {
+      "id": "interest",
+      "title": "Program interest",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "for_whom",
+        "blind_low_vision",
+        "support_wanted",
+        "support_other",
+        "training_elsewhere",
+        "military",
+        "dsb_or_other",
+        "student"
+      ]
+    },
+    {
+      "id": "access",
+      "title": "Access and support",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "device_access",
+        "transportation",
+        "training_format",
+        "primary_goal",
+        "anything_else"
+      ]
+    },
+    {
+      "id": "consent",
+      "title": "Consent",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "contact_consent"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "full_name",
+      "domain": "contact",
+      "type": "text",
+      "prompt_screen": "Full name",
+      "prompt_voice": "What is the full name of the person this is for?",
+      "voice_template": null,
+      "help": null,
+      "required": true,
+      "sensitive": true,
+      "skippable": false,
+      "ask_if": null,
+      "options": []
+    },
+    {
+      "id": "phone",
+      "domain": "contact",
+      "type": "phone",
+      "prompt_screen": "Phone number",
+      "prompt_voice": "What is the best phone number?",
+      "voice_template": null,
+      "help": null,
+      "required": true,
+      "sensitive": true,
+      "skippable": false,
+      "ask_if": null,
+      "options": []
+    },
+    {
+      "id": "email",
+      "domain": "contact",
+      "type": "email",
+      "prompt_screen": "Email address",
+      "prompt_voice": "What email address should we use?",
+      "voice_template": null,
+      "help": null,
+      "required": true,
+      "sensitive": true,
+      "skippable": false,
+      "ask_if": null,
+      "options": []
+    },
+    {
+      "id": "home_address",
+      "domain": "contact",
+      "type": "address",
+      "prompt_screen": "Home address",
+      "prompt_voice": "What is the home address, with the city and ZIP code?",
+      "voice_template": null,
+      "help": "If you are filling this in for someone else, use their address. Street address, apartment or unit, city, state and ZIP code.",
+      "required": true,
+      "sensitive": true,
+      "skippable": false,
+      "ask_if": null,
+      "options": []
+    },
+    {
+      "id": "date_of_birth",
+      "domain": "contact",
+      "type": "date",
+      "prompt_screen": "Date of birth",
+      "prompt_voice": "What is their date of birth?",
+      "voice_template": null,
+      "help": "If you are filling this in for someone else, enter their date of birth.",
+      "required": true,
+      "sensitive": true,
+      "skippable": false,
+      "ask_if": null,
+      "options": []
+    },
+    {
+      "id": "contact_method",
+      "domain": "contact",
+      "type": "single",
+      "prompt_screen": "Preferred method of contact",
+      "prompt_voice": "How would they like us to get in touch: a phone call, a text, or an email?",
+      "voice_template": null,
+      "help": null,
+      "required": true,
+      "sensitive": false,
+      "skippable": false,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "phone_call",
+          "label_screen": "Phone call",
+          "label_voice": "phone call",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "text",
+          "label_screen": "Text",
+          "label_voice": "text",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "email",
+          "label_screen": "Email",
+          "label_voice": "email",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "contact_time",
+      "domain": "contact",
+      "type": "multi",
+      "prompt_screen": "Best time to contact you",
+      "prompt_voice": "When is the best time to reach them? Morning, afternoon or evening?",
+      "voice_template": null,
+      "help": "Select all that apply.",
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "morning",
+          "label_screen": "Morning",
+          "label_voice": "morning",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "afternoon",
+          "label_screen": "Afternoon",
+          "label_voice": "afternoon",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "evening",
+          "label_screen": "Evening",
+          "label_voice": "evening",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "for_whom",
+      "domain": "interest",
+      "type": "single",
+      "prompt_screen": "Are you completing this form for yourself or someone else?",
+      "prompt_voice": "Are you filling this in for yourself, or for someone else?",
+      "voice_template": null,
+      "help": null,
+      "required": true,
+      "sensitive": false,
+      "skippable": false,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "myself",
+          "label_screen": "Myself",
+          "label_voice": "myself",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "family_member",
+          "label_screen": "A family member",
+          "label_voice": "a family member",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "client",
+          "label_screen": "A client/customer",
+          "label_voice": "a client or customer",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "professional",
+          "label_screen": "Someone I support professionally",
+          "label_voice": "someone i support professionally",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "blind_low_vision",
+      "domain": "interest",
+      "type": "single",
+      "prompt_screen": "Are you blind or do you have low vision?",
+      "prompt_voice": "Are they blind, or do they have low vision?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "I am not sure",
+          "label_voice": "not sure",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "someone_else",
+          "label_screen": "I am completing this for someone else",
+          "label_voice": "for someone else",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "support_wanted",
+      "domain": "interest",
+      "type": "multi",
+      "prompt_screen": "What kind of support are you interested in?",
+      "prompt_voice": "What kind of support are they interested in? For example a smartphone, a screen reader, computer skills, or something else.",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "smartphone",
+          "label_screen": "Learning to use a smartphone",
+          "label_voice": "learning to use a smartphone",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "screen_reader",
+          "label_screen": "Screen reader training",
+          "label_voice": "screen reader training",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "computer",
+          "label_screen": "Computer skills",
+          "label_voice": "computer skills",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "email_internet",
+          "label_screen": "Email or internet use",
+          "label_voice": "email or internet use",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "at_devices",
+          "label_screen": "Assistive technology devices",
+          "label_voice": "assistive technology devices",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "online_services",
+          "label_screen": "Help accessing online services",
+          "label_voice": "help accessing online services",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "employment",
+          "label_screen": "Employment-related technology skills",
+          "label_voice": "employment-related technology skills",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "digital_confidence",
+          "label_screen": "General digital confidence",
+          "label_voice": "general digital confidence",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "other",
+          "label_screen": "Other",
+          "label_voice": "other",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "support_other",
+      "domain": "interest",
+      "type": "long_text",
+      "prompt_screen": "Please describe",
+      "prompt_voice": "Tell me a bit more about the support they are looking for.",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": {
+        "q": "support_wanted",
+        "in": [
+          "other"
+        ]
+      },
+      "options": []
+    },
+    {
+      "id": "training_elsewhere",
+      "domain": "interest",
+      "type": "single",
+      "prompt_screen": "Are you currently receiving technology training somewhere else?",
+      "prompt_voice": "Are they getting technology training anywhere else right now?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "Not sure",
+          "label_voice": "not sure",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "military",
+      "domain": "interest",
+      "type": "single",
+      "prompt_screen": "Did you ever serve in the military?",
+      "prompt_voice": "Did they ever serve in the military?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "prefer_not",
+          "label_screen": "Prefer not to answer",
+          "label_voice": "prefer not to answer",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "dsb_or_other",
+      "domain": "interest",
+      "type": "single",
+      "prompt_screen": "Are you currently working with DSB or another organization?",
+      "prompt_voice": "Are they working with the Division of Services for the Blind, or another organization, right now?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "prefer_not",
+          "label_screen": "Prefer not to answer",
+          "label_voice": "prefer not to answer",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "student",
+      "domain": "interest",
+      "type": "single",
+      "prompt_screen": "Are you a student?",
+      "prompt_voice": "Are they a student?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "prefer_not",
+          "label_screen": "Prefer not to answer",
+          "label_voice": "prefer not to answer",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "device_access",
+      "domain": "access",
+      "type": "multi",
+      "prompt_screen": "Do you currently have access to a smartphone, tablet, or computer?",
+      "prompt_voice": "Do they have a smartphone, a tablet or a computer they can use?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "smartphone",
+          "label_screen": "Smartphone",
+          "label_voice": "smartphone",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "tablet",
+          "label_screen": "Tablet",
+          "label_voice": "tablet",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "computer",
+          "label_screen": "Computer",
+          "label_voice": "computer",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "no_device",
+          "label_screen": "I do not currently have access to a device",
+          "label_voice": "no device",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "transportation",
+      "domain": "access",
+      "type": "single",
+      "prompt_screen": "Do you need transportation assistance to attend in-person training?",
+      "prompt_voice": "Would they need help with transport to get to training in person?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "no",
+          "label_screen": "No",
+          "label_voice": "no",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "maybe",
+          "label_screen": "Maybe",
+          "label_voice": "maybe",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "training_format",
+      "domain": "access",
+      "type": "single",
+      "prompt_screen": "Preferred training format",
+      "prompt_voice": "Would they prefer training in person, online, or either?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "in_person",
+          "label_screen": "In person",
+          "label_voice": "in person",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "virtual",
+          "label_screen": "Virtual",
+          "label_voice": "online",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "either",
+          "label_screen": "Either",
+          "label_voice": "either",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "primary_goal",
+      "domain": "access",
+      "type": "long_text",
+      "prompt_screen": "What is your primary goal for participating in V360 TECH?",
+      "prompt_voice": "What is the main thing they would like to get out of V360 TECH?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": []
+    },
+    {
+      "id": "anything_else",
+      "domain": "access",
+      "type": "long_text",
+      "prompt_screen": "Is there anything else you would like us to know?",
+      "prompt_voice": "Is there anything else you would like us to know?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": []
+    },
+    {
+      "id": "contact_consent",
+      "domain": "consent",
+      "type": "consent",
+      "prompt_screen": "I give Lions Services permission to contact me about V360 TECH programming.",
+      "prompt_voice": "Is it all right for Lions Services to contact them about V360 TECH?",
+      "voice_template": null,
+      "help": "Information is kept private and used only to follow up about V360 TECH.",
+      "required": true,
+      "sensitive": false,
+      "skippable": false,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes, you may contact me",
+          "label_voice": "yes",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    }
+  ],
+  "handoffs": [],
+  "on_complete": {
+    "action": "staff_followup",
+    "message": "Thank you — your interest form has been received. A team member will follow up soon. You can also call 704-921-1527 extension 651."
+  }
+}

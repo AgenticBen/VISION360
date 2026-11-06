@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Requests — VISION360 admin</title>
+<link rel="stylesheet" href="/admin/admin.css">
+<link rel="stylesheet" href="/whats-new.css">
+</head>
+<body class="admin">
+<div class="admin-layout">
+<main class="admin-main" id="main">
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Settings</p>
+    <h1>Requests</h1>
+    <p class="sub">Changes you've asked for with the request button. Claude works through them over MCP and replies here.</p>
+  </div>
+  <div class="page-actions"><button type="button" class="btn" id="archive-toggle">Archive</button></div>
+</header>
+<section id="groups" data-tour="request-groups"><p class="hint">Loading…</p></section>
+<section id="archive" hidden style="margin-top:18px"></section>
+</main>
+</div>
+<script src="/admin/shell.js"></script>
+<script src="/admin/requests/requests.js"></script>
+<script src="/request-button.js"></script>
+<script src="/whats-new.js" data-page="admin-requests" defer></script>
+</body>
+</html>

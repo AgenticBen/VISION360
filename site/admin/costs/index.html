@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Estimated costs — VISION360 admin</title>
+<link rel="stylesheet" href="/admin/admin.css">
+<link rel="stylesheet" href="/whats-new.css">
+</head>
+<body class="admin">
+<div class="admin-layout">
+<main class="admin-main" id="main">
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Money</p>
+    <h1>Estimated costs</h1>
+    <p class="sub">What each paid service is costing to run, last 30 days.</p>
+  </div>
+  <div class="page-actions"></div>
+</header>
+<section class="card" data-tour="cost-table"><div class="table-wrap"><table class="t" id="cost-table"><thead><tr><th>Service</th><th>What it's using</th><th>Usage</th><th class="n">Estimate</th></tr></thead><tbody></tbody></table></div>
+<p class="hint">Estimates only. Hosting (Vercel) is billed on the plan, not per conversation. Set <code>V360_COST_PER_AI_CALL_USD</code> in Vercel to price AI calls.</p></section>
+</main>
+</div>
+<script src="/admin/shell.js"></script>
+<script src="/admin/costs/costs.js"></script>
+<script src="/request-button.js"></script>
+<script src="/whats-new.js" data-page="admin-costs" defer></script>
+</body>
+</html>

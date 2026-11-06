@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Conversations — VISION360 admin</title>
+<link rel="stylesheet" href="/admin/admin.css">
+<link rel="stylesheet" href="/whats-new.css">
+</head>
+<body class="admin">
+<div class="admin-layout">
+<main class="admin-main" id="main">
+<header class="page-head">
+  <div>
+    <p class="eyebrow">People</p>
+    <h1>Conversations</h1>
+    <p class="sub">Every assistant conversation: answers, suggestions, emails and follow-up requests. Newest first; kept for 7 days.</p>
+  </div>
+  <div class="page-actions"></div>
+</header>
+<section id="login" hidden class="card"><h2>Sign in</h2>
+  <form id="login-form"><label class="fl" for="u">Username</label><input class="inp" id="u" autocomplete="username" style="max-width:20rem">
+  <label class="fl" for="p">Password</label><input class="inp" id="p" type="password" autocomplete="current-password" style="max-width:20rem">
+  <p><button class="btn primary" type="submit">Sign in</button></p><p id="login-error" class="note" hidden></p></form></section>
+<button type="button" class="btn" id="logout" hidden>Sign out</button>
+<section id="list" hidden class="card" data-tour="conversation-list">
+  <div class="table-wrap"><table class="t"><thead><tr><th>Updated</th><th>Stage</th><th>Staff status</th><th>Needs attention</th><th>Email</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<section id="detail" hidden class="card">
+  <p><button type="button" class="btn" id="back">← Back to the list</button></p>
+  <h2 id="detail-h" tabindex="-1">Conversation</h2>
+  <div id="detail-body"></div>
+</section>
+</main>
+</div>
+<script src="/admin/shell.js"></script>
+<script src="/admin/conversations/conversations.js"></script>
+<script src="/request-button.js"></script>
+<script src="/whats-new.js" data-page="admin-conversations" defer></script>
+</body>
+</html>

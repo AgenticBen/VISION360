@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Change log — VISION360 admin</title>
+<link rel="stylesheet" href="/admin/admin.css">
+<link rel="stylesheet" href="/whats-new.css">
+</head>
+<body class="admin">
+<div class="admin-layout">
+<main class="admin-main" id="main">
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Settings</p>
+    <h1>Change log</h1>
+    <p class="sub">Everything that has changed, newest first: workflow versions, finished requests and other changes.</p>
+  </div>
+  <div class="page-actions"><div class="seg" id="kind" data-tour="changelog-filter"><button type="button" aria-pressed="true" data-k="">All</button><button type="button" aria-pressed="false" data-k="workflow">Workflows</button><button type="button" aria-pressed="false" data-k="app">App</button><button type="button" aria-pressed="false" data-k="content">Content</button></div></div>
+</header>
+<section class="card" data-tour="changelog-list"><ul class="timeline" id="log"></ul></section>
+</main>
+</div>
+<script src="/admin/shell.js"></script>
+<script src="/admin/changelog/changelog.js"></script>
+<script src="/request-button.js"></script>
+<script src="/whats-new.js" data-page="admin-changelog" defer></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Connect Claude & ChatGPT — VISION360 admin</title>
+<link rel="stylesheet" href="/admin/admin.css">
+<link rel="stylesheet" href="/whats-new.css">
+</head>
+<body class="admin">
+<div class="admin-layout">
+<main class="admin-main" id="main">
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Settings</p>
+    <h1>Connect Claude & ChatGPT</h1>
+    <p class="sub">Let Claude or ChatGPT edit workflows and work through your requests, using this site's MCP connector.</p>
+  </div>
+  <div class="page-actions"></div>
+</header>
+<section class="card" data-tour="mcp-url"><h2>Connector URL</h2>
+  <div class="copy-row"><code id="mcp-url">…</code><button type="button" class="btn" id="copy-url">Copy</button></div>
+  <p class="hint">No sign-in is needed for now, so anyone with this URL can use it. Keep it to yourselves.</p></section>
+<div class="two-col" style="grid-template-columns:1fr 1fr">
+<section class="card" data-tour="claude-steps"><h2>Claude (claude.ai and the desktop app)</h2>
+  <ol class="steps"><li>Open <strong>Customize → Connectors</strong>.</li><li>Click <strong>+ Add</strong>, then <strong>Add custom connector</strong>.</li><li>Name it <strong>VISION360</strong> and paste the connector URL. Click <strong>Continue</strong>.</li><li>Under Authentication choose <strong>No sign in</strong>, then <strong>Add</strong>.</li><li>In a chat, click <strong>+ → Connectors</strong> and switch VISION360 on.</li></ol>
+  <p class="hint">After this site gains new tools, switch the connector off and on again so Claude sees them.</p></section>
+<section class="card" data-tour="chatgpt-steps"><h2>ChatGPT</h2>
+  <ol class="steps"><li>Open <strong>Settings</strong>, then <strong>Apps &amp; Connectors</strong> (called <strong>Connectors</strong> in some versions) → <strong>Advanced</strong>, and turn on <strong>Developer mode</strong>.</li><li>Back on that page, click <strong>Create</strong> (or <strong>Add connector</strong>).</li><li>Name it <strong>VISION360</strong>, paste the connector URL, choose <strong>No authentication</strong>, confirm you trust it, and create it.</li><li>In a chat, choose <strong>Developer mode</strong> from the <strong>+</strong> menu and pick VISION360.</li></ol>
+  <p class="hint">Developer mode needs a paid ChatGPT plan, and editing tools may be limited to Business, Enterprise or Edu workspaces. ChatGPT asks you to confirm each change. Menu names shift as OpenAI updates ChatGPT; OpenAI's help article “Developer mode and MCP apps in ChatGPT” has the current steps.</p></section>
+</div>
+<section class="card"><h2>Claude Code (terminal)</h2><pre class="code" id="cc-cmd">claude mcp add --transport http vision360 …</pre></section>
+<section class="card" data-tour="agent-instructions"><h2>What the agent can do</h2>
+  <ul class="steps"><li><strong>Workflows:</strong> read any workflow and its versions, edit the draft (add, change, move or delete questions, follow-ups, answers and their effects), run the checks, publish a new version and revert to an earlier one.</li>
+  <li><strong>Requests:</strong> list your requests, reply on them, mark them in progress, needs you or done (done needs a short summary, which goes in the change log).</li>
+  <li><strong>Change log and dashboard:</strong> add a change-log entry; read the 30-day numbers.</li></ul>
+  <p class="hint">To have Claude work through your requests, ask it: <em>“Use VISION360: work through my open requests, oldest first. Mark each one in progress, make the change, check it, then mark it done with a short summary.”</em> App changes that need code are marked “needs you” for a coding session.</p></section>
+<section class="card" data-tour="status"><h2>Status</h2><dl class="kv" id="status"></dl></section>
+</main>
+</div>
+<script src="/admin/shell.js"></script>
+<script src="/admin/settings/settings.js"></script>
+<script src="/request-button.js"></script>
+<script src="/whats-new.js" data-page="admin-settings" defer></script>
+</body>
+</html>

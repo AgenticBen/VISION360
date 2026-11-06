@@ -501,7 +501,8 @@ test("admin is open by default: staff queue and overview need no password, write
   assert.ok(r.json.usage.conversations >= 1);
   assert.equal(r.json.usage.byMode.text >= 1, true);
   assert.equal(r.json.costs.ai.estimateUsd, 0, "AI off means no AI cost");
-  assert.equal(r.json.settings.claudeMcp, "not connected");
+  assert.equal(r.json.settings.storage.kind, "local");
+  assert.equal(r.json.settings.editsOn, true);
   const locked = await makeApp({ V360_ADMIN_SIGNIN: "on" });
   r = await call(locked, "GET", "/api/admin/overview");
   assert.equal(r.status, 401);

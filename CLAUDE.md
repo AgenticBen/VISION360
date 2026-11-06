@@ -7,3 +7,4 @@
 5. This is a public codebase. Do not add credentials, internal organizational notes, or unverified personal contact details. The original private research is maintained separately.
 6. Run `npm run verify` before publication (data checks, all tests, architecture fitness checks). If data or rules changed on purpose, run `npm run lock` and review the golden routing output first. Preserve semantic HTML, keyboard usability, high contrast, text sizing, and equivalent text for pathways.
 7. After publication, visit the existing live website, compare all changed displayed fields with the before/after record, and verify affected navigation and contact links. Mark a change complete only after live QA succeeds.
+8. The admin workflow editor commits to `main` (published workflow versions, with `data/corpus.lock.json` and the golden fixture). Run `git pull` before local work, and never rewrite those commits.

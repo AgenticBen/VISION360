@@ -144,7 +144,7 @@
   <section aria-labelledby="staff">
     <h2 id="staff">6. The staff queue (Lions Services staff)</h2>
     <ol>
-      <li>Open <a href="/staff/">the staff queue</a> (Admin → Conversations). No password is needed for now.</li>
+      <li>Open <a href="/admin/conversations/">Conversations</a> in the admin (Admin → Conversations). No password is needed for now.</li>
       <li>The list shows the newest conversations first: their stage, staff status, anything needing attention, and email status.</li>
       <li>Open a conversation to see confirmed and unconfirmed answers, every suggestion with its reasons and the data version behind it, emails, and follow-up requests.</li>
       <li>Mark it reviewed or needing follow-up, or retry an email that failed. A status change never changes the person's answers.</li>
@@ -154,21 +154,32 @@
   <section aria-labelledby="admin">
     <h2 id="admin">7. The admin pages</h2>
     <p class="note">No password is needed for now: anyone with the link can open these pages. Email addresses are partly hidden while that's the case. Everything shown comes from test conversations.</p>
-    <p>Open <a href="/admin/">the admin page</a> from <strong>Admin</strong> in the site menu. It has six parts:</p>
+    <p>Open <a href="/admin/">the admin</a> from <strong>Admin</strong> in the site menu. Every area has its own page in the sidebar on the left:</p>
     <ol>
-      <li><strong>Dashboard.</strong> Conversations started in the last 30 days, by voice or typing, how many confirmed their summary and reached suggestions, plan emails sent, and requests for staff to follow up, plus a day-by-day count. On the demo server these numbers reset when it restarts; permanent storage comes later.</li>
-      <li><strong>Estimated API costs.</strong> What each paid service is costing. Today it's $0: AI understanding is off, voices come from the listener's own browser, and emails go to a test outbox.</li>
-      <li><strong>Email tracker.</strong> Every plan email, newest first, with its status and a link to the conversation behind it. <span class="say">Mock written</span> means the test outbox, not a real email.</li>
-      <li><strong>Questions and decision tree.</strong> The live question flow in the order it's asked, grouped into sections. A yellow <span class="say">Only asked if…</span> label marks a branch. Open any question to see what each answer does to the suggestions. This view is read-only; the visual editor with saved versions comes later.</li>
-      <li><strong>Raw data.</strong> The data files behind the directory and questions, the conversation list as data, and the live system check.</li>
-      <li><strong>Settings.</strong> How the tool is set up right now, including the live version. Claude MCP isn't connected yet.</li>
+      <li><strong>Dashboard.</strong> The last 30 days: conversations by voice or typing, summaries confirmed, suggestions reached, emails sent and staff follow-up requests, plus a “Needs you” list. On the demo server these numbers reset when it restarts or a new version is published.</li>
+      <li><strong>Conversations.</strong> The staff queue: answers, suggestions with reasons, emails and follow-up requests for each conversation.</li>
+      <li><strong>Email tracker.</strong> Every plan email with its status; filter by sent, failed or waiting, and retry failed ones.</li>
+      <li><strong>Workflows.</strong> The question flows. <em>Referral finder</em> is what the assistant and Find services ask; <em>V360 TECH interest form</em> follows the website's form and isn't used live yet. Open one to edit it visually:
+        <ul>
+          <li>Sections are columns and questions are cards. Drag a card to move it; it snaps into order.</li>
+          <li>Drag from an answer's dot onto another card to make that card a follow-up, asked only after that answer. Click a blue line to remove the link. <strong>Follow-ups (n)</strong> on a card opens or tucks away its follow-ups.</li>
+          <li><strong>+</strong> and <strong>−</strong> zoom, <strong>Fit</strong> shows everything, and dragging the background moves around.</li>
+          <li>Click a card to change its wording (on screen and spoken), type, answers and what each answer does to the suggestions. Changes save to a draft automatically.</li>
+          <li><strong>Check</strong> lists anything to fix and shows how suggestions would change. <strong>Publish</strong> makes a new version, live in about a minute. The <strong>Versions</strong> list lets you view, compare or revert to any earlier version.</li>
+        </ul></li>
+      <li><strong>Raw data.</strong> Every data file and feed, with a preview.</li>
+      <li><strong>Estimated costs.</strong> What each paid service is costing; $0 today.</li>
+      <li><strong>Requests.</strong> Use the round button in the bottom-right corner of any admin page to ask for a change: <em>Change content</em> (questions, wording, organizations) or <em>Change the app</em> (layout, features). Claude works through them and replies here.</li>
+      <li><strong>Change log.</strong> Every published version and finished request, newest first.</li>
+      <li><strong>Connect Claude &amp; ChatGPT.</strong> The connector link and setup steps, so Claude or ChatGPT can edit workflows and work through requests.</li>
     </ol>
   </section>
 
   <section aria-labelledby="whats-new">
     <h2 id="whats-new">8. The What's new tour</h2>
     <ul>
-      <li>On the directory, the <strong>What's new</strong> button is in the bottom-left corner (it reads <strong>New</strong> on small screens). On the assistant, the staff queue and the admin page, it's in the top-right corner.</li>
+      <li>On the directory, the <strong>What's new</strong> button is in the bottom-left corner (it reads <strong>New</strong> on small screens). On the assistant it's in the top-right corner; in the admin it's the dark button in the bottom-right corner.</li>
+      <li>New sections get a small blue <strong>New</strong> label until you've seen them, and the tour starts with what's new.</li>
       <li>It opens a short tour of that page. Use <strong>Next</strong> and <strong>Back</strong> to move through the steps.</li>
       <li><strong>Show me</strong> closes the tour, takes you to the part being described and outlines it. Press <kbd>Tab</kbd> once to reach <strong>Back to the tour</strong>.</li>
       <li><strong>Recent changes</strong> lists what has improved lately. A dot on the button means there's something you haven't seen.</li>
@@ -186,5 +197,6 @@
   </section>
 </main>
 <script src="/site-menu.js"></script>
+<script src="/request-button.js" defer></script>
 </body>
 </html>

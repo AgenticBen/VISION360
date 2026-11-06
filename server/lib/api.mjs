@@ -13,6 +13,10 @@ import {
 import { RETENTION_DAYS } from "./store.mjs";
 import { ttsEnabled, ttsInfo, synthesize } from "./tts.mjs";
 import { aiEnabled, DEFAULT_MODEL } from "./ai-understanding.mjs";
+import { createAdminStore } from "./supabase-store.mjs";
+import { createRequests } from "./requests.mjs";
+import { createFlowRepo } from "./flow-repo.mjs";
+import { createMcp } from "./mcp.mjs";
 
 const MAX_BODY = 16 * 1024;
 
@@ -29,6 +33,14 @@ export async function createApp(opts = {}) {
     store.createStaffUser(env.V360_STAFF_USER, env.V360_STAFF_PASSWORD_HASH);
   }
   const limiter = rateLimiter();
+  // Admin storage: GitHub when V360_GITHUB_TOKEN is set, otherwise a local folder.
+  const gh = opts.ghStore || createAdminStore(env, { dir: env.V360_ADMIN_STORE_DIR, repoRoot: opts.repoRoot });
+  const requests = createRequests(gh);
+  const editsOn = String(env.V360_FLOW_EDITS || "on").toLowerCase() !== "off";
+  const flows = createFlowRepo({ gh, corpus, requests });
+  ctx.gh = gh; ctx.requests = requests; ctx.flows = flows;
+  const BIG_BODY = 600 * 1024;
+  const mcp = createMcp({ flows, requests, corpus, overview: () => adminOverview(), canWrite: () => editsOn });
   const aiFetch = opts.aiFetch || globalThis.fetch;
   const ttsFetch = opts.ttsFetch || globalThis.fetch;
   const ttsCount = new Map();
@@ -57,13 +69,13 @@ export async function createApp(opts = {}) {
     res.end(data);
   }
 
-  async function readJson(req) {
+  async function readJson(req, max = MAX_BODY) {
     if (req.body && typeof req.body === "object") return req.body; // platforms that pre-parse
     let size = 0;
     const chunks = [];
     for await (const c of req) {
       size += c.length;
-      if (size > MAX_BODY) throw httpError(413, "Request too large");
+      if (size > max) throw httpError(413, "Request too large");
       chunks.push(c);
     }
     if (!chunks.length) return {};
@@ -119,6 +131,35 @@ export async function createApp(opts = {}) {
     if (!to || !adminOpen) return to;
     const [user, domain] = String(to).split("@");
     return (user ? user[0] : "") + "•••@" + (domain || "");
+  }
+
+  // The admin dashboard's numbers (also served to the MCP get_dashboard tool).
+  function adminOverview() {
+    const days = 30;
+    const since = new Date(Date.now() - days * 864e5).toISOString();
+    const usage = store.adminUsage(since);
+    const ai = aiEnabled(env);
+    const perCall = Number(env.V360_COST_PER_AI_CALL_USD);
+    const tts = ttsInfo(env).provider;
+    return {
+          generatedAt: new Date().toISOString(), days, since,
+          commit: env.VERCEL_GIT_COMMIT_SHA || "local",
+          storage: env.V360_STORAGE || "local", retentionDays: RETENTION_DAYS,
+          signInRequired: !adminOpen,
+          usage,
+          costs: {
+            ai: { on: ai, model: ai ? env.V360_AI_MODEL || DEFAULT_MODEL : null, calls: usage.aiCalls, perCallUsd: Number.isFinite(perCall) ? perCall : null, estimateUsd: !ai && !usage.aiCalls ? 0 : (Number.isFinite(perCall) ? +(usage.aiCalls * perCall).toFixed(4) : null) },
+            tts: { provider: tts, estimateUsd: tts === "browser" ? 0 : null },
+            email: { transport: ctx.actions.transportName(), estimateUsd: ctx.actions.transportName() === "outbox" ? 0 : null },
+          },
+          emails: store.adminEmails(since).map((e) => ({ ...e, to: maskEmail(e.to) })),
+          settings: {
+            corpusVersion: corpus.version, organizations: corpus.organizations.length, policyVersion: POLICY_VERSION,
+            emailTransport: ctx.actions.transportName(), tts, aiUnderstanding: ai,
+            storage: { ...(gh.kind === "github" ? { kind: "github", repo: gh.repo } : { kind: "local" }), data: gh.dataKind || gh.kind },
+            editsOn, mcpKeyRequired: !!env.V360_MCP_KEY,
+          },
+    };
   }
 
   function turnResponse(session, turn) {
@@ -232,31 +273,70 @@ export async function createApp(opts = {}) {
         if (u) return send(res, 200, { username: u.username, signInRequired: !adminOpen });
         return adminOpen ? send(res, 200, { username: OPEN_ADMIN.username, open: true, signInRequired: false }) : send(res, 401, { error: "Not signed in" });
       }
+      // ---------------- requests and change log ------------------------
+      if (p === "/api/requests" || p.startsWith("/api/requests/") || p === "/api/changelog") {
+        requireStaff(req);
+        if (method !== "GET") {
+          if (!editsOn) throw httpError(403, "Editing is turned off on this site (V360_FLOW_EDITS=off).");
+          if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
+        }
+        if (p === "/api/changelog" && method === "GET") return send(res, 200, { entries: await requests.changelog() });
+        if (p === "/api/requests" && method === "GET") {
+          const page = url.searchParams.get("page");
+          const rows = await requests.list({ page: page || undefined });
+          return send(res, 200, { requests: page ? rows.slice(0, 5) : rows });
+        }
+        if (p === "/api/requests" && method === "POST") return send(res, 201, { request: await requests.create(await readJson(req)) });
+        const rm = p.match(/^\/api\/requests\/([0-9a-f-]{36})(?:\/(comment|status|cancel))?$/);
+        if (rm) {
+          if (method === "DELETE" && !rm[2]) return send(res, 200, await requests.remove(rm[1]));
+          if (method === "POST" && rm[2] === "comment") return send(res, 200, { request: await requests.comment(rm[1], { author: "team", body: (await readJson(req)).body }) });
+          if (method === "POST" && rm[2] === "status") return send(res, 200, { request: await requests.setStatus(rm[1], await readJson(req)) });
+          if (method === "POST" && rm[2] === "cancel") return send(res, 200, { request: await requests.cancel(rm[1]) });
+        }
+        throw httpError(404, "Not found");
+      }
+      // ---------------- MCP (Claude / ChatGPT connector) ------------------
+      if (p === "/api/mcp") {
+        if (method !== "POST") return send(res, 405, { error: "This MCP endpoint takes POST (Streamable HTTP, JSON responses)." }, { Allow: "POST" });
+        if (env.V360_MCP_KEY) {
+          const given = req.headers["x-v360-key"] || String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+          if (!given || !tokenMatches(given, tokenHash(env.V360_MCP_KEY))) throw httpError(401, "This connector needs its key.");
+        }
+        if (!limiter(ip + ":mcp", 120)) throw httpError(429, "Too many requests — please wait a moment.");
+        const out = await mcp.handle(await readJson(req, BIG_BODY));
+        if (out.status === 202) { res.writeHead(202, { "Cache-Control": "no-store" }); return res.end(); }
+        return send(res, 200, out.body);
+      }
+      // ---------------- workflows ---------------------------------------
+      if (p === "/api/flows" || p.startsWith("/api/flows/")) {
+        requireStaff(req);
+        if (method !== "GET") {
+          if (!editsOn) throw httpError(403, "Editing is turned off on this site (V360_FLOW_EDITS=off).");
+          if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
+        }
+        if (p === "/api/flows" && method === "GET") return send(res, 200, { flows: await flows.list(), storage: gh.kind, editsOn });
+        const fm = p.match(/^\/api\/flows\/([a-z0-9-]{1,40})(?:\/(draft|check|publish|revert|versions)(?:\/([0-9a-z-]{7,40}))?)?$/);
+        if (fm) {
+          const [, id, action, arg] = fm;
+          if (!action && method === "GET") return send(res, 200, await flows.get(id));
+          if (action === "versions" && arg && method === "GET") return send(res, 200, { flow: await flows.versionAt(id, arg) });
+          if (action === "draft" && method === "PUT") return send(res, 200, await flows.saveDraft(id, await readJson(req, BIG_BODY)));
+          if (action === "draft" && method === "DELETE") return send(res, 200, await flows.discardDraft(id));
+          if (action === "check" && method === "POST") { const b = await readJson(req, BIG_BODY); return send(res, 200, await flows.check(id, b.flow)); }
+          if (action === "publish" || action === "revert") {
+            if (method !== "POST") throw httpError(405, "Method not allowed");
+            if (!limiter(ip + ":publish", 6)) throw httpError(429, "Too many publishes — please wait a minute.");
+            const b = await readJson(req);
+            const out = action === "publish" ? await flows.publish(id, b) : await flows.revert(id, b);
+            return send(res, 200, { ...out, live: gh.kind === "github" ? "Live in about a minute, once the site redeploys." : "Saved on this server only (GitHub isn't connected)." });
+          }
+        }
+        throw httpError(404, "Not found");
+      }
       if (p === "/api/admin/overview" && method === "GET") {
         requireStaff(req);
-        const days = 30;
-        const since = new Date(Date.now() - days * 864e5).toISOString();
-        const usage = store.adminUsage(since);
-        const ai = aiEnabled(env);
-        const perCall = Number(env.V360_COST_PER_AI_CALL_USD);
-        const tts = ttsInfo(env).provider;
-        return send(res, 200, {
-          generatedAt: new Date().toISOString(), days, since,
-          commit: env.VERCEL_GIT_COMMIT_SHA || "local",
-          storage: env.V360_STORAGE || "local", retentionDays: RETENTION_DAYS,
-          signInRequired: !adminOpen,
-          usage,
-          costs: {
-            ai: { on: ai, model: ai ? env.V360_AI_MODEL || DEFAULT_MODEL : null, calls: usage.aiCalls, perCallUsd: Number.isFinite(perCall) ? perCall : null, estimateUsd: !ai && !usage.aiCalls ? 0 : (Number.isFinite(perCall) ? +(usage.aiCalls * perCall).toFixed(4) : null) },
-            tts: { provider: tts, estimateUsd: tts === "browser" ? 0 : null },
-            email: { transport: ctx.actions.transportName(), estimateUsd: ctx.actions.transportName() === "outbox" ? 0 : null },
-          },
-          emails: store.adminEmails(since).map((e) => ({ ...e, to: maskEmail(e.to) })),
-          settings: {
-            corpusVersion: corpus.version, organizations: corpus.organizations.length, policyVersion: POLICY_VERSION,
-            emailTransport: ctx.actions.transportName(), tts, aiUnderstanding: ai, claudeMcp: "not connected",
-          },
-        });
+        return send(res, 200, adminOverview());
       }
       if (p === "/api/staff/sessions" && method === "GET") {
         requireStaff(req);
@@ -304,7 +384,7 @@ export async function createApp(opts = {}) {
     } catch (e) {
       const status = e.status || 500;
       if (status === 500) console.error(e);
-      return send(res, status, { error: status === 500 ? "Something went wrong on the server. Nothing was sent or submitted." : e.message, ...(e.code ? { code: e.code } : {}) });
+      return send(res, status, { error: status === 500 ? "Something went wrong on the server. Nothing was sent or submitted." : e.message, ...(e.code ? { code: e.code } : {}), ...(e.details ? { details: e.details } : {}) });
     }
   }
 

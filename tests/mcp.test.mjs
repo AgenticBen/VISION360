@@ -1,0 +1,80 @@
+// The VISION360 MCP connector (Streamable HTTP, JSON responses).
+import test from "node:test";
+import assert from "node:assert/strict";
+import { makeApp, call } from "./helpers.mjs";
+import { TOOL_NAMES } from "../server/lib/mcp.mjs";
+
+const rpc = (app, method, params, id = 1, headers) => call(app, "POST", "/api/mcp", { jsonrpc: "2.0", id, method, params }, headers);
+const tool = async (app, name, args) => {
+  const r = await rpc(app, "tools/call", { name, arguments: args });
+  assert.equal(r.status, 200);
+  const res = r.json.result;
+  return { ...res, data: res.isError ? null : JSON.parse(res.content[0].text) };
+};
+
+test("handshake, notifications, tool list and method errors", async () => {
+  const app = await makeApp();
+  let r = await rpc(app, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } });
+  assert.equal(r.json.result.protocolVersion, "2025-06-18");
+  assert.equal(r.json.result.serverInfo.name, "vision360");
+  assert.match(r.json.result.instructions, /publish_draft/);
+  r = await call(app, "POST", "/api/mcp", { jsonrpc: "2.0", method: "notifications/initialized" });
+  assert.equal(r.status, 202);
+  r = await rpc(app, "tools/list", {});
+  assert.deepEqual(r.json.result.tools.map((t) => t.name), TOOL_NAMES);
+  for (const t of r.json.result.tools) assert.equal(t.inputSchema.type, "object", t.name);
+  r = await rpc(app, "nope", {});
+  assert.equal(r.json.error.code, -32601);
+  r = await call(app, "GET", "/api/mcp");
+  assert.equal(r.status, 405);
+});
+
+test("Claude can edit a draft, check it, publish it and close a request into the change log", async () => {
+  const app = await makeApp();
+  let t = await tool(app, "list_workflows", {});
+  assert.equal(t.data.length, 2);
+  t = await tool(app, "add_question", { flow: "v360-interest", section: "interest", after: "student", type: "yes_no", prompt_screen: "Do you use a screen magnifier?" });
+  assert.equal(t.isError, false, t.content[0].text);
+  const id = t.data.id;
+  assert.ok(t.data.checks.ok, JSON.stringify(t.data.checks.errors));
+  t = await tool(app, "set_follow_up", { flow: "v360-interest", id, parent: "blind_low_vision", answers: ["yes", "not_sure"] });
+  assert.deepEqual(t.data.askedIf, { q: "blind_low_vision", in: ["yes", "not_sure"] });
+  t = await tool(app, "update_question", { flow: "v360-interest", id, changes: { help: "Built-in or an app both count." } });
+  assert.equal(t.isError, false);
+  t = await tool(app, "get_workflow", { flow: "v360-interest" });
+  assert.equal(t.data.isDraft, true);
+  assert.ok(t.data.workflow.questions.some((q) => q.id === id));
+  t = await tool(app, "check_draft", { flow: "v360-interest" });
+  assert.ok(t.data.checks.ok);
+  t = await tool(app, "publish_draft", { flow: "v360-interest", note: "Ask about magnifiers" });
+  assert.equal(t.data.version, 2);
+  t = await tool(app, "set_effect", { flow: "v360-interest", question: id, answer: "yes", target_type: "org", target: "x", op: "raise", weight: 10, because: "x", evidence_org: "x", evidence_condition: "x" });
+  assert.equal(t.data.checks.ok, false, "effects aren't allowed on the interest form");
+
+  const req = await call(app, "POST", "/api/requests", { kind: "content", body: "Add a magnifier question", page_path: "/admin/workflows/" });
+  t = await tool(app, "list_requests", {});
+  assert.equal(t.data[0].id, req.json.request.id);
+  t = await tool(app, "set_request_status", { id: req.json.request.id, status: "done" });
+  assert.equal(t.isError, true, "done needs a summary");
+  t = await tool(app, "set_request_status", { id: req.json.request.id, status: "done", summary: "Added a magnifier follow-up to the interest form (v2)." });
+  assert.equal(t.data.status, "done");
+  const log = await call(app, "GET", "/api/changelog");
+  assert.ok(log.json.entries.some((e) => /magnifier/.test(e.title)));
+  t = await tool(app, "find_organizations", { query: "veterans" });
+  assert.ok(t.data.length > 0 && t.data[0].verifiedConditions);
+  t = await tool(app, "get_dashboard", {});
+  assert.ok("usage" in t.data);
+});
+
+test("kill switch and connector key", async () => {
+  const off = await makeApp({ V360_FLOW_EDITS: "off" });
+  let t = await tool(off, "add_question", { flow: "v360-interest", section: "interest", type: "text", prompt_screen: "x" });
+  assert.equal(t.isError, true);
+  t = await tool(off, "list_workflows", {});
+  assert.equal(t.isError, false, "reading still works");
+  const keyed = await makeApp({ V360_MCP_KEY: "secret-123" });
+  let r = await rpc(keyed, "tools/list", {});
+  assert.equal(r.status, 401);
+  r = await rpc(keyed, "tools/list", {}, 1, { "x-v360-key": "secret-123" });
+  assert.equal(r.status, 200);
+});

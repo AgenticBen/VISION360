@@ -28,3 +28,4 @@
 # Demo server private data (sessions, test outbox)
 /.data/
 /tests/
+/supabase/

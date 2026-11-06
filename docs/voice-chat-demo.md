@@ -6,7 +6,10 @@ A controlled demonstration, not a production service. Use fictional people and t
 
 - `/demo` — talk or type to get grounded referrals from this directory.
 - `/staff` — staff queue: confirmed answers, unknowns, suggestions with reasons, email status, requests.
-- `/admin` — dashboard (last 30 days), estimated API costs, email tracker, the live question flow (read-only), raw data and settings, from `GET /api/admin/overview`.
+- `/admin` — the admin app (`site/admin/shell.js` builds the sidebar): Dashboard, Conversations (the staff queue; `/staff` redirects here), Email tracker, Workflows and the visual editor, Raw data, Estimated costs, Requests, Change log, and Connect Claude & ChatGPT.
+- **Workflows** (`site/data/flows/index.json`): `referral` is `site/data/assessment.json`, used live by the assistant and the directory quiz; `v360-interest` is the V360 TECH interest form, not used live yet. The editor (`/admin/workflows/edit/?flow=…`) saves drafts to the `admin-data` branch; **Publish** makes one commit on `main` with the workflow, `data/corpus.lock.json` and the regenerated golden expectations, and Vercel redeploys. Checks (`server/lib/flow-check.mjs`) must pass first; the impact preview re-runs the golden people. Revert re-commits an old version. Without `V360_GITHUB_TOKEN` everything is kept on the server only (`server/lib/gh-store.mjs`, local adapter).
+- **Requests and change log** (`server/lib/requests.mjs`): the round request button files "Change content" / "Change the app" requests tagged with the page; Claude works them over MCP. Done needs a summary and writes the change log; a team comment reopens.
+- **MCP** (`POST /api/mcp`, `server/lib/mcp.mjs`): Streamable HTTP, JSON responses, no sign-in (optional `V360_MCP_KEY` header). Tools: workflows (read, edit draft, check, publish, revert), requests, change log, dashboard. Fitness check FC7 pins the tool list.
 - Admin sign-in is **off** for now (owner's decision, 2026-11-06): the staff queue and admin pages open without a password, and email addresses are partly masked while open. Set `V360_ADMIN_SIGNIN=on` to require a staff password again.
 - `/api/*` — the shared server. Voice and typing call the same endpoints, so there is one set of rules.
 

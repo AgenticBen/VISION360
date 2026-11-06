@@ -14,13 +14,15 @@
       ["/guide.html", "How to use VISION360", "Step-by-step guide to every page"]
     ] },
     { id: "admin", label: "Admin", note: "No password needed for now.", items: [
-      ["/admin/#overview", "Dashboard", "Usage in the last 30 days"],
-      ["/staff/", "Conversations", "The staff queue: answers, suggestions, follow-ups"],
-      ["/admin/#emails", "Email tracker", "Every plan email and its status"],
-      ["/admin/#costs", "Estimated API costs", "What the tool is costing to run"],
-      ["/admin/#questions", "Questions and decision tree", "The live question flow"],
-      ["/admin/#data", "Raw data", "The data files and JSON feeds"],
-      ["/admin/#settings", "Settings", "Configuration and Claude MCP"]
+      ["/admin/", "Dashboard", "Usage in the last 30 days"],
+      ["/admin/conversations/", "Conversations", "Answers, suggestions and follow-ups"],
+      ["/admin/emails/", "Email tracker", "Every plan email and its status"],
+      ["/admin/workflows/", "Workflows", "Edit the questions visually"],
+      ["/admin/costs/", "Estimated costs", "What the tool is costing to run"],
+      ["/admin/data/", "Raw data", "The data files and JSON feeds"],
+      ["/admin/requests/", "Requests", "Changes you've asked for"],
+      ["/admin/changelog/", "Change log", "Everything that has changed"],
+      ["/admin/settings/", "Connect Claude & ChatGPT", "MCP connector setup"]
     ] }
   ];
 

@@ -1,70 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-textsize="100" data-theme="standard">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow, noarchive">
-<meta name="referrer" content="no-referrer">
-<title>Vision 360 CONNECT — staff queue</title>
-<link rel="stylesheet" href="/demo/demo.css">
-<link rel="stylesheet" href="/whats-new.css">
-<link rel="stylesheet" href="/site-menu.css">
-<script>
-  try { var s = JSON.parse(localStorage.getItem("v360-demo-settings") || "{}");
-    if (s.textSize) document.documentElement.setAttribute("data-textsize", s.textSize);
-    if (s.theme) document.documentElement.setAttribute("data-theme", s.theme); } catch (e) {}
-</script>
-<style>
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; vertical-align: top; padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--line-soft); }
-  th { font-size: 0.9rem; color: var(--muted); }
-  .pill { display: inline-block; padding: 0 0.5rem; border-radius: 999px; border: 1px solid var(--line); font-size: 0.9rem; font-weight: 700; }
-  .pill.proposed { background: var(--warn-bg); color: var(--warn-ink); }
-  .pill.confirmed { background: var(--ok-bg); color: var(--ok-ink); }
-  .table-wrap { overflow-x: auto; }
-  @media (max-width: 640px) { table, tbody, tr, td { display: block; } thead { display: none; } tr { border-bottom: 2px solid var(--line-soft); padding: 0.4rem 0; } td { border: 0; padding: 0.15rem 0; } }
-</style>
+<meta name="robots" content="noindex, nofollow">
+<title>Moved — VISION360</title>
+<script>location.replace("/admin/conversations/" + location.hash);</script>
+<meta http-equiv="refresh" content="0; url=/admin/conversations/">
 </head>
-<body>
-<a class="skip-link" href="#main">Skip to the conversations</a>
-<header class="top">
-  <div class="wrap top-inner">
-    <div>
-      <p class="brand">Lions Services · Vision 360 CONNECT</p>
-      <h1>Staff queue</h1>
-      <p class="demo-tag"><strong>Demo data only.</strong> Every record here is fictional test data.</p>
-    </div>
-    <button type="button" class="btn btn-secondary" id="logout" hidden>Sign out</button>
-  </div>
-</header>
-<main class="wrap" id="main">
-  <section id="login" hidden aria-labelledby="login-h">
-    <h2 id="login-h">Sign in</h2>
-    <form id="login-form" class="composer">
-      <label for="u">Username</label>
-      <input id="u" name="username" autocomplete="username" required style="width:100%;max-width:24rem">
-      <label for="p" style="margin-top:0.8rem">Password</label>
-      <input id="p" name="password" type="password" autocomplete="current-password" required style="width:100%;max-width:24rem">
-      <p><button class="btn btn-primary" type="submit">Sign in</button></p>
-      <p id="login-error" role="alert" class="uncertain"></p>
-    </form>
-  </section>
-  <section id="list" hidden aria-labelledby="list-h">
-    <h2 id="list-h">Conversations</h2>
-    <p class="hint">Newest first. Sessions expire after 7 days.</p>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Updated</th><th>Stage</th><th>Staff status</th><th>Needs attention</th><th>Email</th><th></th></tr></thead>
-      <tbody id="rows"></tbody>
-    </table></div>
-  </section>
-  <section id="detail" hidden aria-labelledby="detail-h">
-    <p><button type="button" class="btn btn-secondary" id="back">← Back to the list</button></p>
-    <h2 id="detail-h" tabindex="-1">Conversation</h2>
-    <div id="detail-body"></div>
-  </section>
-</main>
-<script src="/staff/staff.js"></script>
-<script src="/whats-new.js" data-page="staff" defer></script>
-<script src="/site-menu.js"></script>
-</body>
+<body><p>The staff queue is now <a href="/admin/conversations/">Conversations in the admin</a>.</p></body>
 </html>

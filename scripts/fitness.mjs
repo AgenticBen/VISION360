@@ -60,13 +60,36 @@ const CHECKS = [
       ...findAll(sourceFiles(["server", "api"]), [/__ai/]),
     ],
   },
+  {
+    id: "FC7",
+    title: "The MCP connector offers only the approved tools and reaches data only through workflows and requests",
+    run: async () => {
+      const APPROVED = [
+        "list_workflows", "get_workflow", "list_versions", "get_draft", "update_draft", "add_question", "update_question",
+        "delete_question", "move_question", "set_follow_up", "set_option", "set_effect", "find_organizations", "check_draft",
+        "publish_draft", "revert_to_version", "list_requests", "comment_on_request", "set_request_status", "log_change", "get_dashboard",
+      ];
+      const { TOOL_NAMES } = await import("../server/lib/mcp.mjs");
+      const problems = [];
+      const extra = TOOL_NAMES.filter((n) => !APPROVED.includes(n));
+      const missing = APPROVED.filter((n) => !TOOL_NAMES.includes(n));
+      if (extra.length) problems.push("tools not on the approved list: " + extra.join(", "));
+      if (missing.length) problems.push("approved tools missing: " + missing.join(", "));
+      problems.push(...findAll([path.join("server", "lib", "mcp.mjs")], [
+        /^\s*import\b/,
+        /\b(store|gh)\.(read|write|commit|update|list)/,
+        /\bfetch\(/,
+      ]));
+      return problems;
+    },
+  },
 ];
 
 let failed = 0;
 for (const check of CHECKS) {
   let problems;
   try {
-    problems = check.run();
+    problems = await check.run();
   } catch (e) {
     problems = [`check crashed: ${e.message}`];
   }

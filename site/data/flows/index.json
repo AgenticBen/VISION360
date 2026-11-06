@@ -1,0 +1,21 @@
+{
+  "_comment": "Workflows the admin editor can open. `file` is the published copy (a commit on main is a version). `usedBy` says what reads it live.",
+  "flows": [
+    {
+      "id": "referral",
+      "title": "Referral finder",
+      "description": "The questions the voice and chat assistant and the directory's Find services ask, and how each answer moves organizations up or down.",
+      "file": "site/data/assessment.json",
+      "usedBy": ["Voice and chat assistant", "Directory › Find services"],
+      "routing": true
+    },
+    {
+      "id": "v360-interest",
+      "title": "V360 TECH interest form",
+      "description": "The V360 TECH community interest form (lionsservices.org/programs/lions-denn/v360-interest) as an editable workflow. Not used by the assistant yet: it needs answer types for names, phone numbers, addresses and dates first.",
+      "file": "site/data/flows/v360-interest.json",
+      "usedBy": [],
+      "routing": false
+    }
+  ]
+}

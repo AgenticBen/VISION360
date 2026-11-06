@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Email tracker — VISION360 admin</title>
+<link rel="stylesheet" href="/admin/admin.css">
+<link rel="stylesheet" href="/whats-new.css">
+</head>
+<body class="admin">
+<div class="admin-layout">
+<main class="admin-main" id="main">
+<header class="page-head">
+  <div>
+    <p class="eyebrow">People</p>
+    <h1>Email tracker</h1>
+    <p class="sub">Every plan email the tool has queued in the last 30 days, newest first.</p>
+  </div>
+  <div class="page-actions"><div class="seg" id="filter" data-tour="email-filter"><button type="button" aria-pressed="true" data-f="all">All</button><button type="button" aria-pressed="false" data-f="sent">Sent</button><button type="button" aria-pressed="false" data-f="failed">Failed</button><button type="button" aria-pressed="false" data-f="waiting">Waiting</button></div></div>
+</header>
+<section class="card" data-tour="email-table"><div class="table-wrap"><table class="t" id="email-table"><thead><tr><th>Queued</th><th>To</th><th>Subject</th><th>Status</th><th class="n">Attempts</th><th></th></tr></thead><tbody></tbody></table></div>
+<p class="hint">“Mock written” means the test outbox — not a real email. “Provider accepted” means handed to the email service; it doesn't prove delivery.</p></section>
+</main>
+</div>
+<script src="/admin/shell.js"></script>
+<script src="/admin/emails/emails.js"></script>
+<script src="/request-button.js"></script>
+<script src="/whats-new.js" data-page="admin-emails" defer></script>
+</body>
+</html>

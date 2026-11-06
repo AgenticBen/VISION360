@@ -1,4 +1,4 @@
-/* Staff queue — reads records through /api/staff routes (open while admin sign-in is off).
+/* Conversations (the staff queue inside the admin app). Reads /api/staff routes (open while admin sign-in is off).
    The HttpOnly session cookie is set by the server; this file never sees it. */
 (function () {
   "use strict";
@@ -37,7 +37,7 @@
     $("login-error").textContent = "";
     api("POST", "/api/staff/login", { username: $("u").value, password: $("p").value })
       .then(function () { $("p").value = ""; loadList(); })
-      .catch(function (err) { $("login-error").textContent = err.message; });
+      .catch(function (err) { $("login-error").textContent = err.message; $("login-error").hidden = false; });
   });
   $("logout").addEventListener("click", function () { api("POST", "/api/staff/logout", {}).finally(function () { show("login"); }); });
   $("back").addEventListener("click", loadList);
@@ -76,7 +76,7 @@
 
       var statusRow = el("div", { class: "action-row", role: "group", "aria-label": "Staff status" });
       Object.keys(STAFF_STATUS).forEach(function (k) {
-        statusRow.appendChild(el("button", { type: "button", class: "btn", "aria-pressed": String(s.staff_status === k), text: STAFF_STATUS[k], onclick: function () {
+        statusRow.appendChild(el("button", { type: "button", class: "btn sm", "aria-pressed": String(s.staff_status === k), text: STAFF_STATUS[k], onclick: function () {
           api("POST", "/api/staff/sessions/" + id + "/status", { staffStatus: k }).then(function () { openDetail(id); });
         } }));
       });
@@ -88,10 +88,10 @@
       })) : el("p", { text: "None." });
       b.appendChild(section("Requests and flags", [reviews]));
 
-      var ans = el("table", null, [el("thead", null, [el("tr", null, [el("th", { text: "Question" }), el("th", { text: "Answer" }), el("th", { text: "Status" })])])]);
+      var ans = el("table", { class: "t" }, [el("thead", null, [el("tr", null, [el("th", { text: "Question" }), el("th", { text: "Answer" }), el("th", { text: "Status" })])])]);
       var tb = el("tbody");
       snap.answers.forEach(function (a) {
-        tb.appendChild(el("tr", null, [el("td", { text: a.label }), el("td", { text: a.display + (a.kind !== "answer" ? " (" + a.kind + ")" : "") }), el("td", null, [el("span", { class: "pill " + a.status, text: a.status })])]));
+        tb.appendChild(el("tr", null, [el("td", { text: a.label }), el("td", { text: a.display + (a.kind !== "answer" ? " (" + a.kind + ")" : "") }), el("td", null, [el("span", { class: "chip " + (a.status === "confirmed" ? "ok" : "amber"), text: a.status })])]));
       });
       ans.appendChild(tb);
       b.appendChild(section("Answers", [snap.answers.length ? el("div", { class: "table-wrap" }, [ans]) : el("p", { text: "No answers yet." }),
@@ -102,7 +102,7 @@
           el("summary", { text: (r.stale ? "Superseded" : "Current") + " suggestions — revision " + r.revision + " · " + when(r.createdAt) + " · " + r.corpusVersion }),
           el("ol", null, r.matches.map(function (m) { return el("li", null, [el("strong", { text: m.name + " (" + m.points + " pts)" }), el("ul", null, m.reasons.map(function (x) { return el("li", { text: x }); }))]); })),
           r.handoffs.length ? el("p", { text: "Outside the directory: " + r.handoffs.join(" ") }) : null,
-          r.unresolved.length ? el("p", { class: "uncertain", text: "Unresolved: " + r.unresolved.map(function (u) { return u.questionId + " (" + u.kind + ")"; }).join(", ") }) : null,
+          r.unresolved.length ? el("p", { class: "note", text: "Unresolved: " + r.unresolved.map(function (u) { return u.questionId + " (" + u.kind + ")"; }).join(", ") }) : null,
         ]);
       }) : [el("p", { text: "No suggestions yet (summary not confirmed)." })];
       b.appendChild(section("Suggestions and reasons", recs));

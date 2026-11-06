@@ -3,9 +3,12 @@ import { Readable } from "node:stream";
 import { createApp } from "../server/lib/api.mjs";
 import { openStore } from "../server/lib/store.mjs";
 
+let appCount = 0;
 export async function makeApp(env = {}) {
   const store = openStore(":memory:");
-  const app = await createApp({ store, env: { V360_OUTBOX_DIR: process.env.TMPDIR ? process.env.TMPDIR + "/v360-outbox" : "/tmp/v360-outbox", ...env } });
+  const tmp = process.env.TMPDIR || "/tmp";
+  const adminDir = `${tmp}/v360-admin-test-${process.pid}-${++appCount}`;
+  const app = await createApp({ store, env: { V360_OUTBOX_DIR: tmp + "/v360-outbox", V360_ADMIN_STORE_DIR: adminDir, ...env } });
   return app;
 }
 

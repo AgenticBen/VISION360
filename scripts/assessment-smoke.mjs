@@ -35,6 +35,16 @@ const check = (name, cond, detail) => {
 /* ---- structural invariants -------------------------------------------- */
 console.log("\nStructure");
 
+// The same checks the admin workflow editor runs before publishing.
+const { checkFlow } = await import("../server/lib/flow-check.mjs");
+const fc = checkFlow(assessment, { organizations: orgs, routing: true });
+check("workflow checks pass (same as the editor's publish gate)", fc.ok, fc.errors.slice(0, 3).map((e) => e.message).join(" | "));
+for (const f of ["site/data/flows/v360-interest.json"]) {
+  if (!existsSync(f)) continue;
+  const r = checkFlow(JSON.parse(readFileSync(f, "utf8")), { organizations: orgs, routing: false });
+  check(`${f} passes the workflow checks`, r.ok, r.errors.slice(0, 3).map((e) => e.message).join(" | "));
+}
+
 const qIds = new Set(assessment.questions.map((q) => q.id));
 const blockQs = assessment.blocks.flatMap((b) => b.questions);
 check("every block question exists", blockQs.every((id) => qIds.has(id)),

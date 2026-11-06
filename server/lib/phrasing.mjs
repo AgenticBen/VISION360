@@ -49,7 +49,12 @@ const ASK = {
   devices: "{Do} {S} have a smartphone, a computer or tablet, or neither?",
 };
 
+// The workflow's own spoken wording wins (editable in the admin workflow
+// editor); ASK is the fallback for flows that don't carry voice_template.
+// Placeholders: {S} the person, {pos} their, {obj} them, {do}/{Do}, {be}/{Be},
+// {have}/{Have}, {s} verb ending — each turns into "you"/"they"/a name forms.
 export function askOpen(question, w) {
+  if (question.voice_template) return fill(question.voice_template, w);
   const t = ASK[question.id];
   if (!t) return question.prompt_voice;
   return fill(typeof t === "function" ? t(w) : t, w);

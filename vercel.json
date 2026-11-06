@@ -52,8 +52,44 @@
       "destination": "/demo/index.html"
     },
     {
-      "source": "/staff",
-      "destination": "/staff/index.html"
+      "source": "/admin/conversations",
+      "destination": "/admin/conversations/index.html"
+    },
+    {
+      "source": "/admin/emails",
+      "destination": "/admin/emails/index.html"
+    },
+    {
+      "source": "/admin/costs",
+      "destination": "/admin/costs/index.html"
+    },
+    {
+      "source": "/admin/workflows",
+      "destination": "/admin/workflows/index.html"
+    },
+    {
+      "source": "/admin/data",
+      "destination": "/admin/data/index.html"
+    },
+    {
+      "source": "/admin/requests",
+      "destination": "/admin/requests/index.html"
+    },
+    {
+      "source": "/admin/changelog",
+      "destination": "/admin/changelog/index.html"
+    },
+    {
+      "source": "/admin/settings",
+      "destination": "/admin/settings/index.html"
+    },
+    {
+      "source": "/admin/workflows/edit",
+      "destination": "/admin/workflows/edit/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin/index.html"
     },
     {
       "source": "/api/:path*",
@@ -65,5 +101,17 @@
       "includeFiles": "{site/data/**,site/quiz-engine.js,server/**}",
       "maxDuration": 30
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/staff",
+      "destination": "/admin/conversations/",
+      "permanent": false
+    },
+    {
+      "source": "/staff/",
+      "destination": "/admin/conversations/",
+      "permanent": false
+    }
+  ]
 }

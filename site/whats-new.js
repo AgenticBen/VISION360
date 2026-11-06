@@ -1,233 +1,245 @@
 /* =========================================================================
-   "What's new" button and guided tour, shared by the directory, the voice
-   and chat demo, the staff queue and the admin pages.
+   "What's new" — shared by the public pages and the admin (the CRM's
+   WhatsNew, in plain JS).
 
-   Usage: <script src="/whats-new.js" data-page="directory|demo|staff|admin" defer>
+   Usage: <script src="/whats-new.js" data-page="directory|demo|admin-<page>" defer>
 
-   Plain JS, no dependencies. Placement: on the demo and staff pages the
-   button sits in the header's top-right corner, next to Settings / Sign out
-   (early in the tab order, covering nothing). On the directory it shares the
-   bottom feedback bar, the page reserves room so the bar never hides a
-   focused control, and a skip link reaches it from the top.
-
-   Accessibility: a real <button>; a native <dialog> (Escape closes it, focus
-   returns); each step's title and text are announced; "Show me" moves focus
-   to the part a step describes, outlines it, and puts a "Back to the tour"
-   button right after it so keyboard users can continue with one Tab.
+   - New sections get a small "New" pill until you've seen them. They come
+     from NEW below (hand-written for each release) and, on admin pages, from
+     change-log entries that point at this page.
+   - The button starts a spotlight tour: the page dims, a ring frames the part
+     being described, and a card says what it is and what it means for you.
+     New items come first, then the standing tour for the page.
+   - Keyboard: the card's Next button takes focus; Escape ends the tour.
    Nothing here changes records, answers or routing.
    ========================================================================= */
 (function () {
   "use strict";
 
-  var VERSION = "2026-11-06";          /* bump when the "Recent changes" list changes */
-  var SEEN_KEY = "v360-whats-new-seen";
+  var VERSION = "2026-11-07";
+  var SEEN_KEY = "v360-wn-seen-items";
+  var script = document.currentScript;
+  var page = (script && script.getAttribute("data-page")) || "directory";
+  var isAdmin = page.indexOf("admin-") === 0;
 
-  var NEW_ITEMS = [
-    "A menu at the top of every page: “Find help” for the directory, questions, pathways, assistant and guide, and “Admin” for what's happening behind the scenes.",
-    "New admin pages: a 30-day dashboard, estimated running costs, an email tracker, the live question flow with its branches, raw data and settings. No password is needed for now.",
-    "The directory, the Find services questions and the voice and chat assistant now put services in the same order, using one shared set of rules.",
-    "The assistant double-checks before suggesting anything. If you add or change something while saying yes (“yes, but I’m 70”), it updates your answer and reads the summary back again.",
-    "Saying “not sure” or “no idea” is recorded as not sure, never as a yes or a no. Unclear ages and exam dates get a follow-up question instead of a guess.",
-    "Answers are saved more safely, and each suggestion records which version of the directory produced it, so staff can trace it later."
+  /* New this release. `pages` lists where each one shows; `target` is a CSS
+     selector or a data-tour key. */
+  var NEW = [
+    { id: "2026-11-07-admin-sidebar", pages: ["admin-*"], target: "#admin-nav", title: "The admin has its own sidebar", body: "Every area now has its own page: Dashboard, Conversations, Email tracker, Workflows, Raw data, Estimated costs, Requests, Change log and the Claude & ChatGPT connection.", how: "Pick any page on the left. Collapse the sidebar to an icon rail at the bottom." },
+    { id: "2026-11-07-request-button", pages: ["admin-*", "directory", "demo"], target: "request", title: "Request a change from any page", body: "The round button in the corner files a request: “Change content” for questions, wording and organizations, or “Change the app” for layout and features. It's tagged with the page you're on.", how: "Claude works through requests over MCP and replies on the Requests page. On the public pages only you see it, after you've opened the admin on this device." },
+    { id: "2026-11-07-workflows", pages: ["admin-workflows", "admin-dashboard"], target: "flow-list", title: "Workflows you can edit", body: "The referral questions and the new V360 TECH interest form are both editable workflows, with a visual editor, checks before publishing and a version history.", how: "Open a workflow to drag, connect and edit questions. Every publish is a version you can revert to." },
+    { id: "2026-11-07-requests", pages: ["admin-requests"], target: "request-groups", title: "Your requests in one place", body: "App changes and content changes, each with a status and a thread where Claude replies.", how: "Comment on a finished request and it reopens. Done ones move to the Archive." },
+    { id: "2026-11-07-changelog", pages: ["admin-changelog", "admin-dashboard"], target: "#admin-nav a[data-href='/admin/changelog/']", title: "A change log", body: "Every published workflow version and every finished request lands here, newest first, with a link to what changed.", how: "A blue count in the sidebar means there are changes you haven't looked at." },
+    { id: "2026-11-07-connect", pages: ["admin-settings"], target: "mcp-url", title: "Connect Claude or ChatGPT", body: "This site now has its own MCP connector, so Claude or ChatGPT can edit workflows and work through your requests.", how: "Copy the URL and follow the steps for your app below." },
+    { id: "2026-11-06-site-menu", pages: ["directory", "demo"], target: "#site-menu", title: "A menu on every page", body: "“Find help” opens the directory, Find services, Pathways, the assistant and the guide. “Admin” shows what's happening behind the scenes.", how: "It's the dark bar at the top of every page." }
   ];
 
   var TOURS = {
-    directory: {
-      title: "Using the directory",
-      links: [["/guide.html", "Read the full guide"], ["/demo", "Try the voice and chat demo"]],
-      steps: [
-        { target: "#site-menu", title: "The site menu", body: "The bar at the top of every page has two menus. “Find help” opens the directory, Find services, Pathways, the assistant and the guide. “Admin” shows what’s happening behind the scenes." },
-        { target: "#q", title: "Search everything", body: "Type an organization, a service, a county or a need. Search looks at names, services, eligibility, contacts and referral steps, and filters the Directory list." },
-        { target: "#views", title: "Three views", body: "Directory lists every organization. Pathways shows common routes through services. Find services asks a few questions and suggests where to start." },
-        { target: "#filters", hint: "Open the Directory view to see the filters.", title: "Filter and sort", body: "Narrow the list by category, area or confidence. Use Clear all to see every organization again. Nothing is ever hidden for being far away; geography only changes the order." },
-        { target: "#sort", hint: "Open the Directory view to see the sort options.", title: "Order the list", body: "“Mecklenburg first” groups organizations by how close they are. You can also sort by name, by how well a listing is confirmed, or by open questions." },
-        { target: "#org-list [id^='org-']", hint: "Open the Directory view to see the listings.", title: "Open a listing", body: "Expand any organization to see services, who qualifies, costs, documents, every referral step and contacts. Each listing has a link you can copy and share." },
-        { target: "#tab-quiz", title: "Find services", body: "Answer as many questions as you like, or skip any. Results explain why each service is suggested, and the rest stay one click away." },
-        { target: "#feedback-open", title: "Tell us what to improve", body: "This opens your email app with your feedback. Feedback is reviewed before any listing changes." }
-      ]
-    },
-    demo: {
-      title: "Using the voice and chat demo",
-      links: [["/guide.html", "Read the full guide"], ["/", "Back to the directory"]],
-      steps: [
-        { target: "#site-menu", title: "The site menu", body: "The bar at the top of every page has two menus. “Find help” opens the directory, Find services, Pathways, the assistant and the guide. “Admin” shows what’s happening behind the scenes." },
-        { target: "#start", hint: "You've already started; this choice is at the top when you begin.", title: "Talk or type", body: "Choose Talk to use your microphone, or Type to chat. You can switch at any time without losing anything. This is a demo: please use made-up details." },
-        { target: "#open-settings", title: "Make it comfortable", body: "Settings change text size, colors and contrast, whether replies are read aloud, and the voice speed. They are saved on this device only." },
-        { target: "#log", hint: "This appears once you start a conversation.", title: "One question at a time", body: "The assistant asks one question at a time. You can say or type: repeat, skip, I don't know, change an answer, or talk to a person." },
-        { target: "#panel", hint: "The summary appears after the questions.", title: "Check the summary", body: "Before suggesting anything, the assistant reads back a summary. Nothing is suggested until you say it's right. Use the Change buttons, or say what to fix." },
-        { target: "#panel", hint: "Your suggestions appear after you confirm the summary.", title: "Your suggestions", body: "You get up to eight services that fit, with why each one is suggested, how to start, and contacts. You can ask for an emailed plan or for Lions Services staff to follow up." },
-        { target: "#end-session", hint: "This appears once you start a conversation.", title: "Stop any time", body: "End session is always there and turns the microphone off. In voice mode, Stop speaking and Repeat last response are there too." }
-      ]
-    },
-    staff: {
-      title: "Using the staff queue",
-      links: [["/guide.html", "Read the full guide"], ["/", "Open the directory"], ["/demo", "Open the demo"]],
-      steps: [
-        { target: "#site-menu", title: "The site menu", body: "Use “Admin” in the top bar to move between the dashboard, this conversation list, the email tracker, costs, the question flow, raw data and settings. No password is needed for now." },
-        { target: "#list", hint: "The list appears after signing in.", title: "The conversation list", body: "Newest first. Each row shows the stage, the staff status, anything that needs attention, and whether an email was sent." },
-        { target: "#detail", hint: "Open a conversation from the list to see this.", title: "Open a conversation", body: "See confirmed and unconfirmed answers, every suggestion with its reasons and the data version behind it, emails and their status, and any request for follow-up." },
-        { target: "#detail", hint: "Open a conversation from the list to see this.", title: "Follow up", body: "Mark a conversation reviewed or needing follow-up, and retry an email that failed. Changing a status never changes the person's answers." }
-      ]
-    },
-    admin: {
-      title: "Using the admin pages",
-      links: [["/guide.html#admin", "Read the admin guide"], ["/staff/", "Open the conversations"]],
-      steps: [
-        { target: "#site-menu", title: "The site menu", body: "“Admin” in the top bar jumps to any part of this page, or to the conversation list. “Find help” goes back to the public tools." },
-        { target: "#overview", title: "Dashboard", body: "How many conversations started in the last 30 days, by voice or typing, how many reached suggestions, emails sent and requests for staff to follow up." },
-        { target: "#costs", title: "Estimated costs", body: "What each paid service is costing. Right now AI understanding is off, voices come from the listener's browser and emails go to a test outbox, so the estimate is $0." },
-        { target: "#emails", title: "Email tracker", body: "Every plan email the tool has queued, newest first, with its status. Open the conversation behind any email in the staff queue." },
-        { target: "#questions", title: "Questions and decision tree", body: "The live question flow in the order it's asked. Branches say when a question is only asked after a certain answer. Open any question to see what each answer does to the suggestions." },
-        { target: "#data", title: "Raw data", body: "Links to the data files behind the directory and questions, the conversation list as data, and the live system check." },
-        { target: "#settings", title: "Settings", body: "How the tool is set up right now: live version, storage, email, voice, AI and whether a password is required. Claude MCP isn't connected yet." }
-      ]
-    }
+    directory: [
+      { target: "#q", title: "Search everything", body: "Type an organization, a service, a county or a need. Search looks at names, services, eligibility, contacts and referral steps." },
+      { target: "#views", title: "Three views", body: "Directory lists every organization. Pathways shows common routes through services. Find services asks a few questions and suggests where to start." },
+      { target: "#filters", hint: "Open the Directory view to see the filters.", title: "Filter and sort", body: "Narrow the list by category, area or confidence. Nothing is ever hidden for being far away; geography only changes the order." },
+      { target: "#org-list [id^='org-']", hint: "Open the Directory view to see the listings.", title: "Open a listing", body: "Expand any organization to see services, who qualifies, costs, documents, every referral step and contacts. Each listing has a link you can copy." },
+      { target: "#tab-quiz", title: "Find services", body: "Answer as many questions as you like, or skip any. Results explain why each service is suggested." },
+      { target: "#feedback-open", title: "Tell us what to improve", body: "This opens your email app with your feedback. Feedback is reviewed before any listing changes." }
+    ],
+    demo: [
+      { target: "#start", hint: "This choice is at the top when you begin.", title: "Talk or type", body: "Choose Talk to use your microphone, or Type to chat. You can switch at any time. This is a demo: please use made-up details." },
+      { target: "#open-settings", title: "Make it comfortable", body: "Settings change text size, colors and contrast, whether replies are read aloud, and the voice speed." },
+      { target: "#log", hint: "This appears once you start a conversation.", title: "One question at a time", body: "You can say or type: repeat, skip, I don't know, change an answer, or talk to a person." },
+      { target: "#panel", hint: "The summary appears after the questions.", title: "Check the summary", body: "Nothing is suggested until you say the summary is right. Use the Change buttons, or say what to fix." },
+      { target: "#end-session", hint: "This appears once you start a conversation.", title: "Stop any time", body: "End session is always there and turns the microphone off." }
+    ],
+    "admin-dashboard": [
+      { target: "needs", title: "Needs you", body: "Anything waiting on you: requests Claude has handed back, failed emails and people who asked for staff follow-up.", how: "Click a chip to go straight there." },
+      { target: "stats", title: "The last 30 days", body: "Conversations started, by voice or typing, how many confirmed their summary and got suggestions, emails sent and staff requests." },
+      { target: "recent-changes", title: "Recent changes", body: "The latest entries from the change log." }
+    ],
+    "admin-conversations": [
+      { target: "conversation-list", hint: "The list appears once it has loaded.", title: "Every conversation", body: "Newest first, with the stage, staff status, anything needing attention and the email status.", how: "Open one to see answers, suggestions with reasons, emails and follow-up requests, and to mark it reviewed." }
+    ],
+    "admin-emails": [
+      { target: "email-filter", title: "Filter by status", body: "Show all emails, only sent, only failed or only waiting ones." },
+      { target: "email-table", title: "The email list", body: "Who it went to (partly hidden), the subject, its status and attempts.", how: "Retry a failed email, or open the conversation behind it." }
+    ],
+    "admin-costs": [
+      { target: "cost-table", title: "Running costs", body: "AI understanding, voice and email, with usage and an estimate for the last 30 days." }
+    ],
+    "admin-workflows": [
+      { target: "flow-list", title: "Your workflows", body: "Each card shows what uses the workflow, how many questions it has and its latest version.", how: "Open one to edit it visually." }
+    ],
+    "admin-editor": [
+      { target: "canvas", title: "The decision tree", body: "Sections run left to right; each card is a question. Lines show the order, and coloured lines show follow-ups that only appear after a certain answer.", how: "Drag cards to arrange them. Drag from an answer's dot onto a question to make it a follow-up of that answer." },
+      { target: "zoom", title: "Zoom and expand", body: "+ and − zoom in and out, Fit shows everything. “Follow-ups” on a card opens or tucks away the questions that branch from it.", how: "Hold Ctrl and scroll to zoom; drag the background to move around." },
+      { target: "inspector", title: "Edit a question", body: "Click a card to change its wording (on screen and spoken), type, answers, what each answer does to the suggestions, and when it's asked." },
+      { target: "versions", title: "Versions", body: "Every publish is a version. Compare any two, or revert to an earlier one.", how: "Revert makes a new version, so nothing is ever lost." },
+      { target: "publish", title: "Check and publish", body: "Changes save to a draft automatically. Check runs the safety checks and shows how suggestions would change; Publish makes it live.", how: "Publishing goes live in about a minute." }
+    ],
+    "admin-data": [
+      { target: "data-files", title: "Every data file", body: "Open any file or feed, or preview the first part here." }
+    ],
+    "admin-requests": [
+      { target: "request-groups", title: "Requests", body: "App changes and content changes, with a status for each.", how: "Add a comment to give Claude more detail; a comment on a finished request reopens it." }
+    ],
+    "admin-changelog": [
+      { target: "changelog-filter", title: "Filter", body: "Show everything, or only workflow versions, app changes or content changes." },
+      { target: "changelog-list", title: "The change log", body: "Newest first. “Show me” opens the page that changed; finished requests link back to the request." }
+    ],
+    "admin-settings": [
+      { target: "claude-steps", title: "Claude", body: "Add the connector in Claude in about a minute." },
+      { target: "chatgpt-steps", title: "ChatGPT", body: "ChatGPT needs Developer mode switched on first." },
+      { target: "status", title: "Status", body: "Whether the connector works, whether edits are saved to GitHub, and whether editing is on." }
+    ]
   };
 
-  var script = document.currentScript;
-  var page = (script && script.getAttribute("data-page")) || "directory";
-  var tour = TOURS[page] || TOURS.directory;
-  var narrowQuery = window.matchMedia ? window.matchMedia("(max-width: 34rem)") : null;
-
-  function seen() { try { return localStorage.getItem(SEEN_KEY) === VERSION; } catch (e) { return false; } }
-  function markSeen() { try { localStorage.setItem(SEEN_KEY, VERSION); } catch (e) {} }
-
-  function el(tag, attrs, children) {
+  /* ---------------- helpers ---------------- */
+  function el(tag, attrs, kids) {
     var n = document.createElement(tag);
-    for (var k in attrs || {}) {
-      if (k === "text") n.textContent = attrs[k];
-      else if (k === "onclick") n.addEventListener("click", attrs[k]);
-      else n.setAttribute(k, attrs[k]);
-    }
-    (children || []).forEach(function (c) { if (c) n.appendChild(c); });
+    for (var k in attrs || {}) { var v = attrs[k]; if (v == null) continue; if (k === "text") n.textContent = v; else if (k === "onclick") n.addEventListener("click", v); else n.setAttribute(k, v); }
+    (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
     return n;
   }
+  function find(target) {
+    if (!target) return null;
+    try { return /^[#.\[]/.test(target) ? document.querySelector(target) : document.querySelector('[data-tour="' + target + '"]'); } catch (e) { return null; }
+  }
+  function visible(n) { return !!(n && (n.offsetWidth || n.offsetHeight) && n.getClientRects().length); }
+  function pageMatch(list) { return list.some(function (p) { return p === page || (p === "admin-*" && isAdmin); }); }
+  function seenSet() { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || "[]"); } catch (e) { return []; } }
+  function markSeen(ids) { try { var s = seenSet(); ids.forEach(function (id) { if (s.indexOf(id) === -1) s.push(id); }); localStorage.setItem(SEEN_KEY, JSON.stringify(s.slice(-300))); } catch (e) {} }
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  function visible(node) {
-    return !!(node && (node.offsetWidth || node.offsetHeight) && node.getClientRects().length);
+  /* ---------------- new items ---------------- */
+  var newItems = NEW.filter(function (n) { return pageMatch(n.pages); });
+  function unseen() { var s = seenSet(); return newItems.filter(function (n) { return s.indexOf(n.id) === -1; }); }
+
+  function addPills() {
+    [].forEach.call(document.querySelectorAll(".wn-new-pill"), function (p) { p.remove(); });
+    unseen().forEach(function (n) {
+      var t = find(n.target);
+      if (!t || t.id === "admin-nav" || t.classList.contains("rq-btn")) return;
+      var host = /^(H1|H2|H3|A|BUTTON|SUMMARY)$/.test(t.tagName) ? t : (t.querySelector("h1,h2,h3") || t);
+      if (host.querySelector(":scope > .wn-new-pill")) return;
+      host.appendChild(el("span", { class: "wn-new-pill", text: "New", "aria-hidden": "true" }));
+    });
+    var dot = button.querySelector(".wn-dot");
+    if (unseen().length && !dot) button.appendChild(el("span", { class: "wn-dot", "aria-hidden": "true" }));
+    if (!unseen().length && dot) dot.remove();
+    button.setAttribute("aria-label", "What's new" + (unseen().length ? " (" + unseen().length + " new)" : ""));
+  }
+
+  /* Change-log entries that point at this admin page become "new" items too. */
+  function loadChangelog() {
+    var adminSeen = false; try { adminSeen = localStorage.getItem("v360-admin-seen") === "1"; } catch (e) {}
+    if (!isAdmin && !adminSeen) return Promise.resolve();
+    return fetch("/api/changelog", { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.ok ? r.json() : { entries: [] }; }).then(function (j) {
+      var here = location.pathname.replace(/index\.html$/, "");
+      j.entries.slice(0, 20).forEach(function (e) {
+        if (!e.highlight || !e.highlight.page) return;
+        var parts = e.highlight.page.split("#")[0].split("?");
+        if (parts[0] !== here && parts[0] + "/" !== here) return;
+        if (parts[1] && location.search.replace(/^\?/, "") !== parts[1]) return;
+        newItems.unshift({ id: "log-" + e.id, pages: [page], target: e.highlight.target || "main h1, main", title: e.title, body: e.summary || "Changed " + new Date(e.at).toLocaleDateString() + ".", how: "From the change log." });
+      });
+    }).catch(function () {});
   }
 
   /* ---------------- button ---------------- */
-  var unread = !seen();
-  var button = el("button", { type: "button", id: "whats-new-open", "class": "wn-button", "aria-haspopup": "dialog" }, [
-    el("span", { "class": "wn-long", text: "What's new" }),
-    el("span", { "class": "wn-short", text: "New", "aria-hidden": "true" }),
-    unread ? el("span", { "class": "wn-dot", "aria-hidden": "true" }) : null
+  var button = el("button", { type: "button", id: "whats-new-open", class: "wn-button", "aria-haspopup": "dialog" }, [
+    el("span", { class: "wn-spark", "aria-hidden": "true", text: "✦" }), el("span", { class: "wn-long", text: "What's new" }), el("span", { class: "wn-short", text: "New", "aria-hidden": "true" })
   ]);
 
-  /* The accessible name starts with the visible words (WCAG 2.5.3). */
-  function setLabel() {
-    var shortShown = narrowQuery && narrowQuery.matches && !button.classList.contains("wn-in-header");
-    var base = shortShown ? "New: what's new and a tour" : "What's new";
-    button.setAttribute("aria-label", unread ? base + " (unread)" : base);
+  /* ---------------- spotlight tour ---------------- */
+  var ring = el("div", { class: "wn-ring", "aria-hidden": "true" });
+  var card = el("div", { class: "wn-card", role: "dialog", "aria-modal": "false", "aria-labelledby": "wn-card-title" });
+  var steps = [], idx = 0, target = null, raf = 0;
+
+  function buildSteps() {
+    var fresh = unseen();
+    var out = [];
+    if (fresh.length) out.push({ intro: true, title: "What's new", body: fresh.length === 1 ? "One new thing on this page." : fresh.length + " new things on this page:", list: fresh.map(function (n) { return n.title; }) });
+    fresh.forEach(function (n) { out.push({ target: n.target, title: n.title, body: n.body, how: n.how, isNew: true, id: n.id }); });
+    (TOURS[page] || []).forEach(function (s) { out.push(s); });
+    if (!out.length) out.push({ intro: true, title: "What's new", body: "Nothing new on this page." });
+    return out;
   }
 
-  /* ---------------- dialog ---------------- */
-  var stepIndex = 0;
-  var stepBox = el("div", { "class": "wn-step" });
-  var stepStatus = el("p", { "class": "wn-progress", role: "status", "aria-live": "polite" });
-  var back = el("button", { type: "button", "class": "wn-btn", text: "Back", onclick: function () { show(stepIndex - 1); } });
-  var next = el("button", { type: "button", "class": "wn-btn wn-btn-primary", text: "Next", onclick: function () { if (stepIndex < tour.steps.length - 1) show(stepIndex + 1); else dialog.close(); } });
-  var showMe = el("button", { type: "button", "class": "wn-btn", text: "Show me", onclick: function () { highlight(tour.steps[stepIndex].target); } });
-
-  var changes = el("details", { "class": "wn-changes" }, [
-    el("summary", { text: "Recent changes (" + NEW_ITEMS.length + ")" }),
-    el("ul", { "class": "wn-list" }, NEW_ITEMS.map(function (t) { return el("li", { text: t }); }))
-  ]);
-  if (unread) changes.open = true;
-
-  var dialog = el("dialog", { id: "whats-new-dialog", "class": "wn-dialog", "aria-labelledby": "wn-title" }, [
-    el("div", { "class": "wn-header" }, [
-      el("h2", { id: "wn-title", text: "What's new" }),
-      el("button", { type: "button", "class": "wn-btn", text: "Close", onclick: function () { dialog.close(); } })
-    ]),
-    el("section", { "aria-labelledby": "wn-tour-h" }, [
-      el("h3", { id: "wn-tour-h", text: tour.title }),
-      stepStatus,
-      stepBox,
-      el("div", { "class": "wn-actions" }, [back, showMe, next])
-    ]),
-    changes,
-    el("p", { "class": "wn-links" }, tour.links.map(function (l, i) {
-      var a = el("a", { href: l[0], text: l[1] });
-      return i ? el("span", null, [document.createTextNode(" · "), a]) : a;
-    }))
-  ]);
+  function position() {
+    var s = steps[idx];
+    var t = s && !s.intro ? find(s.target) : null;
+    target = visible(t) ? t : null;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var cw = Math.min(380, vw - 32);
+    card.style.width = cw + "px";
+    if (!target) {
+      ring.style.display = "block";
+      ring.style.left = vw / 2 + "px"; ring.style.top = vh / 2 + "px"; ring.style.width = "0px"; ring.style.height = "0px"; ring.style.borderColor = "transparent";
+      card.style.left = Math.max(16, (vw - cw) / 2) + "px"; card.style.top = Math.max(16, vh / 2 - card.offsetHeight / 2) + "px";
+      card.removeAttribute("data-arrow");
+      return;
+    }
+    var r = target.getBoundingClientRect();
+    ring.style.display = "block"; ring.style.borderColor = "";
+    ring.style.left = r.left - 6 + "px"; ring.style.top = r.top - 6 + "px"; ring.style.width = r.width + 12 + "px"; ring.style.height = r.height + 12 + "px";
+    var ch = card.offsetHeight;
+    var left = Math.min(Math.max(16, r.left + r.width / 2 - cw / 2), vw - cw - 16);
+    var top, arrow;
+    if (r.bottom + 18 + ch < vh - 8) { top = r.bottom + 18; arrow = "up"; }
+    else if (r.top - 18 - ch > 8) { top = r.top - 18 - ch; arrow = "down"; }
+    else { top = vh - ch - 16; arrow = null; }
+    card.style.left = left + "px"; card.style.top = top + "px";
+    if (arrow) { card.setAttribute("data-arrow", arrow); card.style.setProperty("--wn-arrow-x", Math.min(Math.max(18, r.left + r.width / 2 - left), cw - 18) + "px"); }
+    else card.removeAttribute("data-arrow");
+  }
+  function follow() { cancelAnimationFrame(raf); raf = requestAnimationFrame(position); }
 
   function show(i) {
-    var hadFocus = document.activeElement;
-    stepIndex = Math.max(0, Math.min(tour.steps.length - 1, i));
-    var s = tour.steps[stepIndex];
-    stepBox.innerHTML = "";
-    stepBox.appendChild(el("h4", { text: s.title }));
-    stepBox.appendChild(el("p", { text: s.body }));
-    var shown = visible(document.querySelector(s.target));
-    showMe.hidden = !shown;
-    if (!shown) stepBox.appendChild(el("p", { "class": "wn-note", text: s.hint || "This part isn't on the screen right now." }));
-    /* Announce the whole step, not just its number; sighted users see the count. */
-    stepStatus.textContent = "";
-    stepStatus.appendChild(el("span", { text: "Step " + (stepIndex + 1) + " of " + tour.steps.length }));
-    stepStatus.appendChild(el("span", { "class": "wn-sr", text: ": " + s.title + ". " + s.body }));
-    back.disabled = stepIndex === 0;
-    next.textContent = stepIndex === tour.steps.length - 1 ? "Finish" : "Next";
-    /* A button that just became disabled can't keep focus: move it on. */
-    if (hadFocus && hadFocus.disabled) next.focus();
-    if (hadFocus === showMe && showMe.hidden) next.focus();
-  }
-
-  /* ---------------- show me ---------------- */
-  var current = null;   /* { target, backButton } while a part is highlighted */
-
-  function clearHighlight() {
-    if (!current) return;
-    current.target.classList.remove("wn-highlight");
-    if (current.addedTabindex) current.target.removeAttribute("tabindex");
-    if (current.backButton.parentNode) current.backButton.parentNode.removeChild(current.backButton);
-    current = null;
-  }
-
-  function openTour() {
-    clearHighlight();
-    show(stepIndex);
-    if (!dialog.open) dialog.showModal();
-    markSeen();
-    unread = false;
-    var dot = button.querySelector(".wn-dot");
-    if (dot) dot.parentNode.removeChild(dot);
-    setLabel();
-  }
-
-  /* Close the tour, bring the described part into view, outline it, move
-     focus there, and place "Back to the tour" right after it. The outline
-     stays until the person goes back to the tour or clicks elsewhere. */
-  function highlight(selector) {
-    var target = document.querySelector(selector);
-    if (!visible(target)) return;
-    clearHighlight();
-    dialog.close();
-    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
-    target.classList.add("wn-highlight");
-    var addedTabindex = false;
-    if (!target.hasAttribute("tabindex") && !/^(A|BUTTON|INPUT|SELECT|TEXTAREA)$/.test(target.tagName)) {
-      target.setAttribute("tabindex", "-1");
-      addedTabindex = true;
+    idx = Math.max(0, Math.min(steps.length - 1, i));
+    var s = steps[idx];
+    if (s.isNew) markSeen([s.id]);
+    card.textContent = "";
+    card.appendChild(el("p", { class: "wn-count", role: "status", "aria-live": "polite", text: (s.isNew ? "New · " : "What's new · ") + (idx + 1) + " of " + steps.length }));
+    card.appendChild(el("h2", { id: "wn-card-title", class: "wn-title", text: s.title }));
+    card.appendChild(el("p", { class: "wn-body", text: s.body }));
+    if (s.list) card.appendChild(el("ul", { class: "wn-list" }, s.list.map(function (t) { return el("li", { text: t }); })));
+    if (s.how) card.appendChild(el("p", { class: "wn-how" }, [el("strong", { text: "What it means for you: " }), s.how]));
+    var t = s.intro ? null : find(s.target);
+    if (!s.intro && !visible(t)) card.appendChild(el("p", { class: "wn-how", text: s.hint || "This part isn't on the screen right now." }));
+    var last = idx === steps.length - 1;
+    var nextBtn = el("button", { type: "button", class: "wn-btn wn-primary", text: last ? "Finish" : "Next", onclick: function () { if (last) end(); else show(idx + 1); } });
+    var backBtn = el("button", { type: "button", class: "wn-btn", text: "Back", onclick: function () { show(idx - 1); } });
+    if (idx === 0) backBtn.disabled = true;
+    var links = isAdmin ? el("a", { href: "/admin/changelog/", class: "wn-link", text: "Change log" }) : el("a", { href: "/guide.html", class: "wn-link", text: "Full guide" });
+    card.appendChild(el("div", { class: "wn-actions" }, [backBtn, nextBtn, el("span", { class: "wn-spacer" }), links, el("button", { type: "button", class: "wn-btn wn-skip", text: "Skip", onclick: end })]));
+    if (visible(t)) {
+      var big = t.getBoundingClientRect().height > window.innerHeight / 2;
+      t.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: big ? "start" : "center" });
     }
-    var backButton = el("button", { type: "button", "class": "wn-back", text: "Back to the tour (step " + (stepIndex + 1) + " of " + tour.steps.length + ")", onclick: function (ev) { ev.stopPropagation(); openTour(); } });
-    target.insertAdjacentElement("afterend", backButton);
-    current = { target: target, backButton: backButton, addedTabindex: addedTabindex };
-    try { target.focus({ preventScroll: true }); } catch (e) {}
+    position(); setTimeout(position, 420);
+    nextBtn.focus({ preventScroll: true });
   }
 
-  document.addEventListener("click", function (ev) {
-    if (current && !current.backButton.contains(ev.target) && !current.target.contains(ev.target)) clearHighlight();
-  }, true);
-
-  button.addEventListener("click", openTour);
-  dialog.addEventListener("close", function () { if (!current) button.focus(); });
+  function start() {
+    steps = buildSteps();
+    document.body.appendChild(ring); document.body.appendChild(card);
+    document.documentElement.classList.add("wn-touring");
+    window.addEventListener("scroll", follow, true); window.addEventListener("resize", follow);
+    show(0);
+  }
+  function end() {
+    window.removeEventListener("scroll", follow, true); window.removeEventListener("resize", follow);
+    if (ring.parentNode) ring.remove();
+    if (card.parentNode) card.remove();
+    document.documentElement.classList.remove("wn-touring");
+    markSeen(newItems.map(function (n) { return n.id; }));
+    try { localStorage.setItem("v360-whats-new-seen", VERSION); } catch (e) {}
+    addPills();
+    button.focus();
+  }
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && card.parentNode) { e.preventDefault(); end(); } });
+  button.addEventListener("click", function () { if (card.parentNode) end(); else start(); });
 
   /* ---------------- placement ---------------- */
-  /* Keep a fixed bottom bar from covering whatever has focus. */
   function reserveSpace(bar) {
     function apply() {
       var h = Math.ceil(bar.getBoundingClientRect().height) + 16;
@@ -237,44 +249,42 @@
     apply();
     if (window.ResizeObserver) new ResizeObserver(apply).observe(bar);
     window.addEventListener("resize", apply);
-    /* Browsers don't always honour scroll padding when focus moves, so also
-       nudge the page whenever a newly focused control ends up under the bar. */
     document.addEventListener("focusin", function (ev) {
       var t = ev.target;
-      if (!t || bar.contains(t) || dialog.contains(t)) return;
-      var barTop = bar.getBoundingClientRect().top;
-      var r = t.getBoundingClientRect();
+      if (!t || bar.contains(t) || card.contains(t)) return;
+      var barTop = bar.getBoundingClientRect().top, r = t.getBoundingClientRect();
       if (r.height && r.bottom > barTop - 8) window.scrollBy({ top: r.bottom - barTop + 16, behavior: "instant" });
     });
   }
 
   function mount() {
-    document.body.appendChild(dialog);
     var header = document.querySelector(".top-inner");
     var dock = document.querySelector(".feedback-dock");
-    if (header) {
-      /* Demo and staff: top-right corner, grouped with the existing header button. */
+    if (isAdmin) {
+      button.classList.add("wn-corner");
+      document.body.appendChild(button);
+    } else if (header) {
       button.classList.add("wn-in-header");
-      var group = el("div", { "class": "wn-header-actions" });
+      var group = el("div", { class: "wn-header-actions" });
       var existing = header.lastElementChild && header.lastElementChild.tagName === "BUTTON" ? header.lastElementChild : null;
       group.appendChild(button);
       if (existing) group.appendChild(existing);
       header.appendChild(group);
     } else if (dock) {
-      /* Directory: left side of the feedback bar, plus a skip link at the top. */
       dock.classList.add("wn-docked");
       dock.insertBefore(button, dock.firstChild);
       reserveSpace(dock);
       var lastSkip = [].slice.call(document.querySelectorAll(".skip-link")).pop();
-      if (lastSkip) lastSkip.insertAdjacentElement("afterend", el("a", { "class": "skip-link", href: "#whats-new-open", text: "Skip to What's new and the tour" }));
+      if (lastSkip) lastSkip.insertAdjacentElement("afterend", el("a", { class: "skip-link", href: "#whats-new-open", text: "Skip to What's new and the tour" }));
     } else {
       button.classList.add("wn-floating");
       document.body.appendChild(button);
       reserveSpace(button);
     }
-    setLabel();
-    if (narrowQuery && narrowQuery.addEventListener) narrowQuery.addEventListener("change", setLabel);
+    addPills();
+    loadChangelog().then(addPills);
+    // Page scripts render late (lists, editor); pin the pills once they're in.
+    setTimeout(addPills, 1200);
   }
-
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
 })();
