@@ -25,7 +25,7 @@ The persistent feedback button opens an accessible dialog. Feedback is handed to
 
 ## Voice and chat demo
 
-A demonstration of talking or typing to get referrals lives at `/demo`, with a protected staff queue at `/staff`. It reads this dataset and the existing assessment engine without changing them. See `docs/voice-chat-demo.md`.
+A demonstration of talking or typing to get referrals lives at `/demo`, with a staff queue at `/staff` and admin pages (dashboard, costs, email tracker, question flow, raw data, settings) at `/admin`. Admin sign-in is off for now; set `V360_ADMIN_SIGNIN=on` to require a staff password. Every page shares the top menu in `site/site-menu.js`. It reads this dataset and the existing assessment engine without changing them. See `docs/voice-chat-demo.md`.
 
 ```sh
 npm run demo        # http://localhost:8360/demo

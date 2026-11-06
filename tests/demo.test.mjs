@@ -402,8 +402,8 @@ test("no-email path: plan stays on screen and staff handoff works without an add
   assert.ok(reviews.some((x) => x.reason.startsWith("Requested") && x.callback_ok === 0));
 });
 
-test("session and staff routes reject unauthorised access", async () => {
-  const app = await makeApp();
+test("session and staff routes reject unauthorised access when admin sign-in is on", async () => {
+  const app = await makeApp({ V360_ADMIN_SIGNIN: "on" });
   const s = await startSession(app);
   let r = await call(app, "POST", `/api/session/${s.id}/turn`, { text: "hi" }, { authorization: "Bearer wrong" });
   assert.equal(r.status, 404);
@@ -479,4 +479,30 @@ test("repeat returns the same assistant turn without changing state", async () =
 test.after(() => {
   try { rmSync((process.env.TMPDIR || "/tmp") + "/v360-outbox", { recursive: true, force: true }); } catch {}
   void readdirSync;
+});
+
+test("admin is open by default: staff queue and overview need no password, writes stay same-origin", async () => {
+  const app = await makeApp();
+  const persona = { opening: "just ask me questions", section: "skip this section", answers: { actor: "myself", county: "Charlotte", goals: "reading", age_band: "60", hearing_loss: "no", eye_doctor: "yes", eye_exam_recency: "within the last year", insurance: "Medicare", veteran: "no" } };
+  const { s } = await runPersona(app, persona);
+  let r = await call(app, "GET", "/api/staff/me");
+  assert.equal(r.status, 200);
+  assert.equal(r.json.signInRequired, false);
+  r = await call(app, "GET", "/api/staff/sessions");
+  assert.equal(r.status, 200);
+  assert.ok(r.json.sessions.some((x) => x.id === s.id));
+  r = await call(app, "GET", `/api/staff/sessions/${s.id}`);
+  assert.equal(r.status, 200);
+  r = await call(app, "POST", `/api/staff/sessions/${s.id}/status`, { staffStatus: "reviewed" }, { origin: "https://evil.example" });
+  assert.equal(r.status, 403, "cross-origin write still rejected");
+  r = await call(app, "GET", "/api/admin/overview");
+  assert.equal(r.status, 200);
+  assert.equal(r.json.days, 30);
+  assert.ok(r.json.usage.conversations >= 1);
+  assert.equal(r.json.usage.byMode.text >= 1, true);
+  assert.equal(r.json.costs.ai.estimateUsd, 0, "AI off means no AI cost");
+  assert.equal(r.json.settings.claudeMcp, "not connected");
+  const locked = await makeApp({ V360_ADMIN_SIGNIN: "on" });
+  r = await call(locked, "GET", "/api/admin/overview");
+  assert.equal(r.status, 401);
 });

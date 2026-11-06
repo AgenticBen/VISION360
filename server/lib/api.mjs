@@ -102,10 +102,23 @@ export async function createApp(opts = {}) {
     return sess ? store.staffUserById(sess.user_id) : null;
   }
 
+  // Admin sign-in is off for now (owner's decision, 2026-11-06): anyone with
+  // the link can open the staff queue and admin pages. Set V360_ADMIN_SIGNIN=on
+  // to require a staff password again. Cross-origin writes stay blocked.
+  const adminOpen = String(env.V360_ADMIN_SIGNIN || "off").toLowerCase() !== "on";
+  const OPEN_ADMIN = { username: "admin-open" };
+
   function requireStaff(req) {
-    const u = staffUser(req);
+    const u = staffUser(req) || (adminOpen ? OPEN_ADMIN : null);
     if (!u) throw httpError(401, "Staff sign-in required");
     return u;
+  }
+
+  // In open mode, show only enough of an address to tell emails apart.
+  function maskEmail(to) {
+    if (!to || !adminOpen) return to;
+    const [user, domain] = String(to).split("@");
+    return (user ? user[0] : "") + "•••@" + (domain || "");
   }
 
   function turnResponse(session, turn) {
@@ -216,7 +229,34 @@ export async function createApp(opts = {}) {
       }
       if (p === "/api/staff/me" && method === "GET") {
         const u = staffUser(req);
-        return u ? send(res, 200, { username: u.username }) : send(res, 401, { error: "Not signed in" });
+        if (u) return send(res, 200, { username: u.username, signInRequired: !adminOpen });
+        return adminOpen ? send(res, 200, { username: OPEN_ADMIN.username, open: true, signInRequired: false }) : send(res, 401, { error: "Not signed in" });
+      }
+      if (p === "/api/admin/overview" && method === "GET") {
+        requireStaff(req);
+        const days = 30;
+        const since = new Date(Date.now() - days * 864e5).toISOString();
+        const usage = store.adminUsage(since);
+        const ai = aiEnabled(env);
+        const perCall = Number(env.V360_COST_PER_AI_CALL_USD);
+        const tts = ttsInfo(env).provider;
+        return send(res, 200, {
+          generatedAt: new Date().toISOString(), days, since,
+          commit: env.VERCEL_GIT_COMMIT_SHA || "local",
+          storage: env.V360_STORAGE || "local", retentionDays: RETENTION_DAYS,
+          signInRequired: !adminOpen,
+          usage,
+          costs: {
+            ai: { on: ai, model: ai ? env.V360_AI_MODEL || DEFAULT_MODEL : null, calls: usage.aiCalls, perCallUsd: Number.isFinite(perCall) ? perCall : null, estimateUsd: !ai && !usage.aiCalls ? 0 : (Number.isFinite(perCall) ? +(usage.aiCalls * perCall).toFixed(4) : null) },
+            tts: { provider: tts, estimateUsd: tts === "browser" ? 0 : null },
+            email: { transport: ctx.actions.transportName(), estimateUsd: ctx.actions.transportName() === "outbox" ? 0 : null },
+          },
+          emails: store.adminEmails(since).map((e) => ({ ...e, to: maskEmail(e.to) })),
+          settings: {
+            corpusVersion: corpus.version, organizations: corpus.organizations.length, policyVersion: POLICY_VERSION,
+            emailTransport: ctx.actions.transportName(), tts, aiUnderstanding: ai, claudeMcp: "not connected",
+          },
+        });
       }
       if (p === "/api/staff/sessions" && method === "GET") {
         requireStaff(req);

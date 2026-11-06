@@ -303,6 +303,33 @@ export function openStore(file) {
       return q(`SELECT session_id, COUNT(*) n FROM staff_reviews WHERE status != 'closed' GROUP BY session_id`).all();
     },
 
+    // admin overview: read-only counts and lists for the last N days ---------
+    adminUsage(sinceIso) {
+      const one = (sql, ...a) => Number(Object.values(q(sql).get(...a) || { n: 0 })[0] || 0);
+      const sessions = q(`SELECT id, created_at, channels FROM sessions WHERE created_at >= ?`).all(sinceIso);
+      const byDay = {};
+      const byMode = { voice: 0, text: 0 };
+      for (const r of sessions) {
+        const day = r.created_at.slice(0, 10);
+        byDay[day] = (byDay[day] || 0) + 1;
+        const first = (JSON.parse(r.channels || "[]")[0] || {}).mode;
+        if (first === "voice" || first === "text") byMode[first] += 1;
+      }
+      return {
+        conversations: sessions.length,
+        byMode,
+        byDay,
+        completed: one(`SELECT COUNT(DISTINCT session_id) n FROM audit_events WHERE event='session_completed' AND at >= ?`, sinceIso),
+        summariesConfirmed: one(`SELECT COUNT(DISTINCT session_id) n FROM audit_events WHERE event='recap_confirmed' AND at >= ?`, sinceIso),
+        staffRequests: one(`SELECT COUNT(*) n FROM staff_reviews WHERE created_at >= ?`, sinceIso),
+        aiCalls: one(`SELECT COUNT(*) n FROM audit_events WHERE event IN ('ai_interpret','ai_extract','ai_email') AND at >= ?`, sinceIso),
+      };
+    },
+    adminEmails(sinceIso, limit = 500) {
+      return q(`SELECT id, session_id, type, status, attempts, provider, error, payload_json, created_at, updated_at FROM actions WHERE type='email_plan' AND created_at >= ? ORDER BY created_at DESC LIMIT ?`).all(sinceIso, limit)
+        .map((r) => { const p = JSON.parse(r.payload_json || "{}"); return { ...r, payload_json: undefined, to: p.to || null, subject: p.subject || null }; });
+    },
+
     // staff auth ------------------------------------------------------------
     createStaffUser(username, passwordHash) {
       const id = randomUUID();

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" data-textsize="100" data-theme="standard">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="referrer" content="no-referrer">
+<title>Vision 360 CONNECT — admin</title>
+<link rel="stylesheet" href="/demo/demo.css">
+<link rel="stylesheet" href="/whats-new.css">
+<link rel="stylesheet" href="/site-menu.css">
+<script>
+  try { var s = JSON.parse(localStorage.getItem("v360-demo-settings") || "{}");
+    if (s.textSize) document.documentElement.setAttribute("data-textsize", s.textSize);
+    if (s.theme) document.documentElement.setAttribute("data-theme", s.theme); } catch (e) {}
+</script>
+<style>
+  .admin section { margin: 0 0 2.5rem; scroll-margin-top: 1rem; }
+  .admin h2 { border-top: 1px solid var(--line-soft); padding-top: 1rem; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(11rem, 100%), 1fr)); gap: 0.75rem; margin: 1rem 0; padding: 0; list-style: none; }
+  .stats li { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 8px; padding: 0.75rem 0.9rem; }
+  .stats .num { display: block; font-size: 1.9rem; font-weight: 800; line-height: 1.1; }
+  .stats .lbl { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; vertical-align: top; padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--line-soft); }
+  th { font-size: 0.9rem; color: var(--muted); }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .table-wrap { overflow-x: auto; }
+  .bar { display: inline-block; height: 0.8rem; background: var(--accent); border-radius: 3px; vertical-align: middle; min-width: 2px; }
+  .block { border: 1px solid var(--line-soft); border-radius: 8px; padding: 0.75rem 1rem; margin: 0 0 1rem; }
+  .block > h3 { margin-top: 0; }
+  .q { border-left: 4px solid var(--accent); padding: 0.25rem 0 0.25rem 0.8rem; margin: 0.9rem 0; }
+  .q .meta { color: var(--muted); font-size: 0.92rem; }
+  .q .branch { background: var(--warn-bg); color: var(--warn-ink); border-radius: 6px; padding: 0.1rem 0.5rem; display: inline-block; font-weight: 700; }
+  .q details { margin-top: 0.3rem; }
+  .q ul { margin: 0.3rem 0 0.3rem 1.2rem; }
+  .planned { background: var(--accent-wash); border: 1px solid var(--line-soft); border-radius: 8px; padding: 0.6rem 0.8rem; }
+  dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; }
+  dl.kv dt { font-weight: 700; } dl.kv dd { margin: 0; overflow-wrap: anywhere; }
+  .open-note { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 0.5rem 0.8rem; }
+  @media (max-width: 640px) { .emails table, .emails tbody, .emails tr, .emails td { display: block; } .emails thead { display: none; } .emails tr { border-bottom: 2px solid var(--line-soft); padding: 0.4rem 0; } .emails td { border: 0; padding: 0.15rem 0; } dl.kv { grid-template-columns: 1fr; } dl.kv dd { margin-bottom: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to the admin overview</a>
+<header class="top">
+  <div class="wrap top-inner">
+    <div>
+      <p class="brand">Lions Services · Vision 360 CONNECT</p>
+      <h1>Admin</h1>
+      <p class="demo-tag"><strong>Demo data only.</strong> Everything here comes from test conversations.</p>
+    </div>
+  </div>
+</header>
+<main class="wrap admin" id="main">
+  <p class="open-note" id="open-note" hidden>No password is needed for now: anyone with this link can open the admin pages and the staff queue. Email addresses are partly hidden while it's open.</p>
+  <p id="load-status" role="status" class="hint">Loading…</p>
+
+  <section id="overview" aria-labelledby="overview-h" tabindex="-1">
+    <h2 id="overview-h">Dashboard — last 30 days</h2>
+    <ul class="stats" id="stats"></ul>
+    <h3>Conversations per day</h3>
+    <div class="table-wrap"><table id="per-day"><thead><tr><th scope="col">Day</th><th scope="col" class="n">Conversations</th><th scope="col"><span class="wn-sr">Bar</span></th></tr></thead><tbody></tbody></table></div>
+    <p class="hint" id="storage-note"></p>
+  </section>
+
+  <section id="costs" aria-labelledby="costs-h" tabindex="-1">
+    <h2 id="costs-h">Estimated API costs — last 30 days</h2>
+    <div class="table-wrap"><table id="cost-table"><thead><tr><th scope="col">Service</th><th scope="col">What it's using</th><th scope="col">Usage</th><th scope="col" class="n">Estimate</th></tr></thead><tbody></tbody></table></div>
+    <p class="hint">Estimates only. Hosting (Vercel) is billed separately on the plan, not per conversation.</p>
+  </section>
+
+  <section id="emails" class="emails" aria-labelledby="emails-h" tabindex="-1">
+    <h2 id="emails-h">Email tracker</h2>
+    <p class="hint">Every plan email the tool has queued in the last 30 days, newest first. “mock written” means the test outbox — not a real email.</p>
+    <div class="table-wrap"><table id="email-table"><thead><tr><th scope="col">Queued</th><th scope="col">To</th><th scope="col">Status</th><th scope="col">Attempts</th><th scope="col">Conversation</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section id="questions" aria-labelledby="questions-h" tabindex="-1">
+    <h2 id="questions-h">Questions and decision tree</h2>
+    <p class="planned"><strong>Read-only for now.</strong> This is the live question flow, in the order it's asked. The visual editor with saved versions and “revert to an earlier version” is planned for a later phase.</p>
+    <div id="tree"><p class="hint">Loading the question flow…</p></div>
+  </section>
+
+  <section id="data" aria-labelledby="data-h" tabindex="-1">
+    <h2 id="data-h">Raw data</h2>
+    <ul>
+      <li><a href="/data/organizations.json">Organizations (JSON)</a> — every directory record</li>
+      <li><a href="/data/assessment.json">Questions and scoring rules (JSON)</a></li>
+      <li><a href="/data/geography.json">Geography (JSON)</a> — how counties are ranked by distance</li>
+      <li><a href="/data/pathways.json">Pathways (JSON)</a></li>
+      <li><a href="/api/staff/sessions">Conversations (JSON)</a> — the same list as the staff queue</li>
+      <li><a href="/api/admin/overview">This dashboard's numbers (JSON)</a></li>
+      <li><a href="/api/health">System health (JSON)</a> — live commit and data versions</li>
+    </ul>
+  </section>
+
+  <section id="settings" aria-labelledby="settings-h" tabindex="-1">
+    <h2 id="settings-h">Settings</h2>
+    <dl class="kv" id="settings-list"></dl>
+    <h3>Claude MCP</h3>
+    <p class="planned"><strong>Not connected yet.</strong> Connecting Claude through MCP, so it can apply question and rule changes for you, is planned for a later phase. Nothing here can change the tool's behavior yet.</p>
+  </section>
+</main>
+<script src="/site-menu.js"></script>
+<script src="/admin/admin.js"></script>
+<script src="/whats-new.js" data-page="admin" defer></script>
+</body>
+</html>

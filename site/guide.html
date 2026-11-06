@@ -8,6 +8,7 @@
 <meta name="description" content="How to view and navigate the Lions Services vision loss services directory, the voice and chat assistant, and the staff queue.">
 <title>How to use VISION360 — guide</title>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="site-menu.css">
 <script>
   /* Use the same text size and contrast the person chose in the directory. */
   try {
@@ -37,7 +38,7 @@
   <div class="wrap" style="max-width: 46rem; padding-top: 1rem;">
     <p><a href="/">← Back to the directory</a></p>
     <h1>How to use VISION360</h1>
-    <p class="lede">A step-by-step guide to the vision loss services directory, the voice and chat assistant, and the staff queue. Every part works with a keyboard and a screen reader, and nothing here needs an account.</p>
+    <p class="lede">A step-by-step guide to the vision loss services directory, the voice and chat assistant, the staff queue and the admin pages. Every part works with a keyboard and a screen reader, and nothing here needs an account.</p>
   </div>
 </header>
 
@@ -51,6 +52,7 @@
       <li><a href="#pathways">Pathways</a></li>
       <li><a href="#assistant">The voice and chat assistant</a></li>
       <li><a href="#staff">The staff queue (Lions Services staff)</a></li>
+      <li><a href="#admin">The admin pages</a></li>
       <li><a href="#whats-new">The What's new tour</a></li>
       <li><a href="#privacy">Privacy and what is saved</a></li>
     </ol>
@@ -59,6 +61,7 @@
   <section aria-labelledby="getting-around">
     <h2 id="getting-around">1. Getting around any page</h2>
     <ul>
+      <li><strong>The site menu.</strong> The dark bar at the top of every page has two menus. <strong>Find help</strong> opens the directory, Find services, Pathways, the assistant and this guide. <strong>Admin</strong> opens the dashboard, conversations, email tracker, costs, question flow, raw data and settings. Press <kbd>Escape</kbd> to close a menu.</li>
       <li><strong>Skip links.</strong> Press <kbd>Tab</kbd> once when a page opens to reveal links that jump straight to search, the three views, the list, the filters, or the What's new tour.</li>
       <li><strong>Moving around.</strong> <kbd>Tab</kbd> moves forward, <kbd>Shift</kbd> + <kbd>Tab</kbd> moves back, <kbd>Enter</kbd> or <kbd>Space</kbd> presses a button, and <kbd>Escape</kbd> closes any pop-up window.</li>
       <li><strong>Make it easier to read.</strong> At the top of the directory, choose a text size of 100%, 125% or 150%, or turn on High contrast. Your browser's own zoom also works. In the assistant, the Settings button offers text up to 200% and dark or high-contrast colors.</li>
@@ -141,17 +144,31 @@
   <section aria-labelledby="staff">
     <h2 id="staff">6. The staff queue (Lions Services staff)</h2>
     <ol>
-      <li>Open <a href="/staff">the staff queue</a> and sign in with your staff account.</li>
+      <li>Open <a href="/staff/">the staff queue</a> (Admin → Conversations). No password is needed for now.</li>
       <li>The list shows the newest conversations first: their stage, staff status, anything needing attention, and email status.</li>
       <li>Open a conversation to see confirmed and unconfirmed answers, every suggestion with its reasons and the data version behind it, emails, and follow-up requests.</li>
       <li>Mark it reviewed or needing follow-up, or retry an email that failed. A status change never changes the person's answers.</li>
     </ol>
   </section>
 
+  <section aria-labelledby="admin">
+    <h2 id="admin">7. The admin pages</h2>
+    <p class="note">No password is needed for now: anyone with the link can open these pages. Email addresses are partly hidden while that's the case. Everything shown comes from test conversations.</p>
+    <p>Open <a href="/admin/">the admin page</a> from <strong>Admin</strong> in the site menu. It has six parts:</p>
+    <ol>
+      <li><strong>Dashboard.</strong> Conversations started in the last 30 days, by voice or typing, how many confirmed their summary and reached suggestions, plan emails sent, and requests for staff to follow up, plus a day-by-day count. On the demo server these numbers reset when it restarts; permanent storage comes later.</li>
+      <li><strong>Estimated API costs.</strong> What each paid service is costing. Today it's $0: AI understanding is off, voices come from the listener's own browser, and emails go to a test outbox.</li>
+      <li><strong>Email tracker.</strong> Every plan email, newest first, with its status and a link to the conversation behind it. <span class="say">Mock written</span> means the test outbox, not a real email.</li>
+      <li><strong>Questions and decision tree.</strong> The live question flow in the order it's asked, grouped into sections. A yellow <span class="say">Only asked if…</span> label marks a branch. Open any question to see what each answer does to the suggestions. This view is read-only; the visual editor with saved versions comes later.</li>
+      <li><strong>Raw data.</strong> The data files behind the directory and questions, the conversation list as data, and the live system check.</li>
+      <li><strong>Settings.</strong> How the tool is set up right now, including the live version. Claude MCP isn't connected yet.</li>
+    </ol>
+  </section>
+
   <section aria-labelledby="whats-new">
-    <h2 id="whats-new">7. The What's new tour</h2>
+    <h2 id="whats-new">8. The What's new tour</h2>
     <ul>
-      <li>On the directory, the <strong>What's new</strong> button is in the bottom-left corner (it reads <strong>New</strong> on small screens). On the assistant and the staff queue, it's in the top-right corner next to Settings.</li>
+      <li>On the directory, the <strong>What's new</strong> button is in the bottom-left corner (it reads <strong>New</strong> on small screens). On the assistant, the staff queue and the admin page, it's in the top-right corner.</li>
       <li>It opens a short tour of that page. Use <strong>Next</strong> and <strong>Back</strong> to move through the steps.</li>
       <li><strong>Show me</strong> closes the tour, takes you to the part being described and outlines it. Press <kbd>Tab</kbd> once to reach <strong>Back to the tour</strong>.</li>
       <li><strong>Recent changes</strong> lists what has improved lately. A dot on the button means there's something you haven't seen.</li>
@@ -159,7 +176,7 @@
   </section>
 
   <section aria-labelledby="privacy">
-    <h2 id="privacy">8. Privacy and what is saved</h2>
+    <h2 id="privacy">9. Privacy and what is saved</h2>
     <ul>
       <li>The directory doesn't save your searches or answers. Display settings are remembered on this device only.</li>
       <li>The assistant keeps structured answers, not full transcripts, for up to 7 days so staff can follow up if you ask. This demo is for made-up details only.</li>
@@ -168,5 +185,6 @@
     <p><a href="/">Back to the directory</a> · <a href="/demo">Open the assistant</a></p>
   </section>
 </main>
+<script src="/site-menu.js"></script>
 </body>
 </html>

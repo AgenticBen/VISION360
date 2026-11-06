@@ -1,4 +1,4 @@
-/* Staff queue — reads private records through authenticated /api/staff routes.
+/* Staff queue — reads records through /api/staff routes (open while admin sign-in is off).
    The HttpOnly session cookie is set by the server; this file never sees it. */
 (function () {
   "use strict";
@@ -22,10 +22,14 @@
   var STAFF_STATUS = { pending: "Pending", reviewed: "Reviewed", needs_follow_up: "Needs follow-up" };
   var PHASE = { opening: "Just started", intake: "Answering questions", recap: "Checking summary", results: "Has suggestions", email_address: "Giving email", email_confirm_address: "Giving email", email_consent: "Deciding on email", staff_contact: "Asking for staff", staff_confirm: "Asking for staff", closed: "Ended" };
 
-  function show(id) { ["login", "list", "detail"].forEach(function (x) { $(x).hidden = x !== id; }); $("logout").hidden = id === "login"; }
+  /* Admin sign-in is switched off for now, so the server usually answers
+     /api/staff/me without a password; the sign-in form only shows when it is on. */
+  var openMode = false;
+  function show(id) { ["login", "list", "detail"].forEach(function (x) { $(x).hidden = x !== id; }); $("logout").hidden = id === "login" || openMode; }
 
   function boot() {
-    api("GET", "/api/staff/me").then(loadList).catch(function () { show("login"); $("u").focus(); });
+    var deep = /^#([0-9a-f-]{36})$/.exec(location.hash);
+    api("GET", "/api/staff/me").then(function (me) { openMode = !!me.open; if (deep) openDetail(deep[1]); else loadList(); }).catch(function () { show("login"); $("u").focus(); });
   }
 
   $("login-form").addEventListener("submit", function (e) {
@@ -115,8 +119,12 @@
         return el("li", { text: when(e.at) + " · rev " + e.revision + " · " + e.event + (e.question_id ? " · " + e.question_id : "") + (e.value_json ? " = " + e.value_json : "") + (e.kind ? " (" + e.kind + ")" : "") });
       }))]));
       $("detail-h").focus();
-    }).catch(function (e) { if (e.status === 401) show("login"); });
+    }).catch(function (e) { if (e.status === 401) show("login"); else loadList(); });
   }
 
+  window.addEventListener("hashchange", function () {
+    var m = /^#([0-9a-f-]{36})$/.exec(location.hash);
+    if (m) openDetail(m[1]);
+  });
   boot();
 })();

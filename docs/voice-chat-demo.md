@@ -5,7 +5,9 @@ A controlled demonstration, not a production service. Use fictional people and t
 ## What it is
 
 - `/demo` — talk or type to get grounded referrals from this directory.
-- `/staff` — password-protected staff queue: confirmed answers, unknowns, suggestions with reasons, email status, requests.
+- `/staff` — staff queue: confirmed answers, unknowns, suggestions with reasons, email status, requests.
+- `/admin` — dashboard (last 30 days), estimated API costs, email tracker, the live question flow (read-only), raw data and settings, from `GET /api/admin/overview`.
+- Admin sign-in is **off** for now (owner's decision, 2026-11-06): the staff queue and admin pages open without a password, and email addresses are partly masked while open. Set `V360_ADMIN_SIGNIN=on` to require a staff password again.
 - `/api/*` — the shared server. Voice and typing call the same endpoints, so there is one set of rules.
 
 Flow: one question at a time (from `site/data/assessment.json`) → answers are *proposed* → recap → explicit "yes" for the current revision → matching with the unchanged `site/quiz-engine.js` → results built only from records → optional consented email → optional staff request.
@@ -60,7 +62,7 @@ Production deploys change the live directory site. Follow `CLAUDE.md`: run check
 - Unknown, declined, skipped and not-asked never become "no".
 - Corrections invalidate earlier suggestions and cancel unstarted emails. An email already sent is flagged for staff, not hidden.
 - An email needs a read-back address, an explicit yes to an exact description, and an allowlisted inbox when a real provider is used. Retries never send twice.
-- Staff routes need a signed-in staff user. Session routes need the session's own token. Cross-origin writes are rejected.
+- Staff and admin routes need a signed-in staff user only when `V360_ADMIN_SIGNIN=on`. Session routes need the session's own token. Cross-origin writes are rejected.
 
 ## Not done in this demo
 

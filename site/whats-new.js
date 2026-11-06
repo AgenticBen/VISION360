@@ -1,8 +1,8 @@
 /* =========================================================================
    "What's new" button and guided tour, shared by the directory, the voice
-   and chat demo, and the staff queue.
+   and chat demo, the staff queue and the admin pages.
 
-   Usage: <script src="/whats-new.js" data-page="directory|demo|staff" defer>
+   Usage: <script src="/whats-new.js" data-page="directory|demo|staff|admin" defer>
 
    Plain JS, no dependencies. Placement: on the demo and staff pages the
    button sits in the header's top-right corner, next to Settings / Sign out
@@ -19,10 +19,12 @@
 (function () {
   "use strict";
 
-  var VERSION = "2026-11-04b";          /* bump when the "Recent changes" list changes */
+  var VERSION = "2026-11-06";          /* bump when the "Recent changes" list changes */
   var SEEN_KEY = "v360-whats-new-seen";
 
   var NEW_ITEMS = [
+    "A menu at the top of every page: “Find help” for the directory, questions, pathways, assistant and guide, and “Admin” for what's happening behind the scenes.",
+    "New admin pages: a 30-day dashboard, estimated running costs, an email tracker, the live question flow with its branches, raw data and settings. No password is needed for now.",
     "The directory, the Find services questions and the voice and chat assistant now put services in the same order, using one shared set of rules.",
     "The assistant double-checks before suggesting anything. If you add or change something while saying yes (“yes, but I’m 70”), it updates your answer and reads the summary back again.",
     "Saying “not sure” or “no idea” is recorded as not sure, never as a yes or a no. Unclear ages and exam dates get a follow-up question instead of a guess.",
@@ -34,6 +36,7 @@
       title: "Using the directory",
       links: [["/guide.html", "Read the full guide"], ["/demo", "Try the voice and chat demo"]],
       steps: [
+        { target: "#site-menu", title: "The site menu", body: "The bar at the top of every page has two menus. “Find help” opens the directory, Find services, Pathways, the assistant and the guide. “Admin” shows what’s happening behind the scenes." },
         { target: "#q", title: "Search everything", body: "Type an organization, a service, a county or a need. Search looks at names, services, eligibility, contacts and referral steps, and filters the Directory list." },
         { target: "#views", title: "Three views", body: "Directory lists every organization. Pathways shows common routes through services. Find services asks a few questions and suggests where to start." },
         { target: "#filters", hint: "Open the Directory view to see the filters.", title: "Filter and sort", body: "Narrow the list by category, area or confidence. Use Clear all to see every organization again. Nothing is ever hidden for being far away; geography only changes the order." },
@@ -47,6 +50,7 @@
       title: "Using the voice and chat demo",
       links: [["/guide.html", "Read the full guide"], ["/", "Back to the directory"]],
       steps: [
+        { target: "#site-menu", title: "The site menu", body: "The bar at the top of every page has two menus. “Find help” opens the directory, Find services, Pathways, the assistant and the guide. “Admin” shows what’s happening behind the scenes." },
         { target: "#start", hint: "You've already started; this choice is at the top when you begin.", title: "Talk or type", body: "Choose Talk to use your microphone, or Type to chat. You can switch at any time without losing anything. This is a demo: please use made-up details." },
         { target: "#open-settings", title: "Make it comfortable", body: "Settings change text size, colors and contrast, whether replies are read aloud, and the voice speed. They are saved on this device only." },
         { target: "#log", hint: "This appears once you start a conversation.", title: "One question at a time", body: "The assistant asks one question at a time. You can say or type: repeat, skip, I don't know, change an answer, or talk to a person." },
@@ -59,10 +63,23 @@
       title: "Using the staff queue",
       links: [["/guide.html", "Read the full guide"], ["/", "Open the directory"], ["/demo", "Open the demo"]],
       steps: [
-        { target: "#login", hint: "You're signed in.", title: "Sign in", body: "Staff sign in with their own account. Everything here is fictional demo data." },
+        { target: "#site-menu", title: "The site menu", body: "Use “Admin” in the top bar to move between the dashboard, this conversation list, the email tracker, costs, the question flow, raw data and settings. No password is needed for now." },
         { target: "#list", hint: "The list appears after signing in.", title: "The conversation list", body: "Newest first. Each row shows the stage, the staff status, anything that needs attention, and whether an email was sent." },
         { target: "#detail", hint: "Open a conversation from the list to see this.", title: "Open a conversation", body: "See confirmed and unconfirmed answers, every suggestion with its reasons and the data version behind it, emails and their status, and any request for follow-up." },
         { target: "#detail", hint: "Open a conversation from the list to see this.", title: "Follow up", body: "Mark a conversation reviewed or needing follow-up, and retry an email that failed. Changing a status never changes the person's answers." }
+      ]
+    },
+    admin: {
+      title: "Using the admin pages",
+      links: [["/guide.html#admin", "Read the admin guide"], ["/staff/", "Open the conversations"]],
+      steps: [
+        { target: "#site-menu", title: "The site menu", body: "“Admin” in the top bar jumps to any part of this page, or to the conversation list. “Find help” goes back to the public tools." },
+        { target: "#overview", title: "Dashboard", body: "How many conversations started in the last 30 days, by voice or typing, how many reached suggestions, emails sent and requests for staff to follow up." },
+        { target: "#costs", title: "Estimated costs", body: "What each paid service is costing. Right now AI understanding is off, voices come from the listener's browser and emails go to a test outbox, so the estimate is $0." },
+        { target: "#emails", title: "Email tracker", body: "Every plan email the tool has queued, newest first, with its status. Open the conversation behind any email in the staff queue." },
+        { target: "#questions", title: "Questions and decision tree", body: "The live question flow in the order it's asked. Branches say when a question is only asked after a certain answer. Open any question to see what each answer does to the suggestions." },
+        { target: "#data", title: "Raw data", body: "Links to the data files behind the directory and questions, the conversation list as data, and the live system check." },
+        { target: "#settings", title: "Settings", body: "How the tool is set up right now: live version, storage, email, voice, AI and whether a password is required. Claude MCP isn't connected yet." }
       ]
     }
   };

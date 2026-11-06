@@ -1,0 +1,28 @@
+/* Shared site menu (site-menu.js). Uses the colour tokens every page already
+   defines, so it follows text size, dark mode and high contrast. */
+.sm { background: var(--accent, #1c3879); color: var(--accent-ink, #fff); font-size: 1rem; line-height: 1.4; position: relative; z-index: 40; }
+.sm-inner { max-width: 72rem; margin: 0 auto; padding: 0.35rem 1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; }
+.sm-home { color: inherit; font-weight: 800; text-decoration: none; padding: 0.45rem 0.4rem; margin-right: auto; letter-spacing: 0.02em; }
+.sm-home:hover { text-decoration: underline; }
+.sm-group { position: relative; }
+.sm-toggle { font: inherit; font-weight: 700; color: inherit; background: transparent; border: 2px solid transparent; border-radius: 6px; padding: 0.4rem 0.7rem; cursor: pointer; min-height: 44px; }
+.sm-toggle:hover { border-color: currentColor; }
+.sm-toggle[aria-expanded="true"] { background: var(--page, #fff); color: var(--ink, #16191d); border-color: var(--page, #fff); }
+.sm-toggle .sm-caret { display: inline-block; margin-left: 0.3rem; transition: transform 0.15s; }
+.sm-toggle[aria-expanded="true"] .sm-caret { transform: rotate(180deg); }
+.sm a:focus-visible, .sm button:focus-visible { outline: 3px solid var(--focus-halo, #fff); outline-offset: 2px; box-shadow: 0 0 0 6px var(--focus, #1c3879); }
+.sm-panel { position: absolute; right: 0; top: calc(100% + 0.35rem); min-width: 17rem; max-width: calc(100vw - 2rem); background: var(--page, #fff); color: var(--ink, #16191d); border: 2px solid var(--line, #7f8992); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,0.22); padding: 0.4rem; }
+.sm-panel[hidden] { display: none; }
+.sm-panel ul { list-style: none; margin: 0; padding: 0; }
+.sm-panel a { display: block; color: var(--ink, #16191d); text-decoration: none; padding: 0.55rem 0.7rem; border-radius: 6px; min-height: 44px; box-sizing: border-box; }
+.sm-panel a:hover { background: var(--accent-wash, #eaeef7); text-decoration: underline; }
+.sm-panel a[aria-current="page"] { background: var(--accent-wash, #eaeef7); font-weight: 800; box-shadow: inset 4px 0 0 var(--accent, #1c3879); }
+.sm-panel .sm-desc { display: block; font-size: 0.88em; color: var(--ink-muted, var(--muted, #4d555e)); }
+.sm-note { margin: 0.3rem 0.7rem 0.4rem; font-size: 0.88em; color: var(--ink-muted, var(--muted, #4d555e)); }
+@media (max-width: 34rem) {
+  .sm-home { width: 100%; margin-right: 0; }
+  .sm-group { position: static; }
+  .sm-inner { position: relative; }
+  .sm-panel { left: 0.5rem; right: 0.5rem; min-width: 0; max-width: none; }
+}
+@media print { .sm { display: none; } }
