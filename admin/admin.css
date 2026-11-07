@@ -195,3 +195,12 @@ tr.selected td { background: var(--bad-wash); }
 .share-url { font-weight: 600; overflow-wrap: anywhere; }
 .share-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
 .flow-actions { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Screen checks: one fieldset per recommendation */
+.review-set { border: 1px solid var(--line, #c9d1dc); border-radius: 10px; padding: 10px 14px; margin: 0 0 12px; }
+.review-set legend { font-weight: 800; padding: 0 6px; }
+.choice-row { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0; }
+.choice { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-weight: 600; }
+.choice input { width: 20px; height: 20px; }
+.case-note { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

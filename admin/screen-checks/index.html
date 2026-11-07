@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Screen checks — VISION360 admin</title>
+<link rel="icon" type="image/png" href="/brand/favicon.png">
+<link rel="stylesheet" href="/brand/brand.css">
+<link rel="stylesheet" href="/admin/admin.css">
+<link rel="stylesheet" href="/whats-new.css">
+</head>
+<body class="admin">
+<div class="admin-layout">
+<main class="admin-main" id="main">
+<header class="page-head">
+  <div>
+    <p class="eyebrow">People</p>
+    <h1>Screen checks</h1>
+    <p class="sub">Results of the at-home screen settings check: text size, colors, speaking speed and pointer. Review each recommendation, then copy the case note. Kept until you delete them.</p>
+  </div>
+  <div class="page-actions"></div>
+</header>
+<p id="off-note" class="card hint" hidden>The screen settings check is switched off, so the public can't take it. Turn it on in <a href="/admin/settings/">Settings</a>.</p>
+<section id="list" class="card">
+  <form class="filters" id="filters" aria-label="Filter screen checks">
+    <div><label class="fl" for="f-show">Show</label><select class="inp" id="f-show">
+      <option value="all">All checks</option>
+      <option value="needs_review">Needs review</option>
+      <option value="low">Needs attention (very large text, struggled)</option>
+      <option value="unfinished">Not finished</option>
+      <option value="call">Asked for a call</option>
+      <option value="retakes">Retakes</option>
+      <option value="linked">Linked to a Vision Assessment</option>
+    </select></div>
+  </form>
+  <p id="totals" class="hint" role="status"></p>
+  <div class="bulk-bar">
+    <span id="count" class="hint"></span>
+    <button type="button" class="btn danger" id="del-selected" disabled>Delete selected</button>
+  </div>
+  <div class="table-wrap"><table class="t">
+    <caption class="sr-only">Screen settings checks, newest first</caption>
+    <thead><tr><th class="ck"><input type="checkbox" id="sel-all" aria-label="Select all shown checks"></th><th scope="col">Started</th><th scope="col">Device</th><th scope="col">Status</th><th scope="col">Text size</th><th scope="col">Colors</th><th scope="col">Attention</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+</section>
+<section id="detail" hidden class="card">
+  <p class="detail-top"><button type="button" class="btn" id="back">← Back to the list</button> <button type="button" class="btn danger" id="del-one">Delete this check</button></p>
+  <h2 id="detail-h" tabindex="-1">Screen check</h2>
+  <div id="detail-body"></div>
+</section>
+</main>
+<dialog id="del-dialog" class="del-dialog" aria-labelledby="del-title">
+  <form method="dialog" id="del-form">
+    <h2 id="del-title">Delete screen checks?</h2>
+    <p class="danger-text" id="del-warning"></p>
+    <p class="danger-text">This cannot be undone. To confirm, type <strong>DELETE</strong> in capital letters below, then press Delete permanently.</p>
+    <label class="fl" for="del-input">Type DELETE to confirm</label>
+    <input class="inp" id="del-input" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <p id="del-error" class="danger-text" role="alert" hidden></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="del-cancel">Cancel</button>
+      <button type="submit" class="btn armed" id="del-go" disabled>Delete permanently</button>
+    </div>
+  </form>
+</dialog>
+</div>
+<script src="/admin/shell.js"></script>
+<script src="/admin/screen-checks/checks.js"></script>
+<script src="/request-button.js"></script>
+</body>
+</html>
