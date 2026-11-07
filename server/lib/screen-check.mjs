@@ -162,7 +162,7 @@ function bold(trials) {
 
 // ---------------------------------------------------------------- cursor
 function cursor(trials, ctx) {
-  if (ctx.device && ctx.device.touchOnly) {
+  if (ctx.device && (ctx.device.touchOnly || ctx.device.skipPointer)) {
     return { done: true, result: { measured_limit: null, recommended_value: "not_tested", unit: "pointer", tries: 0, flags: ["no_pointer_on_this_device"], apply: {} } };
   }
   const sizeTrials = trials.filter((t) => t.kind !== "color");
@@ -175,7 +175,12 @@ function cursor(trials, ctx) {
   if (!sizeDone && sizeTrials.length >= MAX_TRIALS) sizeDone = true;
   if (!sizeDone) return { done: false, prompt: { kind: "find_pointer", size: CURSOR_SIZES[i] } };
   const flags = struggleFlags(trials);
-  if (kept == null) { kept = CURSOR_SIZES[0]; flags.push("could_not_find_largest_pointer"); }
+  // Couldn't find even the largest pointer (or uses the keyboard): change
+  // nothing on the page, and tell staff.
+  if (kept == null) {
+    flags.push("could_not_find_largest_pointer");
+    return { done: true, result: { measured_limit: null, recommended_value: "not_found", unit: "pointer", tries: trials.length, flags, apply: {} } };
+  }
   const c = tournament(CURSOR_COLORS, colorTrials, "pair_cursor");
   if (!c.done) return { done: false, prompt: { ...c.prompt, size: kept } };
   return { done: true, result: { measured_limit: kept, recommended_value: kept + "/" + c.winner, unit: "pointer", tries: trials.length, flags, apply: { cursor: kept, cursorColor: c.winner } } };
@@ -199,8 +204,8 @@ export function next(setting, trials = [], ctx = {}) {
 // What a trial may contain once it reaches the server (anything else is dropped).
 export function cleanTrial(setting, raw, prompt) {
   const r = raw || {};
-  const ms = Math.max(0, Math.min(10 * 60 * 1000, Number(r.ms) || 0));
-  const repeats = Math.max(0, Math.min(50, Number(r.repeats) || 0));
+  const ms = Math.round(Math.max(0, Math.min(10 * 60 * 1000, Number(r.ms) || 0)));
+  const repeats = Math.round(Math.max(0, Math.min(50, Number(r.repeats) || 0)));
   const base = { ms, repeats, at: new Date().toISOString() };
   if (setting === "speech_rate") return { ...base, answer: ["faster", "slower", "keep"].includes(r.answer) ? r.answer : "keep", rate: prompt.rate };
   if (setting === "magnification") return { ...base, word: prompt.word, px: prompt.px, answer: String(r.answer || "").slice(0, 60), cant_tell: !!r.cant_tell };
@@ -224,28 +229,31 @@ export function describe(setting, result) {
     return `Text size ${v}% (${lim}; comfortable size about ${comfort}px${extra > 1 ? `, needs about ${extra}x extra zoom or a magnifier` : ""})`;
   }
   if (setting === "contrast") return `Colors: ${{ high: "high contrast (yellow and white on black)", dark: "light text on dark", standard: "dark text on white" }[v] || v}`;
-  if (setting === "cursor") return v === "not_tested" ? "Pointer: not tested (no pointer on this device)" : `Pointer: ${String(v).split("/")[0] === "xl" ? "extra large" : String(v).split("/")[0] === "large" ? "large" : "normal size"}, ${String(v).split("/")[1]}`;
+  if (setting === "cursor" && v === "not_found") return "Pointer: couldn't find the largest pointer (128px); no change made";
+  if (setting === "cursor") return v === "not_tested" ? "Pointer: not tested (no pointer on this device, or uses the keyboard)" : `Pointer: ${String(v).split("/")[0] === "xl" ? "extra large" : String(v).split("/")[0] === "large" ? "large" : "normal size"}, ${String(v).split("/")[1]}`;
   if (setting === "bold") return `Text weight: ${v}`;
   return String(v);
 }
 
 // A short, speakable code a person can use to retake the check: a word, a
-// number and a word ("maple 47 river"). Not secret: it only links a retake.
+// number and a word ("maple 472 river"), about 800,000 of them; the server
+// also makes sure a new code isn't already in use. Not secret: it only links
+// a retake, and staff history follows the retake chain, not the code.
 const CODE_WORDS = ["maple", "river", "cedar", "harbor", "meadow", "willow", "summit", "canyon", "garden", "prairie", "orchard", "lantern", "compass", "anchor", "falcon", "otter", "pebble", "sparrow", "thistle", "violet", "amber", "copper", "silver", "breeze", "harvest", "island", "juniper", "kettle", "ladder", "marble"];
 export function newCode(rand = Math.random) {
   const w = () => CODE_WORDS[Math.floor(rand() * CODE_WORDS.length)];
-  return `${w()} ${10 + Math.floor(rand() * 90)} ${w()}`;
+  return `${w()} ${100 + Math.floor(rand() * 900)} ${w()}`;
 }
 export function normalizeCode(text) {
-  const t = norm(text).replace(/\b(\w+)\s*(\d{2})\s*(\w+)\b/, "$1 $2 $3");
-  const m = t.match(/\b([a-z]+) (\d{2}) ([a-z]+)\b/);
+  const t = norm(text).replace(/\b([a-z]+)\s*(\d{2,3})\s*([a-z]+)\b/, "$1 $2 $3");
+  const m = t.match(/\b([a-z]+) (\d{2,3}) ([a-z]+)\b/);
   return m && CODE_WORDS.includes(m[1]) && CODE_WORDS.includes(m[3]) ? `${m[1]} ${m[2]} ${m[3]}` : null;
 }
 
 // Which tests a device gets, in order.
 export function plan(device = {}) {
   const steps = ["speech_rate", "magnification", "contrast"];
-  if (!device.touchOnly) steps.push("cursor");
+  if (!device.touchOnly && !device.skipPointer) steps.push("cursor");
   steps.push("bold");
   return steps;
 }

@@ -43,7 +43,7 @@ test("a person runs the whole check, sees only their own result, and settings ar
   const app = await appOn();
   const s = await call(app, "POST", "/api/check/start", { device: { type: "computer", os: "mac", screenW: 1440, screenH: 900, dpr: 2 } });
   assert.equal(s.status, 200);
-  assert.match(s.json.code, /^[a-z]+ \d{2} [a-z]+$/);
+  assert.match(s.json.code, /^[a-z]+ \d{3} [a-z]+$/);
   assert.deepEqual(s.json.plan, ["speech_rate", "magnification", "contrast", "cursor", "bold"]);
   assert.equal((await call(app, "POST", `/api/check/${s.json.id}/step`, { setting: "contrast" })).status, 404, "no token, no access");
   assert.equal((await call(app, "POST", `/api/check/${s.json.id}/step`, { setting: "contrast" }, bearer("wrong"))).status, 404);
@@ -65,6 +65,11 @@ test("a person runs the whole check, sees only their own result, and settings ar
   assert.ok(!("contact" in c), "contact details are not sent back to the browser");
   const later = await call(app, "POST", `/api/check/${s.json.id}/trial`, { setting: "bold", trial: { answer: "left" } }, bearer(s.json.token));
   assert.equal(later.status, 409);
+  const again2 = await call(app, "POST", `/api/check/${s.json.id}/finish`, { consent: false }, bearer(s.json.token));
+  assert.equal(again2.status, 409, "a finished check can't be finished again (that would wipe the contact details)");
+  const dev = await call(app, "POST", `/api/check/${s.json.id}/details`, { device: { type: "phone" } }, bearer(s.json.token));
+  assert.equal(dev.status, 409, "nor changed after it's finished");
+  assert.equal((await call(app, "GET", `/api/check/${"-".repeat(36)}`, undefined, bearer(s.json.token))).status, 404, "not a real id: plain 404");
 });
 
 test("no consent: no contact details are kept", async () => {
@@ -88,10 +93,16 @@ test("linked to the Vision Assessment only with that conversation's own token; r
   assert.equal(retake.status, 200);
   assert.equal(retake.json.retake, true);
   assert.equal(retake.json.code, good.json.code, "a person keeps one code");
-  const unknown = await call(app, "POST", "/api/check/start", { device: { type: "computer" }, code: "maple 11 river" });
+  const unknown = await call(app, "POST", "/api/check/start", { device: { type: "computer" }, code: "maple 111 river" });
   assert.equal(unknown.status, 404);
   const garbage = await call(app, "POST", "/api/check/start", { device: { type: "computer" }, code: "drop table" });
   assert.equal(garbage.status, 404);
+});
+
+test("screen-reader users skip the pointer test", async () => {
+  const app = await appOn();
+  const s = (await call(app, "POST", "/api/check/start", { device: { type: "computer", os: "windows", skipPointer: true } })).json;
+  assert.deepEqual(s.plan, ["speech_rate", "magnification", "contrast", "bold"]);
 });
 
 test("bad input is refused or cleaned", async () => {
