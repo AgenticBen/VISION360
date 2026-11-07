@@ -839,6 +839,106 @@ export async function createApp(opts = {}) {
         await requests.logChange({ title: "Conversations deleted", summary: `${Math.max(local, remote)} conversation(s) were permanently deleted.`, kind: "content" }).catch(() => {});
         return send(res, 200, { ok: true, deleted: Math.max(local, remote) });
       }
+      // ---------------- screen settings check: staff side -------------
+      if (p === "/api/admin/checks" && method === "GET") {
+        await requireStaff(req);
+        const want = url.searchParams.get("filter") || "all";
+        const rows = (await checks.listChecks({ limit: 1000 })).map((c) => {
+          const st = c.steps || [];
+          const minutes = c.finished_at ? Math.max(0, Math.round((new Date(c.finished_at) - new Date(c.created_at)) / 60000)) : null;
+          return {
+            id: c.id, code: c.code, created_at: c.created_at, finished_at: c.finished_at, status: c.status, staff_status: c.staff_status,
+            device: check.deviceWords(c.device), goal: c.goal ? String(c.goal).slice(0, 120) : null, wants_call: !!c.wants_call, contact: !!c.consent_contact,
+            retake: !!c.previous_check_id, linked: !!c.assessment_session_id, attention: check.needsAttention(st), minutes,
+            settings: Object.fromEntries(st.filter((x) => x.recommended_value != null).map((x) => [x.setting, x.recommended_value])),
+          };
+        });
+        const keep = {
+          all: () => true,
+          needs_review: (r) => r.status === "finished" && r.staff_status === "needs_review",
+          unfinished: (r) => r.status !== "finished",
+          low: (r) => r.attention,
+          call: (r) => r.wants_call,
+          retakes: (r) => r.retake,
+          linked: (r) => r.linked,
+        }[want] || (() => true);
+        const out = rows.filter(keep);
+        const finished = rows.filter((r) => r.minutes != null);
+        return send(res, 200, { checks: out, total: rows.length, counts: { needs_review: rows.filter((r) => r.status === "finished" && r.staff_status === "needs_review").length, unfinished: rows.filter((r) => r.status !== "finished").length, call: rows.filter((r) => r.wants_call).length }, avgMinutes: finished.length ? Math.round(finished.reduce((n, r) => n + r.minutes, 0) / finished.length) : null });
+      }
+      if (p === "/api/admin/checks/delete" && method === "POST") {
+        const u = await requireStaff(req);
+        requireSameSite(req);
+        if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
+        const body = await readJson(req, 64 * 1024);
+        if (body.confirm !== "DELETE") throw httpError(400, "Type DELETE to confirm.");
+        const ids = [...new Set(Array.isArray(body.ids) ? body.ids.map(String) : [])];
+        if (!ids.length) throw httpError(400, "Choose at least one check.");
+        if (ids.length > 200) throw httpError(400, "Delete at most 200 checks at a time.");
+        if (ids.some((id) => !UUID.test(id))) throw httpError(400, "Invalid check id.");
+        const n = await checks.remove(ids);
+        store.audit("staff:" + u.username, null, "screen_checks_deleted", { count: n });
+        await requests.logChange({ title: "Screen checks deleted", summary: `${n} screen settings check(s) were permanently deleted.`, kind: "content" }).catch(() => {});
+        return send(res, 200, { ok: true, deleted: n });
+      }
+      m = p.match(/^\/api\/admin\/checks\/([^/]+)(?:\/(review))?$/);
+      if (m && !UUID.test(m[1])) throw httpError(404, "Check not found");
+      if (m) {
+        const u = await requireStaff(req);
+        const c = await checks.getCheck(m[1]);
+        if (!c) throw httpError(404, "Check not found");
+        if (!m[2] && method === "GET") {
+          const [steps, reviews, sameCode] = await Promise.all([checks.steps(c.id), checks.reviews(c.id), checks.byCode(c.code)]);
+          // This person's other checks: those joined to this one by retakes
+          // (previous_check_id), not just any check that shares the code.
+          const byId = new Map(sameCode.map((x) => [x.id, x]));
+          const linked = new Set([c.id]);
+          for (let grew = true; grew;) {
+            grew = false;
+            for (const x of sameCode) {
+              if (linked.has(x.id)) { if (x.previous_check_id && byId.has(x.previous_check_id) && !linked.has(x.previous_check_id)) { linked.add(x.previous_check_id); grew = true; } }
+              else if (x.previous_check_id && linked.has(x.previous_check_id)) { linked.add(x.id); grew = true; }
+            }
+          }
+          const history = sameCode.filter((x) => linked.has(x.id));
+          const others = await Promise.all(history.filter((h) => h.id !== c.id).map(async (h) => ({ id: h.id, created_at: h.created_at, status: h.status, steps: (await checks.steps(h.id)).map((s) => ({ setting: s.setting, recommended_value: s.recommended_value, measured_limit: s.measured_limit, summary: check.describe(s.setting, s) })) })));
+          const { token_hash, ...safe } = c;
+          return send(res, 200, {
+            check: { ...safe, device_words: check.deviceWords(c.device) },
+            steps: check.SETTINGS.map((setting) => steps.find((s) => s.setting === setting)).filter(Boolean).map((s) => ({ ...s, name: check.prettySetting(s.setting), summary: check.describe(s.setting, s), flag_words: check.flagWords(s.flags) })),
+            reviews, history: others, attention: check.needsAttention(steps),
+            case_note: check.caseNote(c, steps, reviews[0] || null),
+          });
+        }
+        if (m[2] === "review" && method === "POST") {
+          requireSameSite(req);
+          if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
+          const body = await readJson(req, 64 * 1024);
+          const steps = await checks.steps(c.id);
+          const decisions = {};
+          for (const s of steps) {
+            const d = body.decisions && body.decisions[s.setting];
+            if (!d) continue;
+            if (!check.DECISIONS.includes(d.decision)) throw httpError(400, `Choose accept, edit or reject for ${check.prettySetting(s.setting)}.`);
+            if (d.decision === "edit" && !String(d.value || "").trim()) throw httpError(400, `Say what ${check.prettySetting(s.setting)} should be changed to.`);
+            decisions[s.setting] = { decision: d.decision, value: d.decision === "edit" ? String(d.value).trim().slice(0, 200) : null };
+          }
+          const review = {
+            reviewer: u.username, decisions,
+            notes: String(body.notes || "").trim().slice(0, 4000) || null,
+            next_steps: String(body.next_steps || "").trim().slice(0, 2000) || null,
+            review_ms: Math.max(0, Math.min(24 * 3600 * 1000, Number(body.review_ms) || 0)) || null,
+            created_at: new Date().toISOString(),
+          };
+          review.case_note = check.caseNote(c, steps, review);
+          const saved = await checks.addReview(c.id, review);
+          const status = ["needs_review", "reviewed", "closed"].includes(body.staff_status) ? body.staff_status : "reviewed";
+          await checks.updateCheck(c.id, { staff_status: status });
+          store.audit("staff:" + u.username, null, "screen_check_reviewed", { decisions: Object.keys(decisions).length });
+          return send(res, 200, { review: saved, case_note: review.case_note, staff_status: status });
+        }
+        throw httpError(405, "Method not allowed");
+      }
       m = p.match(/^\/api\/staff\/sessions\/([0-9a-f-]{36})(?:\/(status))?$/);
       if (m) {
         const u = await requireStaff(req);

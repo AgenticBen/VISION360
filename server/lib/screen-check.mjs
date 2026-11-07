@@ -257,3 +257,64 @@ export function plan(device = {}) {
   steps.push("bold");
   return steps;
 }
+
+// ---------------------------------------------------------------- staff side
+export const DECISIONS = ["accept", "edit", "reject"];
+const PRETTY = { speech_rate: "Speaking speed", magnification: "Text size", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
+const FLAG_WORDS = {
+  needs_magnifier_or_zoom: "needs a magnifier or screen zoom beyond 200% text",
+  could_not_read_largest: "could not read the largest word",
+  could_not_find_largest_pointer: "could not find the largest pointer",
+  asked_to_repeat_often: "asked to repeat often",
+  many_cant_tell: "often said \"I can't tell\"",
+  slow_step: "took a long time on a step",
+  stopped_at_trial_limit: "stopped at the trial limit",
+  no_pointer_on_this_device: "no pointer on this device",
+};
+export function flagWords(flags) { return (flags || []).map((f) => FLAG_WORDS[f] || f.replace(/_/g, " ")); }
+
+// A result staff should look at soon: very large text, can't read or find
+// the largest, or the person struggled.
+export function needsAttention(steps) {
+  const all = (steps || []).flatMap((s) => s.flags || []);
+  return all.some((f) => ["needs_magnifier_or_zoom", "could_not_read_largest", "could_not_find_largest_pointer", "many_cant_tell"].includes(f));
+}
+
+const DEVICE_WORDS = { ios: { phone: "iPhone", tablet: "iPad" }, android: { phone: "Android phone", tablet: "Android tablet" }, mac: { computer: "Mac" }, windows: { computer: "Windows computer" }, chromeos: { computer: "Chromebook" } };
+export function deviceWords(d = {}) {
+  const name = (DEVICE_WORDS[d.os] && DEVICE_WORDS[d.os][d.type]) || d.type || "device";
+  return name + (d.screenW && d.screenH ? `, screen ${d.screenW}×${d.screenH}` : "");
+}
+
+// Plain-text case note to paste into Unitus or another case system.
+export function caseNote(c, steps, review) {
+  const date = (iso) => (iso ? new Date(iso).toISOString().slice(0, 10) : "");
+  const L = [];
+  L.push(`Vision 360 screen settings check, ${date(c.finished_at || c.created_at)} (code: ${c.code})${c.previous_check_id ? " — retake" : ""}`);
+  L.push(`Device: ${deviceWords(c.device)}`);
+  if (c.goal) L.push(`Goal: ${c.goal}`);
+  L.push(`Status: ${c.status === "finished" ? "finished" : "not finished"}`);
+  L.push("");
+  L.push(review ? `Settings (reviewed by ${review.reviewer}, ${date(review.created_at)}):` : "Settings (not reviewed yet):");
+  for (const setting of SETTINGS) {
+    const s = (steps || []).find((x) => x.setting === setting);
+    if (!s) continue;
+    const d = review && review.decisions && review.decisions[setting];
+    let line = `- ${describe(setting, s)}`;
+    if (d && d.decision === "accept") line += " — accepted";
+    if (d && d.decision === "edit") line += ` — changed to: ${d.value}`;
+    if (d && d.decision === "reject") line += " — not recommended";
+    L.push(line);
+  }
+  const flags = [...new Set((steps || []).flatMap((s) => s.flags || []))].filter((f) => f !== "no_pointer_on_this_device");
+  if (flags.length) L.push(`Noticed: ${flagWords(flags).join("; ")}`);
+  if (review && review.next_steps) { L.push(""); L.push(`Next steps: ${review.next_steps}`); }
+  if (review && review.notes) L.push(`Notes: ${review.notes}`);
+  if (c.wants_call) L.push("The person asked for a call.");
+  if (c.consent_contact && c.contact) {
+    const ct = c.contact;
+    L.push(`Contact (given with permission): ${[ct.first_name, ct.phone, ct.email].filter(Boolean).join(", ")}`);
+  }
+  return L.join("\n");
+}
+export function prettySetting(s) { return PRETTY[s] || s; }
