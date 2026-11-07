@@ -72,3 +72,18 @@ test("a publishable Supabase key is refused and reported, not used", async () =>
   assert.equal(h.json.stores.sessions, "local");
   assert.match(h.json.storeProblem, /publishable/);
 });
+
+test("staff sign-in cookies are signed, so any server copy accepts them", async () => {
+  const { hashPassword } = await import("../server/lib/auth.mjs");
+  const env = { V360_ADMIN_SIGNIN: "on", V360_STAFF_USER: "dana", V360_STAFF_PASSWORD_HASH: hashPassword("a long test passphrase") };
+  const a = await makeApp(env), b = await makeApp(env);
+  assert.equal((await call(b, "GET", "/api/admin/overview")).status, 401);
+  const login = await call(a, "POST", "/api/staff/login", { username: "dana", password: "a long test passphrase" });
+  assert.equal(login.status, 200);
+  const cookie = login.headers["Set-Cookie"].split(";")[0];
+  assert.match(cookie, /v360_staff=v1\./);
+  assert.equal((await call(b, "GET", "/api/admin/overview", undefined, { cookie })).status, 200, "another copy accepts it");
+  const [pre, user, exp, sig] = cookie.split(".");
+  const forged = [pre, Buffer.from("admin").toString("base64url"), exp, sig].join(".");
+  assert.equal((await call(b, "GET", "/api/admin/overview", undefined, { cookie: forged })).status, 401);
+});

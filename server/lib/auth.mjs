@@ -1,6 +1,6 @@
 // Staff authentication: named accounts, scrypt-hashed passwords, HttpOnly
 // session cookies. Every staff route checks the session on the server.
-import { scryptSync, randomBytes, timingSafeEqual, createHash } from "node:crypto";
+import { scryptSync, randomBytes, timingSafeEqual, createHash, createHmac } from "node:crypto";
 
 export const STAFF_COOKIE = "v360_staff";
 
@@ -41,6 +41,31 @@ export function staffCookie(token, secure, maxAgeSec = 8 * 3600) {
 
 export function clearStaffCookie(secure) {
   return `${STAFF_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure ? "; Secure" : ""}`;
+}
+
+// Signed staff sessions: the cookie carries the username and expiry plus an
+// HMAC, so every server copy can check it without shared session storage.
+// The signing secret is V360_SESSION_SECRET, or else derived from server-only
+// values (the staff password hash), so it never reaches the browser.
+export function sessionSecret(env) {
+  const base = env.V360_SESSION_SECRET || env.V360_STAFF_PASSWORD_HASH || "";
+  return base ? createHash("sha256").update("v360-staff-session\n" + base).digest() : null;
+}
+export function signSession(secret, username, hours = 8) {
+  const exp = Math.floor(Date.now() / 1000) + hours * 3600;
+  const body = `v1.${Buffer.from(username).toString("base64url")}.${exp}`;
+  return body + "." + createHmac("sha256", secret).update(body).digest("base64url");
+}
+export function verifySession(secret, value) {
+  if (!secret || !String(value || "").startsWith("v1.")) return null;
+  const parts = String(value).split(".");
+  if (parts.length !== 4) return null;
+  const body = parts.slice(0, 3).join(".");
+  const want = createHmac("sha256", secret).update(body).digest();
+  const got = Buffer.from(parts[3], "base64url");
+  if (got.length !== want.length || !timingSafeEqual(got, want)) return null;
+  if (Number(parts[2]) * 1000 < Date.now()) return null;
+  return Buffer.from(parts[1], "base64url").toString("utf8");
 }
 
 // Compare a session bearer token with its stored hash in constant time.

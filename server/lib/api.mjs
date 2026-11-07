@@ -9,6 +9,7 @@ import { createTurnService } from "./turn-service.mjs";
 import { createActions } from "./actions.mjs";
 import {
   newToken, tokenHash, tokenMatches, verifyPassword, parseCookies, staffCookie, clearStaffCookie, STAFF_COOKIE,
+  sessionSecret, signSession, verifySession,
 } from "./auth.mjs";
 import { RETENTION_DAYS } from "./store.mjs";
 import { ttsEnabled, ttsInfo, synthesize } from "./tts.mjs";
@@ -152,9 +153,12 @@ export async function createApp(opts = {}) {
     return s;
   }
 
+  const signer = sessionSecret(env);
   function staffUser(req) {
     const tok = parseCookies(req.headers.cookie)[STAFF_COOKIE];
     if (!tok) return null;
+    const signed = verifySession(signer, tok);
+    if (signed) return store.staffUserByName(signed);
     const sess = store.staffSession(tokenHash(tok));
     return sess ? store.staffUserById(sess.user_id) : null;
   }
@@ -308,8 +312,11 @@ export async function createApp(opts = {}) {
           store.audit("staff", null, "login_failed", { username: String(body.username || "").slice(0, 40) });
           throw httpError(401, "Wrong username or password.");
         }
-        const tok = newToken();
-        store.createStaffSession(tokenHash(tok), user.id);
+        // Signed cookie when a server secret exists (works on every server
+        // copy); otherwise a session row in this copy's database.
+        let tok;
+        if (signer) tok = signSession(signer, user.username);
+        else { tok = newToken(); store.createStaffSession(tokenHash(tok), user.id); }
         store.audit("staff:" + user.username, null, "login", null);
         return send(res, 200, { ok: true, username: user.username }, { "Set-Cookie": staffCookie(tok, isSecure(req)) });
       }
