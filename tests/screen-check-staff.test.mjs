@@ -129,3 +129,19 @@ test("the Supabase store sends the right requests", async () => {
   await S.listChecks();
   assert.match(calls[2].url, /select=\*,steps:screen_check_steps\(/);
 });
+
+test("the dashboard shows this month's checks, time to finish and staff review time (counts only)", async () => {
+  const app = await appOn();
+  const s = await takeCheck(app, { see: 20 });
+  await call(app, "POST", `/api/admin/checks/${s.id}/review`, { decisions: { magnification: { decision: "accept" } }, review_ms: 6 * 60000 });
+  await takeCheck(app, { see: 14 });
+  const o = (await call(app, "GET", "/api/admin/overview")).json;
+  assert.equal(o.screenChecks.on, true);
+  assert.equal(o.screenChecks.started, 2);
+  assert.equal(o.screenChecks.finished, 2);
+  assert.equal(o.screenChecks.reviewed, 1);
+  assert.equal(o.screenChecks.reviewMinutes, 6);
+  assert.equal(o.screenChecks.needsReview, 1);
+  assert.equal(o.screenChecks.wantsCall, 2);
+  assert.ok(!JSON.stringify(o.screenChecks).includes("704-555"), "no contact details on the dashboard");
+});

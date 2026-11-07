@@ -7,7 +7,7 @@
 //   createCheck(row) getCheck(id) updateCheck(id, patch)
 //   latestByCode(code) byCode(code) listChecks({ limit })
 //   steps(id) putStep(id, setting, step)
-//   addReview(id, review) reviews(id)
+//   addReview(id, review) reviews(id) reviewsSince(iso)
 //   remove(ids) -> number removed
 import { supabaseConfigured } from "./supabase-sessions.mjs";
 
@@ -41,6 +41,7 @@ export function createMemoryCheckStore() {
     },
     async addReview(id, review) { const r = { id: ++reviewId, check_id: id, created_at: now(), ...review }; if (!reviews.has(id)) reviews.set(id, []); reviews.get(id).push(r); return clone(r); },
     async reviews(id) { return clone((reviews.get(id) || []).slice().reverse()); },
+    async reviewsSince(iso) { return clone([...reviews.values()].flat().filter((r) => r.created_at >= iso).map((r) => ({ check_id: r.check_id, review_ms: r.review_ms, created_at: r.created_at }))); },
     async remove(ids) { let n = 0; for (const id of ids) { if (checks.delete(id)) n++; steps.delete(id); reviews.delete(id); for (const c of checks.values()) if (c.previous_check_id === id) c.previous_check_id = null; } return n; },
   };
 }
@@ -81,6 +82,7 @@ export function createSupabaseCheckStore(env, fetchImpl = globalThis.fetch) {
     },
     async addReview(id, review) { return one(await req("POST", "/screen_check_reviews", { ...review, check_id: id }, { Prefer: "return=representation" })); },
     async reviews(id) { return (await req("GET", `/screen_check_reviews?check_id=eq.${enc(id)}&select=*&order=created_at.desc`)) || []; },
+    async reviewsSince(iso) { return (await req("GET", `/screen_check_reviews?created_at=gte.${enc(iso)}&select=check_id,review_ms,created_at&limit=5000`)) || []; },
     async remove(ids) {
       if (!ids.length) return 0;
       const rows = await req("DELETE", `/screen_checks?id=in.(${ids.map(enc).join(",")})`, undefined, { Prefer: "return=representation" });
