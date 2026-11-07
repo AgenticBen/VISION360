@@ -14,23 +14,23 @@
   if (!isAdmin && !seen) return;
 
   var CSS = [
-    ".rq-btn{position:fixed;right:16px;bottom:var(--rq-bottom,16px);z-index:60;width:44px;height:44px;border-radius:50%;border:0;background:#0b1f45;color:#fff;box-shadow:0 6px 20px rgba(11,31,69,.35);cursor:pointer;display:grid;place-items:center}",
-    ".rq-btn:hover{background:#142a5c}.rq-btn svg{width:20px;height:20px}",
-    ".rq-btn:focus-visible{outline:3px solid #38bdf8;outline-offset:2px}",
-    ".rq-pop{position:fixed;right:16px;bottom:calc(var(--rq-bottom,16px) + 54px);z-index:61;width:380px;max-width:calc(100vw - 32px);max-height:70vh;overflow:auto;background:#fff;color:#0f1d33;border:1px solid #e2e8ee;border-radius:16px;box-shadow:0 18px 50px rgba(11,31,69,.28);padding:16px;font:14px/1.45 -apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,Arial,sans-serif;text-align:left}",
+    ".rq-btn{position:fixed;right:16px;bottom:var(--rq-bottom,16px);z-index:60;width:44px;height:44px;border-radius:50%;border:0;background:#051362;color:#fff;box-shadow:0 6px 20px rgba(5,19,98,.35);cursor:pointer;display:grid;place-items:center}",
+    ".rq-btn:hover{background:#0b1f7a}.rq-btn svg{width:20px;height:20px}",
+    ".rq-btn:focus-visible{outline:3px solid #25b4fa;outline-offset:2px}",
+    ".rq-pop{position:fixed;right:16px;bottom:calc(var(--rq-bottom,16px) + 54px);z-index:61;width:380px;max-width:calc(100vw - 32px);max-height:70vh;overflow:auto;background:#fff;color:#0f1d33;border:1px solid #e2e8ee;border-radius:16px;box-shadow:0 18px 50px rgba(5,19,98,.28);padding:16px;font:14px/1.45 'Open Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;text-align:left}",
     ".rq-pop[hidden]{display:none}.rq-pop h2{font-size:16px;margin:0}.rq-on{color:#5b6878;font-size:12.5px;margin:2px 0 10px;overflow-wrap:anywhere}",
     ".rq-kind{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}",
     ".rq-kind button{border:1px solid #e2e8ee;background:#f8fafc;border-radius:10px;padding:8px;text-align:left;cursor:pointer;font:inherit;color:inherit}",
-    ".rq-kind button[aria-pressed=true]{border-color:#38bdf8;background:#e0f2fe;box-shadow:inset 0 0 0 1px #38bdf8}",
+    ".rq-kind button[aria-pressed=true]{border-color:#25b4fa;background:#e0f2fe;box-shadow:inset 0 0 0 1px #25b4fa}",
     ".rq-kind strong{display:block;font-size:13.5px}.rq-kind span{display:block;font-size:12px;color:#5b6878}",
     ".rq-pop textarea{width:100%;box-sizing:border-box;min-height:92px;border:1px solid #cfd8e3;border-radius:10px;padding:8px 10px;font:inherit;resize:vertical}",
     ".rq-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}",
-    ".rq-send{background:#0b1f45;color:#fff;border:0;border-radius:9px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer}.rq-send:disabled{opacity:.45;cursor:not-allowed}",
-    ".rq-hint{font-size:12px;color:#5b6878}.rq-msg{margin-top:8px;font-size:13px;color:#075985;background:#e0f2fe;border-radius:8px;padding:6px 9px}.rq-msg.err{color:#a3311f;background:#fde8e5}",
+    ".rq-send{background:#0f5d1a;color:#fff;border:0;border-radius:9px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer}.rq-send:disabled{opacity:.45;cursor:not-allowed}",
+    ".rq-hint{font-size:12px;color:#5b6878}.rq-msg{margin-top:8px;font-size:13px;color:#10509c;background:#e0f2fe;border-radius:8px;padding:6px 9px}.rq-msg.err{color:#a3311f;background:#fde8e5}",
     ".rq-list{margin:12px 0 0;padding:10px 0 0;border-top:1px solid #e2e8ee;list-style:none}.rq-list li{font-size:13px;padding:4px 0;display:flex;gap:8px;justify-content:space-between}",
     ".rq-chip{font-size:11px;font-weight:700;border-radius:999px;padding:0 7px;background:#f1f5f9;color:#5b6878;white-space:nowrap;align-self:flex-start}",
-    ".rq-chip.in_progress{background:#e0f2fe;color:#075985}.rq-chip.needs_ben{background:#fef3c7;color:#92400e}.rq-chip.done{background:#d1fae5;color:#047857}",
-    ".rq-all{display:inline-block;margin-top:8px;font-size:13px;color:#1c3879}"
+    ".rq-chip.in_progress{background:#e0f2fe;color:#10509c}.rq-chip.needs_ben{background:#fef3c7;color:#92400e}.rq-chip.done{background:#d1fae5;color:#047857}",
+    ".rq-all{display:inline-block;margin-top:8px;font-size:13px;color:#051362}"
   ].join("\n");
   var KINDS = {
     content: { title: "Change content", blurb: "Questions, wording, organizations", ph: "e.g. Change the county question to also list Lincoln County" },

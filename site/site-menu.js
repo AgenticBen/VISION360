@@ -45,7 +45,18 @@
 
   var groups = [];
   var nav = el("nav", { "class": "sm", id: "site-menu", "aria-label": "Site menu" });
-  var inner = el("div", { "class": "sm-inner" }, [el("a", { "class": "sm-home", href: "/", text: "Lions Services · VISION360" })]);
+  var inner = el("div", { "class": "sm-inner" }, [el("a", { "class": "sm-home", href: "/" }, [
+    el("span", { "class": "sm-eye", "aria-hidden": "true" }, [el("img", { src: "/brand/eye.png", alt: "" })]),
+    document.createTextNode("Lions Services · VISION 360")
+  ])]);
+  /* Official logo strip above the menu: CONNECT wordmark on the assistant, the
+     Lions Services | VISION 360 lockup everywhere else. */
+  var onDemo = norm(location.pathname).indexOf("/demo") === 0;
+  var logoBar = el("div", { "class": "brand-bar" }, [el("div", { "class": "brand-bar-inner" }, [
+    el("a", { href: onDemo ? "/demo/" : "/" }, [onDemo
+      ? el("img", { "class": "brand-bar-connect", src: "/brand/vision-360-connect.png", alt: "Vision 360 CONNECT", width: "720", height: "199" })
+      : el("img", { src: "/brand/lions-services-vision-360.png", alt: "Lions Services | Vision 360", width: "720", height: "113" })])
+  ])]);
   nav.appendChild(inner);
 
   MENUS.forEach(function (m) {
@@ -89,6 +100,7 @@
     var skips = document.querySelectorAll("body > .skip-link");
     var after = skips.length ? skips[skips.length - 1] : null;
     if (after) after.insertAdjacentElement("afterend", nav); else document.body.insertBefore(nav, document.body.firstChild);
+    nav.insertAdjacentElement("beforebegin", logoBar);
   }
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
 })();

@@ -83,7 +83,7 @@
   function buildNav() {
     var active = activeHref();
     var nav = el("nav", { class: "sidebar", id: "admin-nav", "aria-label": "Admin" }, [
-      el("a", { class: "sb-brand", href: "/admin/" }, [el("span", { class: "sb-logo", text: "V" }), el("span", { class: "sb-name", html: "VISION360<small>Admin</small>" })])
+      el("a", { class: "sb-brand", href: "/admin/" }, [el("span", { class: "sb-logo" }, [el("img", { src: "/brand/eye.png", alt: "" })]), el("span", { class: "sb-name", html: "VISION 360<small>Lions Services · Admin</small>" })])
     ]);
     NAV.forEach(function (g) {
       var box = el("div", { class: "sb-group" }, [el("div", { class: "sb-group-title", text: g.title })]);

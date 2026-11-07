@@ -1,16 +1,16 @@
 /* Vision 360 CONNECT demo — accessible voice and chat.
-   Palette follows the public directory (Lions navy #1c3879, darkened green).
+   Palette follows the public directory (Lions navy #051362, darkened green).
    Contrast pairs (computed):
-     standard  ink #16191d on #fff 17.6:1 · muted #4d555e on #fff 7.6:1 · accent #1c3879 on #fff 11.1:1
+     standard  ink #16191d on #fff 17.6:1 · muted #4d555e on #fff 7.6:1 · accent #051362 on #fff 11.1:1
      dark      ink #f1f4f8 on #11151b 17.0:1 · muted #c3cad3 on #11151b 11.3:1 · accent #9cc1ff on #11151b 9.9:1
      high      #fff / #ffd24a on #000 21:1 / 14.4:1
    Body text 18px minimum; sizes are rem so 125/150/200% settings and browser zoom scale everything. */
 
 :root, html[data-theme="standard"] {
   --page: #ffffff; --surface: #f4f6f8; --surface-2: #e7ebf0; --ink: #16191d; --muted: #4d555e;
-  --accent: #1c3879; --accent-ink: #ffffff; --accent-wash: #eaeef7; --line: #7f8992; --line-soft: #d2d8df;
+  --accent: #051362; --accent-ink: #ffffff; --accent-wash: #eaeef7; --line: #7f8992; --line-soft: #d2d8df;
   --you-bg: #eaeef7; --bot-bg: #f4f6f8; --warn-bg: #fff4e2; --warn-ink: #7a4300; --bad-bg: #fdecea; --bad-ink: #8a1f11;
-  --ok-bg: #e7f4ec; --ok-ink: #0f6a1e; --focus: #1c3879; --focus-halo: #ffffff;
+  --ok-bg: #e7f4ec; --ok-ink: #0d4d18; --focus: #051362; --btn-bg: #0f5d1a; --btn-hover: #0b4914; --focus-halo: #ffffff;
   color-scheme: light;
 }
 html[data-theme="dark"] {
@@ -35,7 +35,7 @@ html[data-textsize="200"] { font-size: 36px; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--page); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 1rem; line-height: 1.55; overflow-wrap: break-word; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-body, "Open Sans"), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 1rem; line-height: 1.55; overflow-wrap: break-word; }
 a { color: var(--accent); text-underline-offset: 0.15em; }
 .wrap { max-width: 56rem; margin: 0 auto; padding: 0 16px; }
 .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -46,7 +46,8 @@ a { color: var(--accent); text-underline-offset: 0.15em; }
 
 .top { border-bottom: 1px solid var(--line-soft); background: var(--surface); margin-bottom: 1.2rem; }
 .top-inner { display: flex; flex-wrap: wrap; gap: 0.8rem 1.5rem; align-items: flex-start; justify-content: space-between; padding-top: 1rem; padding-bottom: 1rem; }
-.brand { margin: 0; font-weight: 700; color: var(--accent); }
+.brand { margin: 0; font-weight: 700; color: var(--accent); font-family: var(--font-heading, inherit); }
+h1, h2, h3 { font-family: var(--font-heading, inherit); font-weight: 700; }
 h1 { font-size: 1.6rem; line-height: 1.25; margin: 0.2rem 0 0.3rem; }
 h2 { font-size: 1.3rem; line-height: 1.3; margin: 1rem 0 0.5rem; }
 h3 { font-size: 1.12rem; line-height: 1.3; margin: 0 0 0.4rem; }
@@ -55,8 +56,9 @@ h3 { font-size: 1.12rem; line-height: 1.3; margin: 0 0 0.4rem; }
 .btn { font: inherit; font-size: 1rem; min-height: 44px; min-width: 44px; padding: 0.45rem 1rem; border-radius: 8px; border: 2px solid var(--accent); background: var(--page); color: var(--accent); cursor: pointer; font-weight: 600; line-height: 1.3; }
 .btn:hover { background: var(--accent-wash); }
 .btn[disabled] { opacity: 0.55; cursor: not-allowed; }
-.btn-primary { background: var(--accent); color: var(--accent-ink); }
-.btn-primary:hover { background: var(--accent); filter: brightness(1.12); }
+.btn-primary { background: var(--btn-bg, var(--accent)); border-color: var(--btn-bg, var(--accent)); color: var(--accent-ink); }
+.btn-primary:hover { background: var(--btn-hover, var(--accent)); border-color: var(--btn-hover, var(--accent)); }
+html[data-theme="dark"], html[data-theme="high"] { --btn-bg: var(--accent); --btn-hover: var(--accent); }
 .btn-secondary { border-color: var(--line); color: var(--ink); }
 .btn-danger { border-color: var(--bad-ink); color: var(--bad-ink); }
 .btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }

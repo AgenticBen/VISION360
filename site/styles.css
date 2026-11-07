@@ -5,7 +5,7 @@
    A reference tool. Dense but calm. One accent colour, reserved for things
    you can click.
 
-   Palette is Lions Services' own, taken from lionsservices.org: navy #1c3879
+   Palette is Lions Services' own, taken from lionsservices.org: navy #051362
    and #051362, green #168726 (darkened here for contrast). Brand alignment
    never outranks rule 5 — every pair below is computed, not eyeballed, and
    the navy is a HIGHER contrast accent than the generic blue it replaced
@@ -13,7 +13,7 @@
 
      ink        #16191d on #ffffff .......... 17.6:1
      ink-muted  #525a63 on #ffffff ...........  7.0:1  (6.5:1 on --surface)
-     accent     #1c3879 on #ffffff ........... 11.1:1  (white on accent 11.1:1)
+     accent     #051362 on #ffffff ........... 11.1:1  (white on accent 11.1:1)
      brand-deep #051362 on #ffffff ........... 16.5:1  (page title only)
      line       #7f8992 on #ffffff ...........  3.6:1  (UI borders, >= 3:1)
      gap-ink    #8a4b00 on #fff7ec ...........  6.4:1
@@ -31,7 +31,7 @@
   --surface-2: #e9edf2;
   --ink: #16191d;
   --ink-muted: #525a63;
-  --accent: #1c3879;        /* Lions navy */
+  --accent: #051362;        /* Lions navy */
   --accent-ink: #ffffff;
   --accent-wash: #eaeef7;
   --brand-deep: #051362;    /* Lions deep navy, page title */
@@ -43,8 +43,10 @@
   --stop-bg: #fdecea;
   --stop-ink: #8a1f11;
   --go-bg: #e7f4ec;
-  --go-ink: #0f6a1e;        /* Lions green, darkened for contrast */
-  --focus: #1c3879;
+  --go-ink: #0d4d18;        /* Lions green, darkened for contrast */
+  --focus: #051362;
+  --btn-bg: #0f5d1a;         /* Lions button green */
+  --btn-hover: #0b4914;
   --focus-halo: #ffffff;
 
   --radius: 6px;
@@ -80,6 +82,8 @@ html[data-contrast="high"] {
   --go-ink: #9be6b4;
   --focus: #ffd24a;
   --focus-halo: #000000;
+  --btn-bg: #ffd24a;
+  --btn-hover: #ffd24a;
   color-scheme: dark;
 }
 html[data-contrast="high"] .card,
@@ -98,7 +102,7 @@ body {
      never fetched, because this site loads nothing from a third party. The
      fallbacks keep the property the spec actually requires: open apertures and
      unambiguous numerals, on a page that is mostly phone numbers. */
-  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+  font-family: var(--font-body, "Open Sans"), "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
                "Noto Sans", "Liberation Sans", Arial, sans-serif;
   font-size: 1rem;              /* = 18px at 100% */
   line-height: 1.6;
@@ -116,7 +120,7 @@ a, code, .hint, .facts dt, .facts dd, .contact-list, .sources,
 /* Phone numbers everywhere: unambiguous, evenly spaced numerals. */
 a[href^="tel:"], .num, .step-marker, .badge, .count { font-variant-numeric: tabular-nums lining-nums; }
 
-h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 .4em; font-weight: 700; }
+h1, h2, h3, h4 { line-height: 1.25; margin: 0 0 .4em; font-weight: 700; font-family: var(--font-heading, "Quicksand"), "Quicksand", system-ui, sans-serif; }
 h1 { font-size: 1.55rem; letter-spacing: -0.01em; color: var(--brand-deep); }
 
 /* Maintainer attribution. A credit line, not a masthead — this directory lists
@@ -130,7 +134,7 @@ h1 { font-size: 1.55rem; letter-spacing: -0.01em; color: var(--brand-deep); }
 }
 .maintainer b { color: var(--brand-deep); font-weight: 700; }
 .maintainer .tagline { font-style: italic; }
-.site-header { border-top: 4px solid var(--brand-deep); }
+.site-header { border-top: 0; }
 h2 { font-size: 1.2rem; }
 h3 { font-size: 1.1rem; }
 h4 { font-size: 1rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted); }
@@ -358,10 +362,10 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 /* ---------- Buttons ---------- */
 .btn {
   font: inherit; cursor: pointer; border-radius: var(--radius);
-  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  border: 1px solid var(--btn-bg); background: var(--btn-bg); color: var(--accent-ink); font-family: var(--font-heading, inherit); font-weight: 700;
   padding: .5rem .9rem; font-weight: 600;
 }
-.btn:hover { filter: brightness(1.08); }
+.btn:hover { background: var(--btn-hover); border-color: var(--btn-hover); }
 .btn-quiet { background: var(--page); color: var(--accent); border-color: var(--line); }
 .btn-quiet:hover { background: var(--accent-wash); border-color: var(--accent); }
 .btn-sm { padding: .35rem .65rem; }

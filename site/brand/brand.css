@@ -1,0 +1,42 @@
+/* Lions Services / Vision 360 brand: fonts and colour tokens shared by the
+   public pages and the admin app. Fonts are self-hosted (SIL Open Font
+   License), so the site still loads nothing from a third party. */
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url(/fonts/open-sans-latin.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Quicksand";
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url(/fonts/quicksand-latin.woff2) format("woff2");
+}
+
+:root {
+  --brand-navy: #051362;       /* Lions navy */
+  --brand-navy-2: #00245c;     /* Vision 360 program navy */
+  --brand-blue: #10509c;       /* Vision 360 blue */
+  --brand-green: #127521;      /* Lions green: icons, rules, borders */
+  --brand-green-btn: #0f5d1a;  /* green for buttons with white text */
+  --brand-green-hover: #0b4914;
+  --brand-green-text: #0d4d18;
+  --brand-bright: #2fcf02;     /* on navy only */
+  --brand-ink: #1f211c;
+  --brand-light: #f5f7fa;
+  --brand-footer: #222529;
+  --brand-eye: linear-gradient(90deg, #99cd44 0%, #25b4fa 100%);
+  --brand-360: linear-gradient(90deg, #0476d6 0%, #8cb818 100%);
+  --font-heading: "Quicksand", "Nunito", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-body: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+
+/* Logo strip on white, used at the top of the public pages. */
+.brand-bar { background: #fff; border-bottom: 4px solid transparent; border-image: var(--brand-eye) 1; }
+.brand-bar-inner { max-width: 72rem; margin: 0 auto; padding: .6rem 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.brand-bar img { display: block; height: 52px; width: auto; max-width: 100%; }
+.brand-bar .brand-bar-connect { height: 72px; }
+@media (max-width: 34rem) { .brand-bar img { height: 40px; } .brand-bar .brand-bar-connect { height: 56px; } }

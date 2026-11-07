@@ -294,7 +294,7 @@
     var b = bounds() || { x: 0, y: 0, w: 1000, h: 800 };
     svg.setAttribute("width", b.x + b.w + 400); svg.setAttribute("height", b.y + b.h + 400);
     var defs = document.createElementNS(NS, "defs");
-    defs.innerHTML = '<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9fb3cc"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#38bdf8"/></marker>';
+    defs.innerHTML = '<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9fb3cc"/></marker><marker id="arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#25b4fa"/></marker>';
     svg.appendChild(defs);
     function path(d, stroke, dash, marker, hit) {
       var p = document.createElementNS(NS, "path");
@@ -325,7 +325,7 @@
         (l["in"] || []).forEach(function (v) {
           var a = portPos(l.q, v); if (!a) return;
           var t = S.nodes[c.id];
-          path(curve(a, { x: t.x - 2, y: t.y + 22 }), "#38bdf8", false, "arrs", function (ev) {
+          path(curve(a, { x: t.x - 2, y: t.y + 22 }), "#25b4fa", false, "arrs", function (ev) {
             ev.stopPropagation();
             var parent = qById(l.q), opt = (parent.options || []).find(function (o) { return o.value === v; });
             showPop(ev, "“" + (opt ? opt.label_screen : v) + "” → " + (c.prompt_screen || c.id), "Remove link", function () { unlink(c.id, l.q, v); });
@@ -403,7 +403,7 @@
     var a = portPos(fromId, value);
     var NS = "http://www.w3.org/2000/svg";
     var tmp = document.createElementNS(NS, "path");
-    tmp.setAttribute("fill", "none"); tmp.setAttribute("stroke", "#38bdf8"); tmp.setAttribute("stroke-width", "2.5"); tmp.setAttribute("stroke-dasharray", "5 4");
+    tmp.setAttribute("fill", "none"); tmp.setAttribute("stroke", "#25b4fa"); tmp.setAttribute("stroke-width", "2.5"); tmp.setAttribute("stroke-dasharray", "5 4");
     svg.appendChild(tmp);
     var over = null;
     function move(ev) {
