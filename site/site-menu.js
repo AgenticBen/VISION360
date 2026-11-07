@@ -115,8 +115,18 @@
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
 
   /* The screen settings check joins the ☰ menu once an admin switches it on. */
-  if (!/^\/admin(\/|$)/.test(location.pathname)) fetch("/api/site", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
-    if (!(j.features && j.features.screenCheck)) return;
+  /* Remembered for a minute in this tab, so browsing static pages doesn't ask the server every time. */
+  function siteFeatures() {
+    try { var c = JSON.parse(sessionStorage.getItem("v360-site-features") || "null"); if (c && Date.now() - c.at < 60000) return Promise.resolve(c.f); } catch (e) {}
+    return fetch("/api/site", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+      var f = j.features || {};
+      try { sessionStorage.setItem("v360-site-features", JSON.stringify({ at: Date.now(), f: f })); } catch (e) {}
+      return f;
+    });
+  }
+  window.V360SiteFeatures = siteFeatures;
+  if (!/^\/admin(\/|$)/.test(location.pathname)) siteFeatures().then(function (f) {
+    if (!f.screenCheck) return;
     var ul = nav.querySelector("#sm-panel-more ul");
     if (!ul || ul.querySelector('a[href="/screen-check/"]')) return;
     var a = el("a", { href: "/screen-check/" }, [document.createTextNode("Screen settings check"), el("span", { "class": "sm-desc", text: "Find your best text size, colors and pointer" })]);
