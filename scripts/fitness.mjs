@@ -93,6 +93,20 @@ const CHECKS = [
     },
   },
   {
+    id: "FC13",
+    title: "Published versions reach main only through the publish workflow, after npm run verify",
+    run: () => {
+      const y = readFileSync(path.join(".github", "workflows", "publish.yml"), "utf8");
+      const problems = [];
+      const v = y.indexOf("npm run verify"), m = y.indexOf("gh pr merge");
+      if (v < 0 || m < 0 || v > m) problems.push("publish.yml must run npm run verify before gh pr merge");
+      if (!/verify-live\.mjs/.test(y)) problems.push("publish.yml doesn't run verify-live after merging");
+      const repo = readFileSync(path.join("server", "lib", "flow-repo.mjs"), "utf8");
+      if (!/gh\.proposeToMain/.test(repo)) problems.push("flow-repo doesn't publish through proposeToMain");
+      return problems;
+    },
+  },
+  {
     id: "FC12",
     title: "Every admin write checks the Origin, and publish/revert check the publish key",
     run: () => {

@@ -25,6 +25,10 @@ function bad(message, status = 400) {
 }
 const clean = (s, max) => String(s == null ? "" : s).replace(/\r\n/g, "\n").trim().slice(0, max);
 
+// Published workflow changes go live through a pull request: proposed (checks
+// running) -> live (merged and deployed) or failed (checks failed / closed).
+export const CHANGE_STATES = ["proposed", "live", "failed"];
+
 export function createRequests(store) {
   const now = () => new Date().toISOString();
 
@@ -111,19 +115,34 @@ export function createRequests(store) {
       return { ok: true };
     },
 
+    // Updates a change-log entry's live status (proposed -> live | failed).
+    async setChangeState(id, { state, ref, note }) {
+      if (!CHANGE_STATES.includes(state)) throw bad("Unknown change state");
+      return store.updateJson(DATA_BRANCH, LOG_FILE, (d) => {
+        const e = d.entries.find((x) => x.id === id);
+        if (!e) return null;
+        e.state = state;
+        if (ref) e.ref = clean(ref, 200);
+        if (note) e.state_note = clean(note, 300);
+        e.state_at = now();
+        return e;
+      }, `Change log: ${state}`, { entries: [] });
+    },
+
     // ------------------------------------------------------- change log
     async changelog({ limit = 200 } = {}) {
       const cur = await store.readText(DATA_BRANCH, LOG_FILE);
       return (cur ? JSON.parse(cur.text).entries : []).slice(0, limit);
     },
 
-    async logChange({ title, summary, kind = "app", ref, request_id, highlight }) {
+    async logChange({ title, summary, kind = "app", ref, request_id, highlight, state, pr, pr_url }) {
       const t = clean(title, 160);
       if (!t) throw bad("A change needs a title.");
       const e = {
         id: randomUUID(), at: now(), title: t, summary: clean(summary, 600),
         kind: CHANGE_KINDS.includes(kind) ? kind : "app", ref: clean(ref, 200) || null, request_id: request_id || null,
         highlight: highlight && highlight.page ? { page: clean(highlight.page, 300), target: clean(highlight.target, 120) || null } : null,
+        ...(state ? { state: CHANGE_STATES.includes(state) ? state : "live", pr: Number(pr) || null, pr_url: clean(pr_url, 300) || null } : {}),
       };
       await store.updateJson(DATA_BRANCH, LOG_FILE, (d) => { d.entries.unshift(e); d.entries = d.entries.slice(0, 500); }, `Change log: ${t}`, { entries: [] });
       return e;

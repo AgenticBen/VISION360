@@ -330,7 +330,10 @@ export async function createApp(opts = {}) {
           if (!editsOn) throw httpError(403, "Editing is turned off on this site (V360_FLOW_EDITS=off).");
           if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
         }
-        if (p === "/api/changelog" && method === "GET") return send(res, 200, { entries: await requests.changelog() });
+        if (p === "/api/changelog" && method === "GET") {
+          await flows.reconcile(env.VERCEL_GIT_COMMIT_SHA).catch(() => 0);
+          return send(res, 200, { entries: await requests.changelog() });
+        }
         if (p === "/api/requests" && method === "GET") {
           const page = url.searchParams.get("page");
           const rows = await requests.list({ page: page || undefined });
@@ -386,7 +389,7 @@ export async function createApp(opts = {}) {
             if (!limiter(ip + ":publish", 6)) throw httpError(429, "Too many publishes — please wait a minute.");
             const b = await readJson(req);
             const out = action === "publish" ? await flows.publish(id, b) : await flows.revert(id, b);
-            return send(res, 200, { ...out, live: gh.kind === "github" ? "Live in about a minute, once the site redeploys." : "Saved on this server only (GitHub isn't connected)." });
+            return send(res, 200, { ...out, live: liveMessage(out) });
           }
         }
         throw httpError(404, "Not found");
@@ -465,6 +468,11 @@ export async function createApp(opts = {}) {
   }
 
   return { handle, ctx, store, dialogue, corpus };
+}
+
+export function liveMessage(out) {
+  if (out.state === "proposed") return `Sent for checks as pull request #${out.pr}. It goes live by itself in about 3–5 minutes once the checks pass; the change log shows when it's live.`;
+  return "Saved on this machine only (GitHub isn't connected).";
 }
 
 // Who may change what, decided once at start-up from the environment.

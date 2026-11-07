@@ -28,6 +28,21 @@ const clean = (s, max) => String(s == null ? "" : s).replace(/[\u0000-\u0008\u00
 const text = (obj) => JSON.stringify(obj, null, 2) + "\n";
 const sha256 = (t) => createHash("sha256").update(t).digest("hex");
 
+function prBody({ who, why, imp, revertedFrom, version, title }) {
+  const out = [`**${title} v${version}**, published by ${who} from the VISION360 editor.`, ""];
+  if (why) out.push(`Note: ${why}`, "");
+  if (revertedFrom) out.push(`Reverts the content to v${revertedFrom}.`, "");
+  if (imp) {
+    out.push(`**Routing impact:** ${imp.changed} of ${imp.personas} test people get different suggestions.`, "");
+    for (const r of (imp.rows || imp.changes || []).filter((x) => x.changed).slice(0, 12)) {
+      out.push(`- ${r.label || r.id}: ${(r.before || []).join(", ") || "none"} → ${(r.after || []).join(", ") || "none"}`);
+    }
+    out.push("");
+  }
+  out.push("The publish workflow merges this automatically once `npm run verify` passes. Vercel then deploys main, and the admin change log marks it live.");
+  return out.join("\n");
+}
+
 export function createFlowRepo({ gh, corpus, requests }) {
   function meta(id) {
     const m = REGISTRY.find((f) => f.id === id);
@@ -119,21 +134,48 @@ export function createFlowRepo({ gh, corpus, requests }) {
     if (why) lines.push(`Note: ${why}`);
     if (revertedFrom) lines.push(`Reverted to the content of v${revertedFrom}.`);
     if (imp) lines.push(`Impact: ${imp.changed} of ${imp.personas} test people get different suggestions.`);
-    const { sha } = await gh.commitFiles("main", files, lines.join("\n"));
-    // Clear the draft: it is now the published version.
+    const message = lines.join("\n");
+    let sha, proposal = null;
+    if (gh.proposeToMain) {
+      // Hosted with GitHub: a pull request that merges itself once CI passes.
+      const branch = `publish/${id}-v${version}-${Date.now().toString(36)}`;
+      proposal = await gh.proposeToMain(files, message, { branch, title: head.slice(0, 120), body: prBody({ who, why, imp, revertedFrom, version, title: m.title }) });
+      sha = proposal.sha;
+    } else {
+      ({ sha } = await gh.commitFiles("main", files, message));
+    }
+    // Clear the draft: it is now the published (or proposed) version.
     try { const d = await gh.readText(DATA_BRANCH, draftPath(id)); if (d) await gh.writeText(DATA_BRANCH, draftPath(id), text({ flow: null, cleared_at: new Date().toISOString() }), d.sha, `Clear draft: ${id}`); } catch (e) { /* a stale draft is harmless */ }
     if (requests) {
       await requests.logChange({
         title: revertedFrom ? `${m.title} reverted to v${revertedFrom} (now v${version})` : `${m.title} v${version} published`,
         summary: [why, imp ? `${imp.changed} of ${imp.personas} test people get different suggestions.` : ""].filter(Boolean).join(" "),
         kind: "workflow", ref: sha, highlight: { page: "/admin/workflows/edit/?flow=" + id, target: "versions" },
+        ...(proposal ? { state: "proposed", pr: proposal.pr, pr_url: proposal.url } : {}),
       }).catch(() => {});
     }
-    return { version, sha, impact: imp, checks: result };
+    return { version, sha, impact: imp, checks: result, ...(proposal ? { state: "proposed", pr: proposal.pr, prUrl: proposal.url } : { state: "live" }) };
+  }
+
+  // Brings "proposed" change-log entries up to date: live once the merge is
+  // in the commit this server runs, failed if the PR closed without merging.
+  async function reconcile(running) {
+    if (!requests || !gh.pullState) return 0;
+    const open = (await requests.changelog()).filter((e) => e.state === "proposed" && e.pr).slice(0, 10);
+    let n = 0;
+    for (const e of open) {
+      try {
+        const p = await gh.pullState(e.pr);
+        if (p.merged && p.mergeSha && (await gh.includes(p.mergeSha, running))) { await requests.setChangeState(e.id, { state: "live", ref: p.mergeSha }); n++; }
+        else if (p.state === "closed" && !p.merged) { await requests.setChangeState(e.id, { state: "failed", note: "The checks didn't pass, so it wasn't published. See the pull request." }); n++; }
+      } catch (err) { /* GitHub busy: try again next time */ }
+    }
+    return n;
   }
 
   return {
     registry: REGISTRY,
+    reconcile,
 
     async list() {
       return Promise.all(REGISTRY.map(async (m) => {

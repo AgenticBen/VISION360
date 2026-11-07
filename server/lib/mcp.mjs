@@ -18,7 +18,7 @@ How to change a workflow:
 1. get_workflow to read it (you get the draft if there is one, otherwise the live version).
 2. Edit the draft with add_question, update_question, move_question, set_follow_up, set_option, set_effect or delete_question (or update_draft for a whole new copy). Each edit saves to the draft and returns any check problems.
 3. check_draft shows remaining problems and, for referral, how suggestions would change for the test people.
-4. publish_draft makes it live (in about a minute). Every publish is a version; revert_to_version undoes one.
+4. publish_draft opens a pull request that goes live by itself in about 3–5 minutes once the repo's checks pass (the change log shows proposed → live). Every publish is a version; revert_to_version undoes one.
 Rules: effects that raise or lower an organization must cite a verified referral condition from an organization's record (use find_organizations). Keep wording plain and short. Follow-ups are questions only asked after a certain answer.
 
 Requests: Ben files "content" and "app" requests from the request button. Work oldest first: set_request_status in_progress, do the change, verify it, then set_request_status done with a summary of at most two sentences (it goes in the change log). Content requests can usually be done with the workflow tools. App requests need code changes: if you can't make them here, set needs_ben with a comment saying what a coding session should do. Never touch cancelled requests.`;
@@ -60,7 +60,7 @@ export const TOOLS = [
   }, ["flow", "question", "answer", "target_type", "target"]), annotations: EDIT },
   { name: "find_organizations", title: "Find organizations", description: "Search the directory for organization ids, categories and their verified referral conditions (for effects).", inputSchema: S({ query: str("Words to search for") }, ["query"]), annotations: RO },
   { name: "check_draft", title: "Check the draft", description: "Run the publish checks on the draft and show how suggestions would change for the test people.", inputSchema: S({ flow: FLOW }, ["flow"]), annotations: RO },
-  { name: "publish_draft", title: "Publish the draft", description: "Make the draft the live version (goes live in about a minute). Fails if checks fail.", inputSchema: S({ flow: FLOW, note: str("What changed and why"), name: str("Who asked for it (optional)") }, ["flow", "note"]), annotations: LIVE },
+  { name: "publish_draft", title: "Publish the draft", description: "Publish the draft: opens a pull request that goes live by itself once the checks pass (about 3–5 minutes). Fails if checks fail.", inputSchema: S({ flow: FLOW, note: str("What changed and why"), name: str("Who asked for it (optional)") }, ["flow", "note"]), annotations: LIVE },
   { name: "revert_to_version", title: "Revert to a version", description: "Publish an earlier version's content as a new version.", inputSchema: S({ flow: FLOW, version: { type: "integer" }, note: str("Why") }, ["flow", "version"]), annotations: LIVE },
   { name: "list_requests", title: "List requests", description: "Change requests filed with the request button, oldest first.", inputSchema: S({ status: { type: "string", enum: ["open", "in_progress", "needs_ben", "done", "cancelled"] }, kind: { type: "string", enum: ["content", "app"] }, include_done: { type: "boolean" } }), annotations: RO },
   { name: "comment_on_request", title: "Reply on a request", description: "Add a reply to a request's thread.", inputSchema: S({ id: str("Request id"), body: str("Your reply") }, ["id", "body"]), annotations: EDIT },
@@ -214,8 +214,8 @@ export function createMcp({ flows, requests, corpus, overview, canWrite = () => 
       }));
     },
     async check_draft({ flow }) { const r = await flows.check(flow); return { checks: summary(r.checks), impact: r.impact && { changed: r.impact.changed, personas: r.impact.personas, rows: r.impact.rows.filter((x) => x.changed).map((x) => ({ person: x.label, added: x.added, removed: x.removed, reordered: x.reordered })) } }; },
-    async publish_draft({ flow, note, name }) { const r = await flows.publish(flow, { name: name ? `${name} via Claude` : AUTHOR, note }); return { version: r.version, commit: r.sha, impact: r.impact && { changed: r.impact.changed, personas: r.impact.personas } }; },
-    async revert_to_version({ flow, version, note }) { const r = await flows.revert(flow, { version, name: AUTHOR, note }); return { version: r.version, commit: r.sha }; },
+    async publish_draft({ flow, note, name }) { const r = await flows.publish(flow, { name: name ? `${name} via Claude` : AUTHOR, note }); return { version: r.version, commit: r.sha, state: r.state, pullRequest: r.prUrl || null, impact: r.impact && { changed: r.impact.changed, personas: r.impact.personas } }; },
+    async revert_to_version({ flow, version, note }) { const r = await flows.revert(flow, { version, name: AUTHOR, note }); return { version: r.version, commit: r.sha, state: r.state, pullRequest: r.prUrl || null }; },
     async list_requests({ status, kind, include_done }) {
       const rows = await requests.list({ status, kind, includeDone: !!include_done || status === "done" || status === "cancelled" });
       return rows.slice().reverse().map((r) => ({ id: r.id, kind: r.kind, status: r.status, title: r.title, body: r.body, page: r.page_path, pageLabel: r.page_label, created: r.created_at, comments: r.comments, summary: r.summary }));

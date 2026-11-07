@@ -750,13 +750,13 @@
       var who = el("input", { class: "inp", value: name, placeholder: "Your name" });
       var note = el("textarea", { class: "inp", placeholder: "What changed and why (shown in the version log and change log)" });
       modal("Publish v" + (S.version + 1), [
-        el("p", { text: "Publishing makes this draft the live version" + (S.meta.usedBy.length ? " for: " + S.meta.usedBy.join(", ") : "") + ". It goes live in about a minute. You can always revert." }),
+        el("p", { text: "Publishing makes this draft the live version" + (S.meta.usedBy.length ? " for: " + S.meta.usedBy.join(", ") : "") + ". It's checked automatically and goes live in about 3–5 minutes. You can always revert." }),
         field("Your name", who), field("Note", note)
       ].concat(checkBody(r)), r.checks.ok ? "Publish" : null, function (close, btn) {
         name = who.value.trim(); try { localStorage.setItem("v360-editor-name", name); } catch (e) {}
         btn.disabled = true; btn.textContent = "Publishing…";
         A.api("POST", "/api/flows/" + flowId + "/publish", { name: name || "Someone", note: note.value }).then(function (res) {
-          close(); toast("v" + res.version + " published. " + res.live); setTimeout(function () { location.reload(); }, 1800);
+          close(); toast("v" + res.version + (res.state === "proposed" ? " sent. " : " published. ") + res.live); setTimeout(function () { location.reload(); }, 1800);
         }).catch(function (e) { btn.disabled = false; btn.textContent = "Publish"; toast("Couldn't publish: " + e.message); });
       });
     }).catch(function (e) { toast("Couldn't check: " + e.message); });
@@ -826,7 +826,8 @@
     document.title = S.meta.title + " — Workflow editor — VISION360 admin";
     build();
     setStatus(S.hasDraft ? "Draft (not published) · saved " + A.ago(j.draft.updated_at) : "Up to date", S.hasDraft ? "amber" : "ok");
-    if (r[1].storage !== "github") banner("GitHub isn't connected: published versions are kept on this server only.", null);
+    if (r[1].publishing === "off") banner("Publishing is off on this site: you can edit and save drafts, and file a request. (" + (r[1].storage === "github" ? "The publish key isn't set up yet." : "GitHub isn't connected yet.") + ")", null);
+    else if (r[1].storage !== "github") banner("GitHub isn't connected: published versions are kept on this machine only.", null);
     if (!S.editsOn) banner("Editing is switched off on this site.", null);
     document.getElementById("discard").hidden = !S.hasDraft;
     renderRail(); render(); renderInspector();

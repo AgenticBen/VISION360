@@ -125,6 +125,38 @@ export function createGithubStore(env, fetchImpl) {
         if (upd.status !== 422 || attempt === 1) throw fail(upd, "update " + branch);
       }
     },
+    // Publishing: one commit on a new publish/* branch plus a pull request
+    // into main. The repo's "publish" workflow runs the checks and merges it
+    // when they pass; Vercel then deploys main.
+    async proposeToMain(files, message, { branch, title, body }) {
+      const ref = await gh("GET", `/git/ref/heads/main`);
+      if (ref.status !== 200) throw fail(ref, "read main");
+      const parent = ref.json.object.sha;
+      const pc = await gh("GET", `/git/commits/${parent}`);
+      if (pc.status !== 200) throw fail(pc, "read commit");
+      const tree = await gh("POST", `/git/trees`, { base_tree: pc.json.tree.sha, tree: files.map((f) => ({ path: f.path, mode: "100644", type: "blob", content: f.text })) });
+      if (tree.status !== 201) throw fail(tree, "create tree");
+      const commit = await gh("POST", `/git/commits`, { message, tree: tree.json.sha, parents: [parent] });
+      if (commit.status !== 201) throw fail(commit, "create commit");
+      const mk = await gh("POST", `/git/refs`, { ref: `refs/heads/${branch}`, sha: commit.json.sha });
+      if (mk.status !== 201) throw fail(mk, "create branch " + branch);
+      const pr = await gh("POST", `/pulls`, { title, head: branch, base: "main", body, maintainer_can_modify: true });
+      if (pr.status !== 201) throw fail(pr, "open pull request");
+      return { sha: commit.json.sha, branch, pr: pr.json.number, url: pr.json.html_url };
+    },
+    async pullState(number) {
+      const r = await gh("GET", `/pulls/${Number(number)}`);
+      if (r.status !== 200) throw fail(r, "read pull request");
+      return { state: r.json.state, merged: !!r.json.merged, mergeSha: r.json.merge_commit_sha, url: r.json.html_url };
+    },
+    // Is commit `sha` part of `running` (the commit this server copy runs)?
+    async includes(sha, running) {
+      if (!running || running === "local") return false;
+      if (running.startsWith(sha) || sha.startsWith(running)) return true;
+      const r = await gh("GET", `/compare/${sha}...${running}`);
+      if (r.status !== 200) return false;
+      return r.json.status === "ahead" || r.json.status === "identical";
+    },
     async listCommits(branch, file, limit = 100) {
       const r = await gh("GET", `/commits?sha=${encodeURIComponent(branch)}&path=${encodeURIComponent(file)}&per_page=${Math.min(limit, 100)}`);
       if (r.status !== 200) throw fail(r, "list commits");

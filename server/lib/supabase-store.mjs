@@ -84,6 +84,11 @@ export function createSplitStore(mainStore, dataStore) {
       }
     },
     commitFiles: (branch, files, message) => mainStore.commitFiles(branch, files, message),
+    ...(mainStore.proposeToMain ? {
+      proposeToMain: (files, message, o) => mainStore.proposeToMain(files, message, o),
+      pullState: (n) => mainStore.pullState(n),
+      includes: (sha, running) => mainStore.includes(sha, running),
+    } : {}),
     listCommits: (branch, file, limit) => pick(branch).listCommits(branch, file, limit),
   };
   return store;

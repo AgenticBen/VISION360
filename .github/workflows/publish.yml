@@ -1,0 +1,47 @@
+name: publish
+
+# Workflow versions published from the admin editor or the Claude connector
+# arrive as pull requests from publish/* branches. This runs the same checks
+# as `npm run verify`, merges the PR when they pass, then waits until the live
+# site reports the merged commit (verify-live). If the checks fail, the PR
+# stays open and the admin change log shows "Not published".
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: publish-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify-and-merge:
+    if: startsWith(github.head_ref, 'publish/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm run verify
+      - name: Merge the publish
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch --repo "${{ github.repository }}"
+          sha=$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json mergeCommit -q .mergeCommit.oid)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Close the PR if the checks failed
+        if: failure() && steps.merge.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr close "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --comment "The checks didn't pass, so this version wasn't published. Fix the draft in the editor and publish again." || true
+      - name: Verify live
+        env:
+          SITE: https://vision360.agenticarc.ai
+        run: node scripts/verify-live.mjs "$SITE" "${{ steps.merge.outputs.sha }}"
