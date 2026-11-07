@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   if (original) {
     u.searchParams.delete("__path");
     // Vercel also passes the rewrite's :path* match as ?path=; it isn't ours.
-    if (u.searchParams.get("path") !== null && original.endsWith(u.searchParams.get("path"))) u.searchParams.delete("path");
+    if (u.searchParams.get("path") !== null && original.replace(/\/+$/, "").endsWith(u.searchParams.get("path").replace(/\/+$/, ""))) u.searchParams.delete("path");
     const qs = u.searchParams.toString();
     req.url = original + (qs ? "?" + qs : "");
   }
