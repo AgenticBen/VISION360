@@ -20,10 +20,13 @@ import { createFlowRepo } from "./flow-repo.mjs";
 import { createMcp } from "./mcp.mjs";
 import { verifyWebhook, deliveryEvent } from "./email-webhook.mjs";
 import { supabaseConfigured, supabaseKeyProblem, createSupabaseSessions, createDurableSessions } from "./supabase-sessions.mjs";
+import { createSiteSettings } from "./site-settings.mjs";
+import { serveAdmin } from "./admin-pages.mjs";
 
 import { randomUUID } from "node:crypto";
 
 const MAX_BODY = 16 * 1024;
+const ADMIN_USER = "admin";
 
 export async function createApp(opts = {}) {
   const corpus = await loadCorpus();
@@ -41,6 +44,8 @@ export async function createApp(opts = {}) {
   // Admin storage: GitHub when V360_GITHUB_TOKEN is set, otherwise a local folder.
   const gh = opts.ghStore || createAdminStore(env, { dir: env.V360_ADMIN_STORE_DIR, repoRoot: opts.repoRoot });
   const requests = createRequests(gh);
+  const settings = opts.settings || createSiteSettings({ gh, env });
+  ctx.settings = settings;
   const editsOn = String(env.V360_FLOW_EDITS || "on").toLowerCase() !== "off";
   const flows = createFlowRepo({ gh, corpus, requests });
   ctx.gh = gh; ctx.requests = requests; ctx.flows = flows;
@@ -163,25 +168,28 @@ export async function createApp(opts = {}) {
     return s;
   }
 
+  // Legacy named staff accounts (V360_STAFF_USER) still sign in with their own
+  // key; the admin password (site-settings.mjs) signs its own cookies.
   const signer = sessionSecret(env);
-  function staffUser(req) {
+  async function staffUser(req) {
     const tok = parseCookies(req.headers.cookie)[STAFF_COOKIE];
     if (!tok) return null;
-    const signed = verifySession(signer, tok);
+    const a = await settings.auth();
+    if (a.secret && verifySession(a.secret, tok) === ADMIN_USER) return { username: ADMIN_USER };
+    const signed = signer ? verifySession(signer, tok) : null;
     if (signed) return store.staffUserByName(signed);
     const sess = store.staffSession(tokenHash(tok));
     return sess ? store.staffUserById(sess.user_id) : null;
   }
 
-  // Admin sign-in is off for now (owner's decision, 2026-11-06): anyone with
-  // the link can open the staff queue and admin pages. Set V360_ADMIN_SIGNIN=on
-  // to require a staff password again. Cross-origin writes stay blocked.
-  const adminOpen = String(env.V360_ADMIN_SIGNIN || "off").toLowerCase() !== "on";
+  // The admin always needs the admin password on the hosted site.
+  // V360_ADMIN_SIGNIN=off opens it only on a local machine (tests, demos).
+  const adminOpen = String(env.V360_ADMIN_SIGNIN || "on").toLowerCase() === "off" && !env.V360_SERVERLESS;
   const OPEN_ADMIN = { username: "admin-open" };
 
-  function requireStaff(req) {
-    const u = staffUser(req) || (adminOpen ? OPEN_ADMIN : null);
-    if (!u) throw httpError(401, "Staff sign-in required");
+  async function requireStaff(req) {
+    const u = (await staffUser(req)) || (adminOpen ? OPEN_ADMIN : null);
+    if (!u) { const e = httpError(401, "Sign in to the admin first."); e.code = "signin"; throw e; }
     return u;
   }
 
@@ -236,7 +244,13 @@ export async function createApp(opts = {}) {
     const method = req.method;
     try {
       const ip = String(req.headers["x-forwarded-for"] || (req.socket && req.socket.remoteAddress) || "local").split(",")[0].trim();
-      if (!limiter(ip, p.startsWith("/api/staff/login") ? 10 : 120)) throw httpError(429, "Too many requests — please wait a moment.");
+      // Admin pages and their files: only for someone signed in.
+      if (p === "/admin" || p.startsWith("/admin/")) {
+        if (!limiter(ip + ":pages", 600)) throw httpError(429, "Too many requests — please wait a moment.");
+        return serveAdmin(req, res, url, adminOpen || !!(await staffUser(req)));
+      }
+      const signInRoute = /^\/api\/(staff\/login|admin\/(login|setup|password))$/.test(p);
+      if (!limiter(ip, signInRoute ? 10 : 120)) throw httpError(429, "Too many requests — please wait a moment.");
       if (method !== "GET") checkOrigin(req);
 
       if (p === "/api/health" && method === "GET") {
@@ -314,6 +328,51 @@ export async function createApp(opts = {}) {
         });
       }
 
+      // ---------------- admin sign-in ---------------------------------------
+      if (p === "/api/admin/me" && method === "GET") {
+        const a = await settings.auth();
+        const u = await staffUser(req);
+        return send(res, 200, { signedIn: !!u || adminOpen, open: adminOpen && !u, setupNeeded: !a.source, canSetUp: !a.source && !env.V360_SERVERLESS && settings.privateData });
+      }
+      if (p === "/api/admin/login" && method === "POST") {
+        requireSameSite(req);
+        const body = await readJson(req);
+        const a = await settings.auth();
+        if (!a.source) throw httpError(503, "No admin password is set up on this site yet.");
+        if (!verifyPassword(String(body.password || ""), a.passwordHash)) {
+          store.audit("admin", null, "login_failed", null);
+          throw httpError(401, "That password isn't right.");
+        }
+        store.audit("admin", null, "login", null);
+        return send(res, 200, { ok: true }, { "Set-Cookie": staffCookie(signSession(a.secret, ADMIN_USER), isSecure(req)) });
+      }
+      if (p === "/api/admin/logout" && method === "POST") {
+        return send(res, 200, { ok: true }, { "Set-Cookie": clearStaffCookie(isSecure(req)) });
+      }
+      // First password on a local machine only; the hosted site is set up by the owner.
+      if (p === "/api/admin/setup" && method === "POST") {
+        requireSameSite(req);
+        const a = await settings.auth();
+        if (a.source || env.V360_SERVERLESS) throw httpError(403, "An admin password is already set up. Change it in Settings.");
+        const body = await readJson(req);
+        await settings.setPassword(body.password);
+        const b = await settings.auth();
+        store.audit("admin", null, "password_set", null);
+        return send(res, 200, { ok: true }, { "Set-Cookie": staffCookie(signSession(b.secret, ADMIN_USER), isSecure(req)) });
+      }
+      if (p === "/api/admin/password" && method === "POST") {
+        await requireStaff(req);
+        requireSameSite(req);
+        const body = await readJson(req);
+        const a = await settings.auth();
+        if (a.source && !verifyPassword(String(body.current || ""), a.passwordHash)) throw httpError(401, "The current password isn't right.");
+        if (String(body.password || "") !== String(body.confirm || "")) throw httpError(400, "The two new passwords don't match.");
+        const out = await settings.setPassword(body.password);
+        const b = await settings.auth();
+        store.audit("admin", null, "password_changed", null);
+        await requests.logChange({ title: "Admin password changed", summary: "The admin password was changed. Everyone else was signed out.", kind: "app" }).catch(() => {});
+        return send(res, 200, { ok: true, changedAt: out.changedAt }, { "Set-Cookie": staffCookie(signSession(b.secret, ADMIN_USER), isSecure(req)) });
+      }
       // ---------------- staff -------------------------------------------
       if (p === "/api/staff/login" && method === "POST") {
         const body = await readJson(req);
@@ -336,13 +395,13 @@ export async function createApp(opts = {}) {
         return send(res, 200, { ok: true }, { "Set-Cookie": clearStaffCookie(isSecure(req)) });
       }
       if (p === "/api/staff/me" && method === "GET") {
-        const u = staffUser(req);
+        const u = await staffUser(req);
         if (u) return send(res, 200, { username: u.username, signInRequired: !adminOpen });
         return adminOpen ? send(res, 200, { username: OPEN_ADMIN.username, open: true, signInRequired: false }) : send(res, 401, { error: "Not signed in" });
       }
       // ---------------- requests and change log ------------------------
       if (p === "/api/requests" || p.startsWith("/api/requests/") || p === "/api/changelog") {
-        requireStaff(req);
+        await requireStaff(req);
         if (method !== "GET") {
           requireSameSite(req);
           if (!editsOn) throw httpError(403, "Editing is turned off on this site (V360_FLOW_EDITS=off).");
@@ -387,7 +446,7 @@ export async function createApp(opts = {}) {
       }
       // ---------------- workflows ---------------------------------------
       if (p === "/api/flows" || p.startsWith("/api/flows/")) {
-        requireStaff(req);
+        await requireStaff(req);
         if (method !== "GET") {
           requireSameSite(req);
           if (!editsOn) throw httpError(403, "Editing is turned off on this site (V360_FLOW_EDITS=off).");
@@ -415,12 +474,12 @@ export async function createApp(opts = {}) {
         throw httpError(404, "Not found");
       }
       if (p === "/api/admin/overview" && method === "GET") {
-        requireStaff(req);
+        await requireStaff(req);
         await pullRecent();
         return send(res, 200, adminOverview());
       }
       if (p === "/api/staff/sessions" && method === "GET") {
-        requireStaff(req);
+        await requireStaff(req);
         await pullRecent(RETENTION_DAYS + 30);
         const open = new Map(store.allOpenReviews().map((r) => [r.session_id, r.n]));
         const rows = store.listSessions().map((s) => ({ ...s, openReviews: open.get(s.id) || 0, actions: store.actionsForSession(s.id).map((a) => ({ type: a.type, status: a.status })) }));
@@ -428,7 +487,7 @@ export async function createApp(opts = {}) {
       }
       m = p.match(/^\/api\/staff\/sessions\/([0-9a-f-]{36})(?:\/(status))?$/);
       if (m) {
-        const u = requireStaff(req);
+        const u = await requireStaff(req);
         const s = await repo.load(m[1]);
         if (!s) throw httpError(404, "Not found");
         if (m[2] === "status" && method === "POST") {
@@ -457,7 +516,7 @@ export async function createApp(opts = {}) {
       }
       m = p.match(/^\/api\/staff\/actions\/([0-9a-f-]{36})\/retry$/);
       if (m && method === "POST") {
-        const u = requireStaff(req);
+        const u = await requireStaff(req);
         requireSameSite(req);
         const act = store.getAction(m[1]);
         if (act) ctx.markDirty(act.session_id);

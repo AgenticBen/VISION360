@@ -486,7 +486,7 @@ test.after(() => {
   void readdirSync;
 });
 
-test("admin is open by default: staff queue and overview need no password, writes stay same-origin", async () => {
+test("local open mode (V360_ADMIN_SIGNIN=off): staff queue and overview need no password, writes stay same-origin", async () => {
   const app = await makeApp();
   const persona = { opening: "just ask me questions", section: "skip this section", answers: { actor: "myself", county: "Charlotte", goals: "reading", age_band: "60", hearing_loss: "no", eye_doctor: "yes", eye_exam_recency: "within the last year", insurance: "Medicare", veteran: "no" } };
   const { s } = await runPersona(app, persona);

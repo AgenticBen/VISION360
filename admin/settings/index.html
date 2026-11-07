@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta name="referrer" content="no-referrer">
-<title>Connect Claude & ChatGPT — VISION360 admin</title>
+<title>Settings — VISION360 admin</title>
 <link rel="icon" type="image/png" href="/brand/favicon.png">
 <link rel="stylesheet" href="/brand/brand.css">
 <link rel="stylesheet" href="/admin/admin.css">
@@ -17,11 +17,21 @@
 <header class="page-head">
   <div>
     <p class="eyebrow">Settings</p>
-    <h1>Connect Claude & ChatGPT</h1>
-    <p class="sub">Let Claude or ChatGPT edit workflows and work through your requests, using this site's MCP connector.</p>
+    <h1>Settings</h1>
+    <p class="sub">The admin password, and connecting Claude or ChatGPT so they can build workflows and work through your requests.</p>
   </div>
   <div class="page-actions"></div>
 </header>
+<section class="card" data-tour="admin-password" id="password-card"><h2>Admin password</h2>
+  <p class="hint" id="pw-status">Everyone who opens the admin needs this password. Changing it signs everyone else out.</p>
+  <form id="pw-form" class="pw-form" novalidate>
+    <div><label class="fl" for="pw-current">Current password</label><input class="inp" id="pw-current" type="password" autocomplete="current-password" required></div>
+    <div><label class="fl" for="pw-new">New password (at least 8 characters)</label><input class="inp" id="pw-new" type="password" autocomplete="new-password" minlength="8" required></div>
+    <div><label class="fl" for="pw-confirm">New password again</label><input class="inp" id="pw-confirm" type="password" autocomplete="new-password" minlength="8" required></div>
+    <p><label class="hint"><input type="checkbox" id="pw-show"> Show passwords</label></p>
+    <p><button class="btn primary" type="submit" id="pw-save">Change password</button> <span id="pw-msg" role="status" class="hint"></span></p>
+  </form></section>
+<h2 class="section-title">Connect Claude &amp; ChatGPT</h2>
 <section class="card" data-tour="mcp-url"><h2>Connector URL</h2>
   <div class="copy-row"><code id="mcp-url">…</code><button type="button" class="btn" id="copy-url">Copy</button></div>
   <p class="hint" id="key-hint">Once the connector key (V360_MCP_KEY) is set, add it to the end of the URL as <code>?key=YOUR-KEY</code> when you add the connector. The same key is the publish key the workflow editor asks for. Keep it to yourselves.</p></section>

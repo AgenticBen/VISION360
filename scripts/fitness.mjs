@@ -152,7 +152,7 @@ const CHECKS = [
       const tour = readFileSync(path.join("site", "whats-new.js"), "utf8");
       const files = [];
       const walk = (d) => { for (const n of readdirSync(d)) { const p = path.join(d, n); if (statSync(p).isDirectory()) { if (p !== path.join("site", "data") && n !== "fonts" && n !== "brand") walk(p); } else if (/\.(html|m?js)$/.test(n) && p !== path.join("site", "whats-new.js")) files.push(readFileSync(p, "utf8")); } };
-      walk("site");
+      walk("site"); walk("admin");
       const all = files.join("\n");
       const problems = [];
       for (const [, t] of tour.matchAll(/target:\s*"([^"]+)"/g)) {

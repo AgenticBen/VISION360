@@ -44,6 +44,19 @@
           "value": "no-store"
         }
       ]
+    },
+    {
+      "source": "/f/(.*)",
+      "headers": [
+        {
+          "key": "Permissions-Policy",
+          "value": "microphone=(self), camera=()"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
     }
   ],
   "rewrites": [
@@ -52,44 +65,20 @@
       "destination": "/demo/index.html"
     },
     {
-      "source": "/admin/conversations",
-      "destination": "/admin/conversations/index.html"
+      "source": "/f/:flow",
+      "destination": "/demo/index.html"
     },
     {
-      "source": "/admin/emails",
-      "destination": "/admin/emails/index.html"
-    },
-    {
-      "source": "/admin/costs",
-      "destination": "/admin/costs/index.html"
-    },
-    {
-      "source": "/admin/workflows",
-      "destination": "/admin/workflows/index.html"
-    },
-    {
-      "source": "/admin/data",
-      "destination": "/admin/data/index.html"
-    },
-    {
-      "source": "/admin/requests",
-      "destination": "/admin/requests/index.html"
-    },
-    {
-      "source": "/admin/changelog",
-      "destination": "/admin/changelog/index.html"
-    },
-    {
-      "source": "/admin/settings",
-      "destination": "/admin/settings/index.html"
-    },
-    {
-      "source": "/admin/workflows/edit",
-      "destination": "/admin/workflows/edit/index.html"
+      "source": "/f/:flow/",
+      "destination": "/demo/index.html"
     },
     {
       "source": "/admin",
-      "destination": "/admin/index.html"
+      "destination": "/api/v360?__path=/admin/"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/api/v360?__path=/admin/:path*"
     },
     {
       "source": "/api/:path*",
@@ -98,7 +87,7 @@
   ],
   "functions": {
     "api/v360.mjs": {
-      "includeFiles": "{site/data/**,site/quiz-engine.js,server/**}",
+      "includeFiles": "{site/data/**,site/quiz-engine.js,server/**,admin/**}",
       "maxDuration": 30
     }
   },

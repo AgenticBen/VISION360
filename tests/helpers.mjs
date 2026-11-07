@@ -8,7 +8,7 @@ export async function makeApp(env = {}) {
   const store = openStore(":memory:");
   const tmp = process.env.TMPDIR || "/tmp";
   const adminDir = `${tmp}/v360-admin-test-${process.pid}-${++appCount}`;
-  const app = await createApp({ store, env: { V360_OUTBOX_DIR: tmp + "/v360-outbox", V360_ADMIN_STORE_DIR: adminDir, ...env } });
+  const app = await createApp({ store, env: { V360_OUTBOX_DIR: tmp + "/v360-outbox", V360_ADMIN_STORE_DIR: adminDir, V360_ADMIN_SIGNIN: "off", ...env } });
   return app;
 }
 

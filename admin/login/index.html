@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Sign in — VISION360 admin</title>
+<link rel="icon" type="image/png" href="/brand/favicon.png">
+<link rel="stylesheet" href="/brand/brand.css">
+<link rel="stylesheet" href="/admin/login/login.css">
+</head>
+<body class="gate">
+<main class="gate-card" aria-labelledby="gate-title">
+  <img class="gate-logo" src="/brand/lions-services-vision-360.png" alt="Lions Services | VISION 360">
+  <h1 id="gate-title">Admin sign-in</h1>
+  <p class="gate-sub" id="gate-sub">Enter the admin password to open the VISION360 admin.</p>
+
+  <form id="signin" novalidate>
+    <label for="pw">Password</label>
+    <div class="pw-row">
+      <input id="pw" name="password" type="password" autocomplete="current-password" required autofocus>
+      <button type="button" class="pw-show" id="show" aria-pressed="false">Show</button>
+    </div>
+    <div id="confirm-row" hidden>
+      <label for="pw2">Type it again</label>
+      <input id="pw2" type="password" autocomplete="new-password">
+    </div>
+    <p class="gate-error" id="err" role="alert" hidden></p>
+    <button type="submit" class="gate-btn" id="go">Sign in</button>
+  </form>
+  <p class="gate-foot"><a href="/">← Back to the public site</a></p>
+</main>
+<script src="/admin/login/login.js"></script>
+</body>
+</html>

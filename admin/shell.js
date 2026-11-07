@@ -14,6 +14,7 @@
     log: '<path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/>',
     plug: '<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/>',
     back: '<path d="m15 18-6-6 6-6"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
     collapse: '<path d="M4 6h16M4 12h10M4 18h16"/>'
   };
   var NAV = [
@@ -21,7 +22,7 @@
     { title: "People", items: [["/admin/conversations/", "Conversations", "chat"], ["/admin/emails/", "Email tracker", "mail"]] },
     { title: "Build", items: [["/admin/workflows/", "Workflows", "flow"], ["/admin/data/", "Raw data", "data"]] },
     { title: "Money", items: [["/admin/costs/", "Estimated costs", "money"]] },
-    { title: "Settings", items: [["/admin/requests/", "Requests", "target"], ["/admin/changelog/", "Change log", "log"], ["/admin/settings/", "Connect Claude & ChatGPT", "plug"]] }
+    { title: "Settings", items: [["/admin/requests/", "Requests", "target"], ["/admin/changelog/", "Change log", "log"], ["/admin/settings/", "Settings & connectors", "plug"]] }
   ];
 
   function svg(name) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || "") + "</svg>"; }
@@ -53,6 +54,7 @@
           var given = window.prompt((k ? "That key didn't work. " : "") + "Enter the publish key (the same key as the Claude connector):");
           if (given) { try { sessionStorage.setItem(KEY, given.trim()); } catch (e) {} return api(method, path, body, true); }
         }
+        if (r.status === 401 && j.code === "signin") { location.href = "/admin/login/?next=" + encodeURIComponent(location.pathname + location.search); }
         if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; e.code = j.code; e.body = j; throw e; }
         return j;
       }); });
@@ -118,7 +120,11 @@
       try { localStorage.setItem("v360-admin-nav", document.body.classList.contains("nav-collapsed") ? "collapsed" : "open"); } catch (e) {}
     });
     var back = el("a", { class: "sb-link", href: "/", title: "Public site", html: svg("back") + '<span class="sb-label">Public site</span>' });
-    nav.appendChild(el("div", { class: "sb-foot" }, [back, collapse]));
+    var out = el("button", { type: "button", class: "sb-collapse", title: "Sign out", html: svg("logout") + '<span class="sb-label">Sign out</span>' });
+    out.addEventListener("click", function () {
+      fetch("/api/admin/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", credentials: "same-origin" }).finally(function () { location.href = "/admin/login/"; });
+    });
+    nav.appendChild(el("div", { class: "sb-foot" }, [back, out, collapse]));
     return nav;
   }
 

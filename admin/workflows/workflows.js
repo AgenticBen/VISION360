@@ -4,7 +4,7 @@
   var A = window.V360Admin, el = A.el;
   A.api("GET", "/api/flows").then(function (j) {
     var note = document.getElementById("gh-note");
-    if (j.storage !== "github") { note.hidden = false; note.textContent = "GitHub isn't connected, so published versions are kept on this server only and disappear when it restarts. Add V360_GITHUB_TOKEN in Vercel to save them for good (see Connect Claude & ChatGPT)."; }
+    if (j.storage !== "github") { note.hidden = false; note.textContent = "GitHub isn't connected, so published versions are kept on this server only and disappear when it restarts. Add V360_GITHUB_TOKEN in Vercel to save them for good (see Settings)."; }
     if (!j.editsOn) { note.hidden = false; note.textContent = "Editing is switched off on this site (V360_FLOW_EDITS=off)."; }
     var box = document.getElementById("flows"); box.textContent = "";
     j.flows.forEach(function (f) {

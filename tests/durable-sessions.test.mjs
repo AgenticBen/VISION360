@@ -32,7 +32,7 @@ function fakeRemote() {
 let n = 0;
 async function copy(remote) {
   const tmp = process.env.TMPDIR || "/tmp";
-  return createApp({ store: openStore(":memory:"), sessionRemote: remote, env: { V360_OUTBOX_DIR: tmp + "/v360-outbox", V360_ADMIN_STORE_DIR: `${tmp}/v360-durable-${process.pid}-${++n}` } });
+  return createApp({ store: openStore(":memory:"), sessionRemote: remote, env: { V360_ADMIN_SIGNIN: "off", V360_OUTBOX_DIR: tmp + "/v360-outbox", V360_ADMIN_STORE_DIR: `${tmp}/v360-durable-${process.pid}-${++n}` } });
 }
 const turn = (app, s, text) => call(app, "POST", `/api/session/${s.id}/turn`, { text, clientTurnId: "c" + Math.random() }, { authorization: "Bearer " + s.token });
 

@@ -22,9 +22,11 @@ const app = await createApp();
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
-  if (url.pathname.startsWith("/api/")) return app.handle(req, res);
+  if (url.pathname.startsWith("/api/") || url.pathname === "/admin" || url.pathname.startsWith("/admin/")) return app.handle(req, res);
   if (req.method !== "GET" && req.method !== "HEAD") { res.writeHead(405); return res.end(); }
   let rel = decodeURIComponent(url.pathname);
+  // /f/<workflow> opens the assistant for that workflow (Vercel does the same).
+  if (/^\/f\/[a-z0-9-]{1,40}\/?$/.test(rel)) rel = "/demo/index.html";
   if (rel.endsWith("/")) rel += "index.html";
   let file = path.join(SITE, rel);
   if (!file.startsWith(SITE)) { res.writeHead(403); return res.end(); }
