@@ -40,6 +40,15 @@ const ENGINE = path.join("site", "quiz-engine.js");
 
 const CHECKS = [
   {
+    id: "FC1",
+    title: "The conversation reads per-question words (recap labels, short names, intros, aliases, topics) from the workflow data, not code tables",
+    run: () => findAll(["dialogue.mjs", "phrasing.mjs", "understand.mjs"].map((f) => path.join("server", "lib", f)), [
+      /\b(RECAP_LABEL|SHORT|SECTION|NO_CONCERN|EXTRA_ALIASES|TOPICS)\s*=\s*\{/,
+      /screenLabel\(\s*a\.questionId/,
+      /\|\|\s*a\.questionId\s*\)/,
+    ]),
+  },
+  {
     id: "FC5",
     title: "Geography ranking and result selection are defined only in site/quiz-engine.js",
     run: () => findAll(

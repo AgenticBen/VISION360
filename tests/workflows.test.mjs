@@ -113,3 +113,21 @@ test("publishing is refused when checks fail, and when editing is switched off",
   r = await call(off, "PUT", "/api/flows/v360-interest/draft", { flow: interest() });
   assert.equal(r.status, 403);
 });
+
+test("a question added only in the data is recapped by its label and corrected by its topic words", async () => {
+  const { mentionedTopics } = await import("../server/lib/understand.mjs");
+  const { screenLabel, noConcernTopic, sectionIntro } = await import("../server/lib/phrasing.mjs");
+  const a = referral();
+  const q = { id: "pets", domain: "everyday", type: "yes_no", prompt_screen: "Do you have a guide dog or a pet?", prompt_voice: "Do you have a pet?", recap_label: "Has a pet", topic_words: ["pet", "guide dog"], help: null, sensitive: false, skippable: true, ask_if: null,
+    options: [{ value: "yes", label_screen: "Yes", label_voice: "yes", aliases: ["yes"], effects: [] }, { value: "no", label_screen: "No", label_voice: "no", aliases: ["no"], effects: [], no_concern: true }], no_concern_topic: "pets" };
+  a.questions.push(q);
+  a.blocks.find((b) => b.id === "everyday").questions.push("pets");
+  assert.ok(checkFlow(a, { organizations: orgs }).ok, msgs(checkFlow(a, { organizations: orgs })));
+  assert.deepEqual(mentionedTopics("actually I do have a guide dog", ["pets", "county"], a), ["pets"]);
+  assert.equal(screenLabel(q, { self: true }, q.recap_label), "Has a pet");
+  assert.equal(noConcernTopic({ questionId: "pets", kind: "answer", value: "no" }, q), "pets");
+  assert.equal(sectionIntro({ id: "x", intro_voice: "" }, {}), "");
+  assert.equal(sectionIntro({ id: "x" }, {}), null);
+  delete q.recap_label;
+  assert.match(msgs(checkFlow(a, { organizations: orgs })), /needs a recap label/);
+});

@@ -462,7 +462,7 @@
     b = b || S.flow.blocks[S.flow.blocks.length - 1];
     var id = uniqueId("new_question", function (x) { return !!qById(x); });
     edit("Add question", function () {
-      S.flow.questions.push({ id: id, domain: b.id, type: "single", prompt_screen: "New question", prompt_voice: "New question", voice_template: null, help: null, required: false, sensitive: false, skippable: true, ask_if: null,
+      S.flow.questions.push({ id: id, domain: b.id, type: "single", prompt_screen: "New question", prompt_voice: "New question", voice_template: null, recap_label: "New question", topic_words: [], help: null, required: false, sensitive: false, skippable: true, ask_if: null,
         options: [{ value: "yes", label_screen: "Yes", label_voice: "yes", aliases: [], effects: [] }, { value: "no", label_screen: "No", label_voice: "no", aliases: [], effects: [] }] });
       var at = S.selected && S.selected.type === "q" ? b.questions.indexOf(S.selected.id) + 1 : b.questions.length;
       b.questions.splice(at, 0, id);
@@ -556,6 +556,10 @@
         "{S} becomes “you”, “they” or the person's name; {pos} their, {obj} them, {do}/{Do}, {be}/{Be}, {have}/{Have}."));
     } else {
       insp.appendChild(field("Spoken by the assistant", textIn(q.prompt_voice, function (v) { edit("Edit spoken wording", function () { q.prompt_voice = v; }, { inspector: false }); }, { area: true })));
+    }
+    if (S.meta.routing) {
+      insp.appendChild(field("Recap label", textIn(q.recap_label, function (v) { edit("Edit recap label", function () { q.recap_label = v; }, { inspector: false }); }), "A few words the assistant uses when it reads the answers back, e.g. “Last eye exam”."));
+      insp.appendChild(field("Topic words", textIn((q.topic_words || []).join(", "), function (v) { edit("Edit topic words", function () { q.topic_words = v.split(",").map(function (t) { return t.trim().toLowerCase(); }).filter(Boolean); }, { inspector: false }); }), "Comma-separated words that mean this question, so people can correct it (“my age is…”)."));
     }
     insp.appendChild(field("Help text (optional)", textIn(q.help, function (v) { edit("Edit help", function () { q.help = v || null; }, { inspector: false }); }, { area: true })));
     var type = el("select", { class: "inp" }, Object.keys(TYPES).map(function (k) { var o = el("option", { value: k, text: TYPES[k] }); if (k === q.type) o.selected = true; return o; }));
@@ -799,7 +803,7 @@
       cur.questions.forEach(function (q) {
         if (oldIds.indexOf(q.id) === -1) { rows.push(el("li", { class: "diff-add", text: "Added: " + q.prompt_screen })); return; }
         var o = old.questions.find(function (x) { return x.id === q.id; });
-        var changes = ["prompt_screen", "voice_template", "prompt_voice", "help", "type", "required", "sensitive", "skippable", "ask_if", "options"].filter(function (k) { return JSON.stringify(o[k]) !== JSON.stringify(q[k]); });
+        var changes = ["prompt_screen", "voice_template", "prompt_voice", "recap_label", "topic_words", "help", "type", "required", "sensitive", "skippable", "ask_if", "options"].filter(function (k) { return JSON.stringify(o[k]) !== JSON.stringify(q[k]); });
         if (changes.length) rows.push(el("li", null, [el("strong", { text: q.prompt_screen }), " — changed: " + changes.map(function (k) { return { prompt_screen: "wording", voice_template: "spoken wording", prompt_voice: "spoken wording", ask_if: "when it's asked", options: "answers/effects" }[k] || k; }).filter(function (x, i, a) { return a.indexOf(x) === i; }).join(", ")]));
       });
       old.questions.forEach(function (q) { if (curIds.indexOf(q.id) === -1) rows.push(el("li", { class: "diff-del", text: "Removed: " + q.prompt_screen })); });

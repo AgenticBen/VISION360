@@ -26,27 +26,12 @@ export const POLICY_VERSION = "dialogue-2026-11-04.1";
 
 const KIND_TEXT = { unknown: "not sure", declined: "preferred not to say", skipped: "skipped" };
 
-const RECAP_LABEL = {
-  actor: "Looking for",
-  county: "Where they live",
-  goals: "Help wanted with",
-  age_band: "Age",
-  hearing_loss: "Hearing loss",
-  eye_doctor: "Has an eye doctor",
-  eye_exam_recency: "Last eye exam",
-  insurance: "Health insurance",
-  veteran: "Served in the military",
-  va_enrolled: "Signed up for VA health care",
-  discharge: "Discharge",
-  housing_stable: "Housing steady",
-  food_worry: "Food running out",
-  utilities: "Utility shut-off threats",
-  transport_barrier: "Transportation problems",
-  legal_matter: "Legal matters",
-  loneliness: "Feeling lonely or cut off",
-  broadband: "Internet at home",
-  devices: "Devices",
-};
+// Recap labels come from the workflow data (question.recap_label), so a
+// question added in the editor is recapped by its own label, never its id.
+function recapLabel(corpus, id) {
+  const qq = corpus.assessment.questions.find((x) => x.id === id);
+  return (qq && (qq.recap_label || qq.prompt_screen)) || "That answer";
+}
 
 // ------------------------------------------------------------------ helpers
 export function newDialogueState() {
@@ -210,7 +195,7 @@ export function createDialogue(ctx) {
     const w = whoFor(session);
     const answers = answersOf(session).map((a) => ({
       questionId: a.questionId,
-      label: screenLabel(a.questionId, w, RECAP_LABEL[a.questionId] || a.questionId),
+      label: screenLabel(q(corpus, a.questionId), w, recapLabel(corpus, a.questionId)),
       kind: a.kind,
       value: a.value,
       detail: a.detail || null,
@@ -243,7 +228,7 @@ export function createDialogue(ctx) {
     const w = whoFor(session);
     const items = answersOf(session).map((a) => ({
       questionId: a.questionId,
-      label: screenLabel(a.questionId, w, RECAP_LABEL[a.questionId] || a.questionId),
+      label: screenLabel(q(corpus, a.questionId), w, recapLabel(corpus, a.questionId)),
       display: answerText(corpus, a, true),
       kind: a.kind,
     }));
@@ -251,14 +236,14 @@ export function createDialogue(ctx) {
   }
 
   function lineFor(session, a) {
-    return recapLine(q(corpus, a.questionId), a, whoFor(session), RECAP_LABEL[a.questionId] || a.questionId);
+    return recapLine(q(corpus, a.questionId), a, whoFor(session), recapLabel(corpus, a.questionId));
   }
 
   function recapSpeech(session) {
     const lines = [];
     const fine = [];
     for (const a of answersOf(session)) {
-      const topic = noConcernTopic(a);
+      const topic = noConcernTopic(a, q(corpus, a.questionId));
       if (topic) fine.push(topic); else lines.push(lineFor(session, a));
     }
     if (fine.length) lines.push(`no concerns about ${joinList(fine, "or")}`);
@@ -285,7 +270,7 @@ export function createDialogue(ctx) {
     const parts = [...lead];
     if (block && !st.offeredBlocks.includes(block.id)) {
       st.offeredBlocks.push(block.id);
-      const intro = sectionIntro(block.id, w);
+      const intro = sectionIntro(block, w);
       if (block.skippable_as_block) {
         st.pending = { type: "block_offer", blockId: block.id };
         parts.push(intro || "The next questions are optional. Would you like to go through them, or skip them?");
@@ -374,7 +359,7 @@ export function createDialogue(ctx) {
     if (!target) return null;
     if (target.ambiguousTargets) {
       session.state.pending = { type: "which_correction", candidates: target.ambiguousTargets, resumePhase: session.state.phase };
-      const names = target.ambiguousTargets.map((id) => (RECAP_LABEL[id] || id).toLowerCase());
+      const names = target.ambiguousTargets.map((id) => recapLabel(corpus, id).toLowerCase());
       return reply(session, [`Which one do you want to change: ${joinList(names, "or")}?`], { expect: "free" });
     }
     const question = q(corpus, target.questionId);
@@ -466,7 +451,7 @@ export function createDialogue(ctx) {
       return resumeAfterAside(session, ["Okay, carrying on."]);
     }
     if (st.pending && st.pending.type === "which_correction") {
-      const cand = st.pending.candidates.find((id) => normalize(text).includes(normalize(RECAP_LABEL[id] || id).trim()) || normalize(text).includes(" " + id.replace(/_/g, " ") + " "));
+      const cand = st.pending.candidates.find((id) => normalize(text).includes(normalize(recapLabel(corpus, id)).trim()) || normalize(text).includes(" " + id.replace(/_/g, " ") + " "));
       if (cand) {
         const question = q(corpus, cand);
         st.pending = { type: "reask_for_correction", questionId: cand, resumePhase: st.pending.resumePhase };
@@ -742,7 +727,7 @@ export function createDialogue(ctx) {
     if (detectGlobal(text).email) return beginEmail(session);
     // A reply that talks about one of the answers ("I do have an eye doctor")
     // is a correction even if it contains a yes-word. Never treat it as "yes".
-    const namesAnswer = mentionedTopics(text, answersOf(session).map((a) => a.questionId)).length > 0;
+    const namesAnswer = mentionedTopics(text, answersOf(session).map((a) => a.questionId), corpus.assessment).length > 0;
     if (strictConfirm(text) && !namesAnswer) {
       // We just asked "what should I change?", so a bare yes doesn't answer
       // that. Read the summary back and ask again rather than confirming.

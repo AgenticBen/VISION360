@@ -30,6 +30,7 @@
       "title": "Eye care",
       "skippable_as_block": false,
       "preamble": "Most of the rehabilitation services in here need a report from an eye doctor before they can start. These three questions are the ones that unblock the most people.",
+      "intro_voice": "Next, a few quick questions about eye care, since most services need a recent report from an eye doctor.",
       "questions": [
         "eye_doctor",
         "eye_exam_recency",
@@ -41,6 +42,7 @@
       "title": "Military service",
       "skippable_as_block": false,
       "preamble": null,
+      "intro_voice": "",
       "questions": [
         "veteran",
         "va_enrolled",
@@ -52,6 +54,7 @@
       "title": "Everyday life",
       "skippable_as_block": true,
       "preamble": "The next few questions are about things other than sight. We ask them because they usually decide whether any of the rest actually works — a rehabilitation plan is hard to start from an unsteady home, and none of it helps if there is no way to get there. Be warned: for several of these, this directory has nothing to offer, and it will say so plainly instead of inventing a referral. You can skip this whole section.",
+      "intro_voice": "Last few questions — these are about everyday life, like housing, food and getting around. They help me spot other kinds of support, and they're optional. Would you like to go through them, or skip them?",
       "questions": [
         "housing_stable",
         "food_worry",
@@ -72,6 +75,14 @@
       "prompt_screen": "Who are you answering for?",
       "prompt_voice": "First, are you looking for yourself, or for someone else?",
       "voice_template": "Is this for you, or are you looking into this for someone else?",
+      "recap_label": "Looking for",
+      "screen_label": "Who this is for",
+      "topic_words": [
+        "for myself",
+        "for someone else",
+        "who it's for",
+        "who this is for"
+      ],
       "help": "Some organisations take a referral from a family member or a professional. A few ask the person to sign up themselves. This helps us say which is which.",
       "sensitive": false,
       "skippable": true,
@@ -82,6 +93,15 @@
           "label_screen": "Myself",
           "label_voice": "myself",
           "aliases": [
+            "for myself",
+            "it's for me",
+            "i am blind",
+            "i'm blind",
+            "my eyes",
+            "my vision",
+            "my sight",
+            "i have low vision",
+            "i'm losing my sight",
             "me",
             "for me",
             "i am",
@@ -106,6 +126,25 @@
           "label_screen": "A family member or friend",
           "label_voice": "a family member or friend",
           "aliases": [
+            "my dad",
+            "my mom",
+            "my mum",
+            "my grandmother",
+            "my grandfather",
+            "my grandma",
+            "my grandpa",
+            "my brother",
+            "my sister",
+            "my aunt",
+            "my uncle",
+            "my partner",
+            "my spouse",
+            "my child",
+            "my kid",
+            "my friend",
+            "for him",
+            "for her",
+            "family member",
             "my mother",
             "my father",
             "my husband",
@@ -136,6 +175,13 @@
           "label_screen": "A professional making a referral",
           "label_voice": "a professional making a referral",
           "aliases": [
+            "my client",
+            "a client",
+            "my patient",
+            "a patient",
+            "i'm a case manager",
+            "i'm a social worker",
+            "referring someone",
             "case manager",
             "social worker",
             "i'm a professional",
@@ -166,6 +212,19 @@
       "prompt_screen": "Where does the person live?",
       "prompt_voice": "Roughly where does the person live?",
       "voice_template": "Where {do} {S} live? The town or county is fine.",
+      "recap_label": "Where they live",
+      "screen_label": "Where they live",
+      "screen_label_self": "Where you live",
+      "topic_words": [
+        "county",
+        "live in",
+        "lives in",
+        "living in",
+        "where i live",
+        "where they live",
+        "location",
+        "area"
+      ],
       "help": "Distance changes the order we show things in. It never removes anything from your results.",
       "sensitive": false,
       "skippable": true,
@@ -412,6 +471,15 @@
       "prompt_screen": "What would make the biggest difference right now? Choose as many as you like.",
       "prompt_voice": "What would make the biggest difference right now? You can name more than one.",
       "voice_template": "What would {S} most like help with right now?",
+      "recap_label": "Help wanted with",
+      "screen_label": "Help wanted with",
+      "topic_words": [
+        "goal",
+        "goals",
+        "difference",
+        "want help with",
+        "what matters"
+      ],
       "help": "There is no wrong answer, and you can change your mind later.",
       "sensitive": false,
       "skippable": true,
@@ -421,7 +489,12 @@
           "value": "work",
           "label_screen": "Finding or keeping work",
           "label_voice": "finding or keeping work",
+          "short_label": "work",
           "aliases": [
+            "my job",
+            "keep working",
+            "find work",
+            "get a job",
             "a job",
             "employment",
             "back to work",
@@ -469,7 +542,13 @@
           "value": "home",
           "label_screen": "Adjusting to sight loss at home",
           "label_voice": "adjusting to sight loss at home",
+          "short_label": "managing at home",
           "aliases": [
+            "cook",
+            "cooking safely",
+            "around the home",
+            "live on my own",
+            "live independently",
             "cooking",
             "daily living",
             "around the house",
@@ -528,9 +607,14 @@
           "value": "travel",
           "label_screen": "Learning to get around safely",
           "label_voice": "learning to get around safely",
+          "short_label": "getting around safely",
           "aliases": [
-            "cane",
+            "get around",
+            "getting around",
             "white cane",
+            "guide dog",
+            "bus on my own",
+            "cane",
             "mobility",
             "walking",
             "getting out",
@@ -577,7 +661,18 @@
           "value": "technology",
           "label_screen": "Technology and getting online",
           "label_voice": "technology and getting online",
+          "short_label": "using a phone or computer",
           "aliases": [
+            "magnifying",
+            "magnification",
+            "on my phone",
+            "use my phone",
+            "use a computer",
+            "iphone",
+            "smart phone",
+            "voiceover",
+            "zoomtext",
+            "jaws",
             "computer",
             "phone",
             "screen reader",
@@ -671,7 +766,12 @@
           "value": "reading",
           "label_screen": "Reading, talking books or braille",
           "label_voice": "reading, talking books or braille",
+          "short_label": "reading",
           "aliases": [
+            "listen to books",
+            "read again",
+            "reading mail",
+            "read my mail",
             "books",
             "audiobooks",
             "large print",
@@ -764,7 +864,11 @@
           "value": "meeting_people",
           "label_screen": "Meeting other people",
           "label_voice": "meeting other people",
+          "short_label": "meeting people",
           "aliases": [
+            "meet people",
+            "others like me",
+            "support groups",
             "support group",
             "friends",
             "lonely",
@@ -857,6 +961,7 @@
           "value": "recreation",
           "label_screen": "Sport and recreation",
           "label_voice": "sport and recreation",
+          "short_label": "sports and recreation",
           "aliases": [
             "exercise",
             "running",
@@ -990,6 +1095,14 @@
       "prompt_screen": "How old is the person?",
       "prompt_voice": "Roughly how old is the person?",
       "voice_template": "And how old {be} {S}?",
+      "recap_label": "Age",
+      "screen_label": "Age",
+      "topic_words": [
+        "age",
+        "years old",
+        "how old",
+        "old"
+      ],
       "help": "Several services are split by age, so this changes the answer quite a lot. A rough band is enough — we do not want a date of birth.",
       "sensitive": false,
       "skippable": true,
@@ -1309,6 +1422,11 @@
       "prompt_screen": "Does the person also have hearing loss?",
       "prompt_voice": "Does the person also have any hearing loss?",
       "voice_template": "{Do} {S} have any trouble with hearing as well?",
+      "recap_label": "Hearing loss",
+      "topic_words": [
+        "hearing",
+        "deaf"
+      ],
       "help": "Combined hearing and sight loss opens a separate set of services that are easy to miss.",
       "sensitive": false,
       "skippable": true,
@@ -1424,6 +1542,12 @@
       "prompt_screen": "Does the person have an eye doctor?",
       "prompt_voice": "Does the person have an eye doctor they see?",
       "voice_template": "{Do} {S} have an eye doctor right now?",
+      "recap_label": "Has an eye doctor",
+      "topic_words": [
+        "eye doctor",
+        "ophthalmologist",
+        "optometrist"
+      ],
       "help": "Most rehabilitation services need a report from an eye doctor before they can start. If there is no eye doctor, that is the first thing to fix, and there are free routes.",
       "sensitive": false,
       "skippable": true,
@@ -1565,6 +1689,13 @@
       "prompt_screen": "When was the last eye exam?",
       "prompt_voice": "When was the last eye exam, roughly?",
       "voice_template": "When was {pos} last eye exam, roughly?",
+      "recap_label": "Last eye exam",
+      "topic_words": [
+        "eye exam",
+        "last exam",
+        "exam was",
+        "exam date"
+      ],
       "help": "Agencies usually want a report from the last year or so. An old report often has to be redone.",
       "sensitive": false,
       "skippable": true,
@@ -1750,6 +1881,14 @@
       "prompt_screen": "What health cover does the person have?",
       "prompt_voice": "What health cover does the person have, if any?",
       "voice_template": "What kind of health insurance {do} {S} have, if any?",
+      "recap_label": "Health insurance",
+      "topic_words": [
+        "insurance",
+        "medicaid",
+        "medicare",
+        "health cover",
+        "coverage"
+      ],
       "help": "This decides which of the free and low-cost eye-care routes are open. We do not ask for any policy number.",
       "sensitive": true,
       "skippable": true,
@@ -2194,6 +2333,16 @@
       "prompt_screen": "Has the person served in the US military?",
       "prompt_voice": "Has the person ever served in the military?",
       "voice_template": "{Have} {S} ever served in the military?",
+      "recap_label": "Served in the military",
+      "topic_words": [
+        "veteran",
+        "military",
+        "served",
+        "army",
+        "navy",
+        "marines",
+        "air force"
+      ],
       "help": "Any branch, any length of service. National Guard and Reserve count. This opens a large separate set of services.",
       "sensitive": false,
       "skippable": true,
@@ -2360,6 +2509,12 @@
       "prompt_screen": "Is the person enrolled in VA health care?",
       "prompt_voice": "Is the person signed up for V A health care?",
       "voice_template": "{Be} {S} signed up for VA health care?",
+      "recap_label": "Signed up for VA health care",
+      "topic_words": [
+        "va health",
+        "enrolled",
+        "signed up for va"
+      ],
       "help": "Enrolment is the single step that unlocks VA eye clinics, home training, devices and residential rehabilitation. Being enrolled is different from having a disability rating.",
       "sensitive": false,
       "skippable": true,
@@ -2604,6 +2759,10 @@
       "prompt_screen": "What kind of discharge does the person have?",
       "prompt_voice": "What kind of discharge does the person have?",
       "voice_template": "What type of discharge did {S} receive?",
+      "recap_label": "Discharge",
+      "topic_words": [
+        "discharge"
+      ],
       "help": "We ask because a discharge other than honorable can be reviewed, and that review sometimes opens VA health care. It is not a dead end.",
       "sensitive": true,
       "skippable": true,
@@ -2728,6 +2887,12 @@
       "prompt_screen": "Is the person's housing steady right now?",
       "prompt_voice": "Is the person's housing steady at the moment?",
       "voice_template": "Is {pos} housing steady right now?",
+      "recap_label": "Housing steady",
+      "topic_words": [
+        "housing",
+        "home is",
+        "rent"
+      ],
       "help": "We ask because rehabilitation at home is hard to start without a settled home. This directory has no housing services in it, and we will say so rather than pretend.",
       "sensitive": true,
       "skippable": true,
@@ -2779,6 +2944,11 @@
       "prompt_screen": "In the last year, has food run out before there was money to buy more?",
       "prompt_voice": "In the last year, has food run out before there was money to buy more?",
       "voice_template": "In the past year, has food ever run out before there was money to buy more?",
+      "recap_label": "Food running out",
+      "topic_words": [
+        "food"
+      ],
+      "no_concern_topic": "food",
       "help": "This is the standard wording used in health settings. This directory has no food programmes in it.",
       "sensitive": true,
       "skippable": true,
@@ -2814,7 +2984,8 @@
             "no",
             "never"
           ],
-          "effects": []
+          "effects": [],
+          "no_concern": true
         }
       ]
     },
@@ -2825,6 +2996,14 @@
       "prompt_screen": "In the last year, has a utility company threatened to shut off service?",
       "prompt_voice": "In the last year, has a utility company threatened to cut off the power, water or gas?",
       "voice_template": "In the past year, has a utility company threatened to shut off the power, water or gas?",
+      "recap_label": "Utility shut-off threats",
+      "topic_words": [
+        "utility",
+        "utilities",
+        "power bill",
+        "electric"
+      ],
+      "no_concern_topic": "utility bills",
       "help": "We ask because good lighting matters a great deal with low vision. This directory has no utility assistance in it.",
       "sensitive": true,
       "skippable": true,
@@ -2858,7 +3037,8 @@
             "no",
             "never"
           ],
-          "effects": []
+          "effects": [],
+          "no_concern": true
         },
         {
           "value": "not_applicable",
@@ -2869,7 +3049,8 @@
             "someone else pays",
             "not my bill"
           ],
-          "effects": []
+          "effects": [],
+          "no_concern": true
         }
       ]
     },
@@ -2880,6 +3061,15 @@
       "prompt_screen": "In the last year, has a lack of transport meant missing an appointment, work, or getting the things needed for daily life?",
       "prompt_voice": "In the last year, has a lack of transport stopped the person getting to appointments or getting what they need?",
       "voice_template": "In the past year, has getting a ride or transportation kept {obj} from appointments or things {S} need{s}?",
+      "recap_label": "Transportation problems",
+      "topic_words": [
+        "transport",
+        "transportation",
+        "rides",
+        "drive",
+        "driving"
+      ],
+      "no_concern_topic": "transportation",
       "help": "Almost everything else in this directory depends on being able to get there, so this one changes the results.",
       "sensitive": true,
       "skippable": true,
@@ -2999,7 +3189,8 @@
             "family drives me",
             "no problem"
           ],
-          "effects": []
+          "effects": [],
+          "no_concern": true
         }
       ]
     },
@@ -3010,6 +3201,12 @@
       "prompt_screen": "Is there a legal matter in the way? Choose any that apply.",
       "prompt_voice": "Is there a legal matter in the way? You can name more than one.",
       "voice_template": "Is there any legal issue getting in the way right now?",
+      "recap_label": "Legal matters",
+      "topic_words": [
+        "legal",
+        "lawyer"
+      ],
+      "no_concern_topic": "legal issues",
       "help": "We only cover two kinds well: a military discharge that needs reviewing, and a disability service or accommodation that was refused. We will say plainly where we have nothing.",
       "sensitive": true,
       "skippable": true,
@@ -3087,7 +3284,8 @@
             "nothing",
             "not applicable"
           ],
-          "effects": []
+          "effects": [],
+          "no_concern": true
         }
       ]
     },
@@ -3098,6 +3296,13 @@
       "prompt_screen": "How often does the person feel lonely or isolated?",
       "prompt_voice": "How often does the person feel lonely or cut off from other people?",
       "voice_template": "How often {do} {S} feel lonely or cut off from people?",
+      "recap_label": "Feeling lonely or cut off",
+      "topic_words": [
+        "lonely",
+        "loneliness",
+        "isolated"
+      ],
+      "no_concern_topic": "loneliness",
       "help": "This is one of the areas where we have a lot to offer, including groups you can join by ordinary telephone this week.",
       "sensitive": true,
       "skippable": true,
@@ -3248,7 +3453,8 @@
             "plenty of company",
             "i'm fine"
           ],
-          "effects": []
+          "effects": [],
+          "no_concern": true
         }
       ]
     },
@@ -3259,6 +3465,12 @@
       "prompt_screen": "Is there internet at home?",
       "prompt_voice": "Is there internet at home?",
       "voice_template": "{Do} {S} have internet at home?",
+      "recap_label": "Internet at home",
+      "topic_words": [
+        "internet",
+        "wifi",
+        "broadband"
+      ],
       "help": "Several services are online only. Several others work entirely by ordinary telephone, and we will put those first if there is no internet.",
       "sensitive": false,
       "skippable": true,
@@ -3353,6 +3565,15 @@
       "prompt_screen": "What does the person have to use? Choose any that apply.",
       "prompt_voice": "Does the person have a smartphone, a computer or tablet, both, or neither?",
       "voice_template": "{Do} {S} have a smartphone, a computer or tablet, or neither?",
+      "recap_label": "Devices",
+      "topic_words": [
+        "smartphone",
+        "computer",
+        "tablet",
+        "devices",
+        "iphone",
+        "android"
+      ],
       "help": "This tells us whether to point at things that need a device, or at things that work without one.",
       "sensitive": false,
       "skippable": true,

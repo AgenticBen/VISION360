@@ -60,15 +60,11 @@ export function askOpen(question, w) {
   return fill(typeof t === "function" ? t(w) : t, w);
 }
 
-// Short, speakable option names used only when we need to offer choices.
-const SHORT = {
-  goals: { work: "work", home: "managing at home", travel: "getting around safely", technology: "using a phone or computer", reading: "reading", meeting_people: "meeting people", recreation: "sports and recreation" },
-};
-
+// Short, speakable option names (option.short_label in the workflow data)
+// are used only when we need to offer choices.
 function optLabel(question, v) {
-  if (SHORT[question.id] && SHORT[question.id][v]) return SHORT[question.id][v];
   const o = (question.options || []).find((x) => x.value === v);
-  return o ? o.label_voice || o.label_screen : v;
+  return o ? o.short_label || o.label_voice || o.label_screen : v;
 }
 
 export function joinList(items, word = "and") {
@@ -87,15 +83,10 @@ export function askWithChoices(question, w) {
 }
 
 // ------------------------------------------------------------- sections
-const SECTION = {
-  eye_care: (w) => fill("Next, a few quick questions about eye care, since most services need a recent report from an eye doctor.", w),
-  military: () => "",
-  everyday: () => "Last few questions — these are about everyday life, like housing, food and getting around. They help me spot other kinds of support, and they're optional. Would you like to go through them, or skip them?",
-};
-
-export function sectionIntro(blockId, w) {
-  const f = SECTION[blockId];
-  return f ? f(w) : null;
+// Spoken section introductions come from the workflow data (block.intro_voice).
+export function sectionIntro(block, w) {
+  if (!block || typeof block.intro_voice !== "string") return null;
+  return block.intro_voice ? fill(block.intro_voice, w) : "";
 }
 
 // ------------------------------------------------------------- acknowledgements
@@ -170,22 +161,19 @@ export function recapLine(question, a, w, label) {
 
 // Everyday answers that mean "no concern": folded into one short phrase in
 // the spoken summary instead of being read out one by one.
-const NO_CONCERN = {
-  food_worry: ["never", "food"], utilities: ["never", "utility bills"], transport_barrier: ["never", "transportation"],
-  legal_matter: ["none", "legal issues"], loneliness: ["never", "loneliness"],
-};
-export function noConcernTopic(a) {
-  const nc = NO_CONCERN[a.questionId];
-  if (!nc || a.kind !== "answer") return null;
+// Uses question.no_concern_topic and the options marked no_concern.
+export function noConcernTopic(a, question) {
+  if (!question || !question.no_concern_topic || a.kind !== "answer") return null;
   const vals = [].concat(a.value);
-  if (vals.length === 1 && (vals[0] === nc[0] || (a.questionId === "utilities" && vals[0] === "not_applicable"))) return nc[1];
-  return null;
+  const fine = (question.options || []).filter((o) => o.no_concern).map((o) => o.value);
+  return vals.length === 1 && fine.includes(vals[0]) ? question.no_concern_topic : null;
 }
 
-// Screen labels for the recap card, personalised.
-export function screenLabel(qid, w, fallback) {
-  const map = { actor: "Who this is for", county: w.self ? "Where you live" : "Where they live", goals: "Help wanted with", age_band: "Age" };
-  return map[qid] || fallback;
+// Screen labels for the recap card, personalised (question.screen_label and
+// screen_label_self in the workflow data; the recap label otherwise).
+export function screenLabel(question, w, fallback) {
+  if (!question) return fallback;
+  return (w.self && question.screen_label_self) || question.screen_label || fallback;
 }
 
 export function greetingText() {

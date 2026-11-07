@@ -41,13 +41,15 @@ export const TOOLS = [
     id: str("Optional id (lowercase_with_underscores); made from the wording if omitted"),
     type: { type: "string", enum: ["single", "multi", "yes_no", "text", "long_text", "email", "phone", "address", "date", "consent"] },
     prompt_screen: str("Wording on screen"), prompt_voice: str("Wording the assistant says (optional)"), help: str("Help text (optional)"),
+    recap_label: str("A few words used when the answers are read back, e.g. 'Last eye exam' (defaults to the wording)"),
+    topic_words: { type: "array", items: { type: "string" }, description: "Words that mean this question, so people can correct it by naming it" },
     required: { type: "boolean" }, sensitive: { type: "boolean" },
     options: { type: "array", items: { type: "string" }, description: "Answer labels for choice questions" },
     follow_up_of: { type: "object", properties: { question: { type: "string" }, answers: { type: "array", items: { type: "string" } } }, required: ["question", "answers"], description: "Only ask after these answer values of that question" },
   }, ["flow", "section", "type", "prompt_screen"]), annotations: EDIT },
   { name: "update_question", title: "Change a question", description: "Change a question's wording, spoken wording, help, type or flags in the draft.", inputSchema: S({
     flow: FLOW, id: str("Question id"),
-    changes: { type: "object", properties: { prompt_screen: { type: "string" }, prompt_voice: { type: "string" }, voice_template: { type: "string" }, help: { type: "string" }, type: { type: "string" }, required: { type: "boolean" }, sensitive: { type: "boolean" }, skippable: { type: "boolean" } }, additionalProperties: false },
+    changes: { type: "object", properties: { prompt_screen: { type: "string" }, prompt_voice: { type: "string" }, voice_template: { type: "string" }, recap_label: { type: "string" }, topic_words: { type: "array", items: { type: "string" } }, help: { type: "string" }, type: { type: "string" }, required: { type: "boolean" }, sensitive: { type: "boolean" }, skippable: { type: "boolean" } }, additionalProperties: false },
   }, ["flow", "id", "changes"]), annotations: EDIT },
   { name: "delete_question", title: "Delete a question", description: "Delete a question from the draft. Follow-ups that depended on it become always asked.", inputSchema: S({ flow: FLOW, id: str("Question id") }, ["flow", "id"]), annotations: EDIT },
   { name: "move_question", title: "Move a question", description: "Move a question (with its follow-ups) to a section, after a given question or to the start or end.", inputSchema: S({ flow: FLOW, id: str("Question id"), section: str("Target section id"), after: str("Optional question id to place it after"), position: { type: "string", enum: ["start", "end"] } }, ["flow", "id", "section"]), annotations: EDIT },
@@ -122,7 +124,8 @@ export function createMcp({ flows, requests, corpus, overview, canWrite = () => 
       const usesTemplate = flow.questions.some((x) => x.voice_template);
       const question = {
         id, domain: b.id, type: a.type, prompt_screen: a.prompt_screen, prompt_voice: a.prompt_voice || a.prompt_screen,
-        voice_template: usesTemplate ? a.prompt_voice || a.prompt_screen : null, help: a.help || null,
+        voice_template: usesTemplate ? a.prompt_voice || a.prompt_screen : null,
+        recap_label: a.recap_label || String(a.prompt_screen || "").replace(/\?$/, "").slice(0, 60), topic_words: Array.isArray(a.topic_words) ? a.topic_words : [], help: a.help || null,
         required: !!a.required, sensitive: !!a.sensitive, skippable: !a.required, ask_if: null, options,
       };
       if (a.follow_up_of) { q(a.follow_up_of.question); question.ask_if = { q: a.follow_up_of.question, in: a.follow_up_of.answers }; }

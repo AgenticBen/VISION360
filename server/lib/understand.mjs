@@ -128,29 +128,9 @@ export function strictConfirm(text) {
 }
 
 // ---------------------------------------------------------------- options
-// Extra everyday words for EXISTING options. These only widen how an answer is
-// recognised; they add no options, weights or rules (those live in
-// assessment.json and are unchanged). Every result is still read back and
-// confirmed by the person.
-const EXTRA_ALIASES = {
-  actor: {
-    family_friend: ["my dad", "my mom", "my mum", "my grandmother", "my grandfather", "my grandma", "my grandpa", "my brother", "my sister", "my aunt", "my uncle", "my partner", "my spouse", "my child", "my kid", "my friend", "for him", "for her", "family member"],
-    professional: ["my client", "a client", "my patient", "a patient", "i'm a case manager", "i'm a social worker", "referring someone"],
-    self: ["for myself", "it's for me", "i am blind", "i'm blind", "my eyes", "my vision", "my sight", "i have low vision", "i'm losing my sight"],
-  },
-  goals: {
-    travel: ["get around", "getting around", "white cane", "guide dog", "bus on my own"],
-    reading: ["listen to books", "read again", "reading mail", "read my mail"],
-    technology: ["magnifying", "magnification", "on my phone", "use my phone", "use a computer", "iphone", "smart phone", "voiceover", "zoomtext", "jaws"],
-    work: ["my job", "keep working", "find work", "get a job"],
-    home: ["cook", "cooking safely", "around the home", "live on my own", "live independently"],
-    meeting_people: ["meet people", "others like me", "support groups"],
-  },
-};
-
+// Everyday words for each option live in the workflow data (option.aliases).
 function optionPhrases(opt, q) {
   const list = [];
-  for (const a of ((EXTRA_ALIASES[q.id] || {})[opt.value] || [])) list.push(a);
   if (opt.label_voice) list.push(opt.label_voice);
   if (opt.label_screen) list.push(opt.label_screen);
   list.push(opt.value.replace(/_/g, " "));
@@ -402,35 +382,15 @@ export function extractMany(text, assessment, ctx = {}) {
   return found;
 }
 
-// Which already-answered question is a correction about? Uses topic words and
-// option matches. Returns {questionId, interpretation} or null.
-const TOPICS = {
-  actor: ["for myself", "for someone else", "who it's for", "who this is for"],
-  county: ["county", "live in", "lives in", "living in", "where i live", "where they live", "location", "area"],
-  goals: ["goal", "goals", "difference", "want help with", "what matters"],
-  age_band: ["age", "years old", "how old", "old"],
-  hearing_loss: ["hearing", "deaf"],
-  eye_doctor: ["eye doctor", "ophthalmologist", "optometrist"],
-  eye_exam_recency: ["eye exam", "last exam", "exam was", "exam date"],
-  insurance: ["insurance", "medicaid", "medicare", "health cover", "coverage"],
-  veteran: ["veteran", "military", "served", "army", "navy", "marines", "air force"],
-  va_enrolled: ["va health", "enrolled", "signed up for va"],
-  discharge: ["discharge"],
-  housing_stable: ["housing", "home is", "rent"],
-  food_worry: ["food"],
-  utilities: ["utility", "utilities", "power bill", "electric"],
-  transport_barrier: ["transport", "transportation", "rides", "drive", "driving"],
-  legal_matter: ["legal", "lawyer"],
-  loneliness: ["lonely", "loneliness", "isolated"],
-  broadband: ["internet", "wifi", "broadband"],
-  devices: ["smartphone", "computer", "tablet", "devices", "iphone", "android"],
-};
+// Which already-answered question is a correction about? Uses each
+// question's topic_words (workflow data) and option matches.
+const topicsOf = (assessment, qid) => ((assessment && assessment.questions.find((x) => x.id === qid)) || {}).topic_words || [];
 
 // Which of these answers does the text talk about? "I do have an eye doctor"
 // mentions eye_doctor, so it is a statement about an answer, not a bare yes.
-export function mentionedTopics(text, askableIds) {
+export function mentionedTopics(text, askableIds, assessment) {
   const n = normalize(text);
-  return askableIds.filter((qid) => (TOPICS[qid] || []).some((t) => has(n, t)));
+  return askableIds.filter((qid) => topicsOf(assessment, qid).some((t) => has(n, t)));
 }
 
 export function findCorrectionTarget(text, assessment, askableIds, ctx = {}) {
@@ -439,7 +399,7 @@ export function findCorrectionTarget(text, assessment, askableIds, ctx = {}) {
   for (const qid of askableIds) {
     const q = assessment.questions.find((x) => x.id === qid);
     if (!q) continue;
-    const topicHit = (TOPICS[qid] || []).some((t) => has(n, t));
+    const topicHit = (q.topic_words || []).some((t) => has(n, t));
     let interp = interpretAnswer(text, q, ctx);
     const distinct = matchOptions(n, q, { distinctiveOnly: true }).length > 0;
     if (topicHit && (interp.kind === "answer" || interp.kind === "unknown" || interp.kind === "ambiguous")) candidates.push({ questionId: qid, interpretation: interp, strength: 3 });

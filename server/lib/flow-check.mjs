@@ -47,6 +47,13 @@ export function checkFlow(flow, { organizations = [], routing = true } = {}) {
     if (!optStr(q.voice_template, 600)) err(w, `"${q.id}" spoken wording template is too long.`);
     if (q.voice_template && /\{(?!S\}|Sc\}|pos\}|obj\}|Do\}|do\}|Be\}|be\}|Have\}|have\}|s\}|re\})[^}]*\}/.test(q.voice_template)) warn(w, `"${q.id}" spoken wording has a placeholder the assistant doesn't know.`);
     if (!optStr(q.help, 1500)) err(w, `"${q.id}" help text is too long.`);
+    // The assistant reads these from the data (recap, corrections), so a
+    // question the assistant asks must carry them.
+    if (routing) {
+      if (!str(q.recap_label, 80)) err(w, `"${q.id}" needs a recap label (a few words the assistant uses when it reads the answers back).`);
+      if (!Array.isArray(q.topic_words) || !q.topic_words.length) warn(w, `"${q.id}" has no topic words, so people can't correct it by naming it ("my age is…").`);
+      else if (q.topic_words.some((t) => !str(t, 60))) err(w, `"${q.id}" has an empty or overlong topic word.`);
+    }
     const opts = Array.isArray(q.options) ? q.options : [];
     if (!Array.isArray(q.options)) err(w, `"${q.id}" needs an options list (it can be empty for typed answers).`);
     if (CHOICE_TYPES.includes(q.type) && q.type !== "consent" && opts.length < 2) err(w, `"${q.id}" is a choice question and needs at least two answers.`);
