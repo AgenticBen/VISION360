@@ -227,6 +227,8 @@ export function createMcp({ flows, requests, corpus, overview, canWrite = () => 
   };
 
   async function one(msg) {
+    // One line per call in the Vercel logs, so connection problems can be traced.
+    try { console.log("mcp", JSON.stringify({ method: msg && msg.method, tool: msg && msg.params && msg.params.name, client: msg && msg.params && msg.params.clientInfo, version: msg && msg.params && msg.params.protocolVersion })); } catch (e) {}
     if (!msg || msg.jsonrpc !== "2.0" || typeof msg.method !== "string") return { jsonrpc: "2.0", id: msg && msg.id != null ? msg.id : null, error: { code: -32600, message: "Invalid request" } };
     const isNote = msg.id === undefined || msg.id === null;
     const reply = (result) => (isNote ? null : { jsonrpc: "2.0", id: msg.id, result });
@@ -234,9 +236,15 @@ export function createMcp({ flows, requests, corpus, overview, canWrite = () => 
     switch (msg.method) {
       case "initialize": {
         const asked = msg.params && msg.params.protocolVersion;
-        return reply({ protocolVersion: KNOWN_VERSIONS.includes(asked) ? asked : KNOWN_VERSIONS[0], capabilities: { tools: { listChanged: false } }, serverInfo: SERVER, instructions: INSTRUCTIONS });
+        return reply({ protocolVersion: KNOWN_VERSIONS.includes(asked) ? asked : KNOWN_VERSIONS[0], capabilities: { tools: { listChanged: false }, resources: {}, prompts: {}, logging: {} }, serverInfo: SERVER, instructions: INSTRUCTIONS });
       }
       case "ping": return reply({});
+      // Some clients ask for these even when not advertised; answer with empty lists.
+      case "resources/list": return reply({ resources: [] });
+      case "resources/templates/list": return reply({ resourceTemplates: [] });
+      case "prompts/list": return reply({ prompts: [] });
+      case "logging/setLevel": return reply({});
+      case "completion/complete": return reply({ completion: { values: [], hasMore: false } });
       case "tools/list": return reply({ tools: TOOLS });
       case "tools/call": {
         const name = msg.params && msg.params.name;

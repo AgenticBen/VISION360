@@ -14,7 +14,9 @@ const sha1 = (t) => createHash("sha1").update(t).digest("hex");
 export function createSupabaseDocStore(env, fetchImpl = globalThis.fetch) {
   const base = String(env.V360_SUPABASE_URL || "").replace(/\/+$/, "") + "/rest/v1";
   const key = env.V360_SUPABASE_SERVICE_KEY;
-  const headers = (extra = {}) => ({ apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...extra });
+  // Legacy service_role keys are JWTs and also go in Authorization; the newer
+  // sb_secret_ keys go in apikey only.
+  const headers = (extra = {}) => ({ apikey: key, ...(/^eyJ/.test(String(key)) ? { Authorization: `Bearer ${key}` } : {}), "Content-Type": "application/json", ...extra });
   const q = (branch, file) => `branch=eq.${encodeURIComponent(branch)}&path=eq.${encodeURIComponent(file)}`;
 
   async function req(method, url, body, extra) {

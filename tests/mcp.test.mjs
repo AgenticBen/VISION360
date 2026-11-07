@@ -23,6 +23,10 @@ test("handshake, notifications, tool list and method errors", async () => {
   r = await rpc(app, "tools/list", {});
   assert.deepEqual(r.json.result.tools.map((t) => t.name), TOOL_NAMES);
   for (const t of r.json.result.tools) assert.equal(t.inputSchema.type, "object", t.name);
+  r = await rpc(app, "resources/list", {});
+  assert.deepEqual(r.json.result.resources, []);
+  r = await rpc(app, "prompts/list", {});
+  assert.deepEqual(r.json.result.prompts, []);
   r = await rpc(app, "nope", {});
   assert.equal(r.json.error.code, -32601);
   r = await call(app, "GET", "/api/mcp");

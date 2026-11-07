@@ -18,6 +18,8 @@ import { createRequests } from "./requests.mjs";
 import { createFlowRepo } from "./flow-repo.mjs";
 import { createMcp } from "./mcp.mjs";
 
+import { randomUUID } from "node:crypto";
+
 const MAX_BODY = 16 * 1024;
 
 export async function createApp(opts = {}) {
@@ -298,15 +300,19 @@ export async function createApp(opts = {}) {
       }
       // ---------------- MCP (Claude / ChatGPT connector) ------------------
       if (p === "/api/mcp") {
-        if (method !== "POST") return send(res, 405, { error: "This MCP endpoint takes POST (Streamable HTTP, JSON responses)." }, { Allow: "POST" });
+        if (method === "DELETE") { res.writeHead(200, { "Cache-Control": "no-store" }); return res.end(); }
+        if (method !== "POST") return send(res, 405, { error: "This MCP endpoint takes POST (Streamable HTTP, JSON responses)." }, { Allow: "POST, DELETE" });
         if (env.V360_MCP_KEY) {
           const given = req.headers["x-v360-key"] || String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
           if (!given || !tokenMatches(given, tokenHash(env.V360_MCP_KEY))) throw httpError(401, "This connector needs its key.");
         }
         if (!limiter(ip + ":mcp", 120)) throw httpError(429, "Too many requests — please wait a moment.");
         const out = await mcp.handle(await readJson(req, BIG_BODY));
-        if (out.status === 202) { res.writeHead(202, { "Cache-Control": "no-store" }); return res.end(); }
-        return send(res, 200, out.body);
+        // Stateless server; a session id is still handed out for clients that expect one.
+        const sid = req.headers["mcp-session-id"] || (Array.isArray(out.body) ? null : out.body && out.body.result && out.body.result.serverInfo ? randomUUID() : null);
+        const extra = sid ? { "Mcp-Session-Id": sid } : {};
+        if (out.status === 202) { res.writeHead(202, { "Cache-Control": "no-store", ...extra }); return res.end(); }
+        return send(res, 200, out.body, extra);
       }
       // ---------------- workflows ---------------------------------------
       if (p === "/api/flows" || p.startsWith("/api/flows/")) {
