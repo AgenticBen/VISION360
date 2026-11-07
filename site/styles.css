@@ -465,6 +465,8 @@ input[type="search"], select {
   color: var(--accent); display: flex; gap: .5rem; align-items: baseline; width: 100%;
 }
 .disclosure:hover .disclosure-name { text-decoration: underline; text-decoration-thickness: 2px; }
+/* Long names wrap inside the card at large text sizes (up to 200%). */
+.disclosure-name { min-width: 0; overflow-wrap: anywhere; }
 /* Under 1rem, and justified: aria-hidden decoration carrying no text. */
 .disclosure .caret { flex: none; font-size: .8em; transform: rotate(0deg); }
 .disclosure[aria-expanded="true"] .caret { transform: rotate(90deg); }

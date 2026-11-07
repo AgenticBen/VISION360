@@ -1,58 +1,63 @@
 /* Shared site menu (site-menu.js). Uses the colour tokens every page already
-   defines, so it follows text size, dark mode and high contrast. */
-.sm { background: var(--accent, #051362); color: var(--accent-ink, #fff); font-size: 1rem; line-height: 1.4; position: relative; z-index: 40; }
-.sm-inner { max-width: 72rem; margin: 0 auto; padding: 0.35rem 1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; }
-.sm-home { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--font-heading, inherit); color: inherit; font-weight: 700; text-decoration: none; padding: 0.45rem 0.4rem; margin-right: auto; letter-spacing: 0.02em; }
+   defines, so it follows dark mode and high contrast. Its size is fixed: the
+   page's text size setting enlarges the content below, never the menu, so
+   the menu always stays on one line. Sizes inside are in em of that fixed
+   size. */
+.sm { background: var(--accent, #051362); color: var(--accent-ink, #fff); font-size: 16px; line-height: 1.4; position: relative; z-index: 40; }
+.sm-inner { max-width: 72em; margin: 0 auto; padding: 0.35em 1em; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25em 0.5em; }
+.sm-home { display: inline-flex; align-items: center; gap: .5em; font-family: var(--font-heading, inherit); color: inherit; font-weight: 700; text-decoration: none; padding: 0.45em 0.4em; margin-right: auto; letter-spacing: 0.02em; }
 .sm-home:hover { text-decoration: underline; }
 .sm-group { position: relative; }
-.sm-toggle { font: inherit; font-weight: 700; color: inherit; background: transparent; border: 2px solid transparent; border-radius: 6px; padding: 0.4rem 0.7rem; cursor: pointer; min-height: 44px; }
+.sm-toggle { font: inherit; font-weight: 700; color: inherit; background: transparent; border: 2px solid transparent; border-radius: 6px; padding: 0.4em 0.7em; cursor: pointer; min-height: 44px; }
 .sm-toggle:hover { border-color: currentColor; }
 .sm-toggle[aria-expanded="true"] { background: var(--page, #fff); color: var(--ink, #16191d); border-color: var(--page, #fff); }
-.sm-toggle .sm-caret { display: inline-block; margin-left: 0.3rem; transition: transform 0.15s; }
+.sm-toggle .sm-caret { display: inline-block; margin-left: 0.3em; transition: transform 0.15s; }
 .sm-toggle[aria-expanded="true"] .sm-caret { transform: rotate(180deg); }
 .sm a:focus-visible, .sm button:focus-visible { outline: 3px solid var(--focus-halo, #fff); outline-offset: 2px; box-shadow: 0 0 0 6px var(--focus, #051362); }
-.sm-panel { position: absolute; right: 0; top: calc(100% + 0.35rem); min-width: 17rem; max-width: calc(100vw - 2rem); background: var(--page, #fff); color: var(--ink, #16191d); border: 2px solid var(--line, #7f8992); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,0.22); padding: 0.4rem; }
+.sm-panel { position: absolute; right: 0; top: calc(100% + 0.35em); min-width: 17em; max-width: calc(100vw - 2em); background: var(--page, #fff); color: var(--ink, #16191d); border: 2px solid var(--line, #7f8992); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,0.22); padding: 0.4em; }
 .sm-panel[hidden] { display: none; }
 .sm-panel ul { list-style: none; margin: 0; padding: 0; }
-.sm-panel a { display: block; color: var(--ink, #16191d); text-decoration: none; padding: 0.55rem 0.7rem; border-radius: 6px; min-height: 44px; box-sizing: border-box; }
+.sm-panel a { display: block; color: var(--ink, #16191d); text-decoration: none; padding: 0.55em 0.7em; border-radius: 6px; min-height: 44px; box-sizing: border-box; }
 .sm-panel a:hover { background: var(--accent-wash, #eaeef7); text-decoration: underline; }
 .sm-panel a[aria-current="page"] { background: var(--accent-wash, #eaeef7); font-weight: 800; box-shadow: inset 4px 0 0 var(--accent, #051362); }
 .sm-panel .sm-desc { display: block; font-size: 0.88em; color: var(--ink-muted, var(--muted, #4d555e)); }
-.sm-note { margin: 0.3rem 0.7rem 0.4rem; font-size: 0.88em; color: var(--ink-muted, var(--muted, #4d555e)); }
+.sm-note { margin: 0.3em 0.7em 0.4em; font-size: 0.88em; color: var(--ink-muted, var(--muted, #4d555e)); }
 @media (max-width: 34rem) {
   .sm-home { width: 100%; margin-right: 0; }
   .sm-group { position: static; }
   .sm-inner { position: relative; }
-  .sm-panel { left: 0.5rem; right: 0.5rem; min-width: 0; max-width: none; }
+  .sm-panel { left: 0.5em; right: 0.5em; min-width: 0; max-width: none; }
 }
 @media print { .sm { display: none; } }
 .sm-eye { display: inline-grid; place-items: center; background: #fff; border-radius: 6px; padding: 2px 4px; }
 .sm-eye img { display: block; height: 20px; width: auto; }
 html[data-contrast="high"] .brand-bar, html[data-theme="high"] .brand-bar, html[data-theme="dark"] .brand-bar { background: #fff; }
-.sm-link { font-weight: 700; color: inherit; text-decoration: none; border: 2px solid transparent; border-radius: 6px; padding: 0.4rem 0.7rem; min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; }
+.sm-link { font-weight: 700; color: inherit; text-decoration: none; border: 2px solid transparent; border-radius: 6px; padding: 0.4em 0.7em; min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; }
 .sm-link:hover { border-color: currentColor; text-decoration: underline; }
 .sm-link[aria-current="page"] { background: var(--page, #fff); color: var(--ink, #16191d); border-color: var(--page, #fff); }
-.sm-burger { display: inline-flex; align-items: center; gap: 0.45rem; }
+.sm-burger { display: inline-flex; align-items: center; gap: 0.45em; }
 .sm-bars { display: inline-flex; flex-direction: column; justify-content: space-between; width: 1.1em; height: 0.85em; }
 .sm-bars span { display: block; height: 2px; background: currentColor; border-radius: 1px; }
-/* Phones: the tabs sit in a 2×2 grid, and menu text stays readable but
-   never so large (at 150–200% text) that the bar overflows the screen. */
+/* Phones: one row at a fixed 14px — the logo (on the assistant pages), the
+   two tabs and ☰. A tab name may wrap onto two lines inside its own space. */
 @media (max-width: 640px) {
-  .sm { font-size: clamp(15px, 1rem, 19px); }
-  .sm-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0.3rem; padding: 0.4rem 0.6rem; }
+  .sm { font-size: 14px; }
+  .sm-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0.3em; padding: 0.4em 0.5em; align-items: center; }
+  .sm-inner:has(.sm-home-logo) { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto; }
   .sm-home { display: none; }
-  .sm-link, .sm-toggle { width: 100%; min-width: 0; justify-content: center; text-align: center; padding: 0.3rem 0.4rem; white-space: normal; }
+  .sm-link, .sm-toggle { width: 100%; min-width: 0; justify-content: center; text-align: center; padding: 0.3em 0.4em; white-space: normal; }
   .sm-group { position: static; }
 }
 /* Assistant pages: the lockup in the top corner, on white as the brand rules require. */
-.sm-logo { display: inline-flex; align-items: center; background: #fff; border-radius: 8px; padding: 0.3rem 0.6rem; }
+.sm-logo { display: inline-flex; align-items: center; background: #fff; border-radius: 8px; padding: 0.3em 0.6em; }
 .sm-logo img { display: block; height: 34px; width: auto; max-width: 100%; }
 .sm-home-logo:hover { text-decoration: none; }
 .sm-home-logo:hover .sm-logo { box-shadow: 0 0 0 3px currentColor; }
 @media (max-width: 640px) {
-  .sm-home.sm-home-logo { display: flex; grid-column: 1 / -1; padding: 0.1rem 0; width: auto; min-width: 0; }
+  .sm-home.sm-home-logo { display: flex; padding: 0.1em 0; width: auto; min-width: 0; margin: 0; }
   /* The ☰ button shows just its icon on phones (still read as "More"). */
   .sm-burger .sm-more-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .sm-burger { padding-left: 0.6rem; padding-right: 0.6rem; }
-  .sm-logo img { height: 28px; }
+  .sm-burger { padding-left: 0.6em; padding-right: 0.6em; }
+  .sm-logo { padding: 0.25em 0.4em; }
+  .sm-logo img { height: 22px; }
 }
