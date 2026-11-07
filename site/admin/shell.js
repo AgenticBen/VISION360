@@ -162,6 +162,7 @@
     }).catch(function () {});
   }
 
-  window.V360Admin = { el: el, api: api, when: when, ago: ago, svg: svg, confirm2: confirm2, setBadge: setBadge, pageLabel: pageLabel, NAV: NAV };
+  function setPublishKey(k) { try { if (k) sessionStorage.setItem(KEY, k.trim()); } catch (e) {} }
+  window.V360Admin = { el: el, api: api, publishKey: publishKey, setPublishKey: setPublishKey, when: when, ago: ago, svg: svg, confirm2: confirm2, setBadge: setBadge, pageLabel: pageLabel, NAV: NAV };
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
 })();

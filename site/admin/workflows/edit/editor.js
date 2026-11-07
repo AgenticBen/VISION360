@@ -753,11 +753,13 @@
       setIssues(r.checks);
       var who = el("input", { class: "inp", value: name, placeholder: "Your name" });
       var note = el("textarea", { class: "inp", placeholder: "What changed and why (shown in the version log and change log)" });
+      var key = S.keyRequired && !A.publishKey() ? el("input", { class: "inp", type: "password", autocomplete: "off", placeholder: "The publish key (same as the Claude connector key)" }) : null;
       modal("Publish v" + (S.version + 1), [
         el("p", { text: "Publishing makes this draft the live version" + (S.meta.usedBy.length ? " for: " + S.meta.usedBy.join(", ") : "") + ". It's checked automatically and goes live in about 3–5 minutes. You can always revert." }),
         field("Your name", who), field("Note", note)
-      ].concat(checkBody(r)), r.checks.ok ? "Publish" : null, function (close, btn) {
+      ].concat(key ? [field("Publish key", key, "Asked once per browser tab.")] : []).concat(checkBody(r)), r.checks.ok ? "Publish" : null, function (close, btn) {
         name = who.value.trim(); try { localStorage.setItem("v360-editor-name", name); } catch (e) {}
+        if (key) { if (!key.value.trim()) { toast("Enter the publish key first."); return; } A.setPublishKey(key.value); }
         btn.disabled = true; btn.textContent = "Publishing…";
         A.api("POST", "/api/flows/" + flowId + "/publish", { name: name || "Someone", note: note.value }).then(function (res) {
           close(); toast("v" + res.version + (res.state === "proposed" ? " sent. " : " published. ") + res.live); setTimeout(function () { location.reload(); }, 1800);
@@ -824,7 +826,7 @@
   /* -------------------------------------------------------------- load */
   Promise.all([A.api("GET", "/api/flows/" + flowId), A.api("GET", "/api/flows")]).then(function (r) {
     var j = r[0];
-    S.meta = j.meta; S.published = j.published; S.versions = j.versions; S.version = j.version; S.editsOn = r[1].editsOn;
+    S.meta = j.meta; S.published = j.published; S.versions = j.versions; S.version = j.version; S.editsOn = r[1].editsOn; S.keyRequired = !!r[1].keyRequired;
     S.flow = j.draft ? j.draft.flow : JSON.parse(JSON.stringify(j.published));
     S.draftRevision = j.draft ? j.draft.draftRevision : 0; S.hasDraft = !!j.draft;
     document.title = S.meta.title + " — Workflow editor — VISION360 admin";
