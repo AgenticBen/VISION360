@@ -73,6 +73,14 @@
       "destination": "/demo/index.html"
     },
     {
+      "source": "/admin/",
+      "destination": "/api/v360?__path=/admin/"
+    },
+    {
+      "source": "/admin/:path*/",
+      "destination": "/api/v360?__path=/admin/:path*/"
+    },
+    {
       "source": "/admin",
       "destination": "/api/v360?__path=/admin/"
     },
