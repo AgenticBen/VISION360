@@ -48,7 +48,7 @@ test("workflow API: draft with revision guard, impact preview, publish, version 
   const app = await makeApp();
   let r = await call(app, "GET", "/api/flows");
   assert.equal(r.status, 200);
-  assert.deepEqual(r.json.flows.map((f) => f.id), ["referral", "v360-interest"]);
+  assert.deepEqual(r.json.flows.map((f) => f.id), ["referral", "v360-interest", "vision-assessment"]);
   assert.equal(r.json.flows[0].version, 1);
 
   r = await call(app, "GET", "/api/flows/referral");

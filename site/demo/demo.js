@@ -16,7 +16,7 @@
   "use strict";
 
   var SETTINGS_KEY = "v360-demo-settings";
-  var DEFAULTS = { textSize: "100", theme: "standard", readAloud: true, rate: "1", bargeIn: false, announce: true, voiceName: "", endSilence: "2000" };
+  var DEFAULTS = { textSize: "150", theme: "high", readAloud: true, rate: "1", bargeIn: false, announce: true, voiceName: "", endSilence: "2000" };
   var RATES = ["0.85", "1", "1.2", "1.4"];
   var SILENCES = ["1200", "2000", "3200"];
 
@@ -205,25 +205,30 @@
 
   // Which workflow this page runs: /f/<id> (a shared link or QR code), ?flow=<id>,
   // or the main workflow the admin picked for the home page.
-  var FLOW = (location.pathname.match(/^\/f\/([a-z0-9-]{1,40})\/?$/) || [])[1] || new URLSearchParams(location.search).get("flow") || null;
+  var ON_ASSESSMENT = /^\/assessment\/?$/.test(location.pathname);
+  var FLOW = (ON_ASSESSMENT ? "vision-assessment" : null) || (location.pathname.match(/^\/f\/([a-z0-9-]{1,40})\/?$/) || [])[1] || new URLSearchParams(location.search).get("flow") || null;
   app.flow = { id: FLOW, routing: true };
+  // The question on the start screen, which the assistant also asks out loud.
+  var ASK = ON_ASSESSMENT
+    ? { q: "Would you like to check how your vision affects everyday things?", sub: "It takes about five minutes, and it isn't a medical exam. You can tell me the answer whenever you're ready!" }
+    : { q: "Would you like help understanding the services available?", sub: "You can tell me the answer whenever you're ready!" };
+  function setAsk(q, sub) { ASK = { q: q, sub: sub }; $("start-h").textContent = q; $("start-sub").textContent = sub; }
+  setAsk(ASK.q, ASK.sub);
+  if (ON_ASSESSMENT) { document.title = "Vision Assessment — Vision 360"; $("page-h").textContent = "Vision Assessment"; }
   fetch("/api/assistant" + (FLOW ? "?flow=" + encodeURIComponent(FLOW) : ""), { cache: "no-store" }).then(function (r) {
     if (r.status === 404) throw new Error("gone");
     return r.json();
   }).then(function (j) {
     app.flow = j.flow;
-    if (!j.flow.routing) {
+    if (!j.flow.routing && !ON_ASSESSMENT) {
       document.title = j.flow.title + " — Vision 360 CONNECT";
-      document.querySelector(".top h1").textContent = j.flow.title;
-      $("start-lead").textContent = "I'll ask the questions on this form one at a time, then read your answers back so you can check them before anything is sent to Lions Services.";
-      $("about-what").textContent = "An automated assistant, not a person, asks the questions on this form and reads your answers back before anything is sent.";
-      if (j.flow.privacy) $("about-list").appendChild(el("li", { text: j.flow.privacy }));
+      $("page-h").textContent = j.flow.title;
+      setAsk("Would you like to fill in the " + j.flow.title + " together?", "I'll ask one question at a time and read your answers back. You can tell me whenever you're ready!");
     }
   }).catch(function (e) {
     if (e.message !== "gone") return;
     $("start-h").textContent = "This form isn't available";
-    $("space-hint").hidden = true;
-    var box = $("start-lead");
+    var box = $("start-sub");
     box.textContent = "";
     box.appendChild(el("span", null, ["This link doesn't lead to a form that's open right now. ", el("a", { href: "/demo", text: "Go to the Vision 360 CONNECT assistant" }), "."]));
     $("start-voice").disabled = true; $("start-text").disabled = true;
@@ -236,17 +241,18 @@
     if (h.storage === "ephemeral") notes.push("This preview has no permanent database yet, so a conversation can be lost if the server restarts.");
     if (h.emailTransport === "outbox") notes.push("Email isn't connected yet: an emailed plan goes to a test outbox and is not actually sent.");
     if (h.aiUnderstanding && h.aiUnderstanding.on) notes.push("AI understanding is on: when the assistant can't follow an answer, your words are sent to an AI model (through Vercel AI Gateway) to work out which choice you meant. You still confirm everything before anything is suggested.");
-    if (notes.length) { var n = $("env-notice"); n.hidden = false; n.textContent = "Please note: " + notes.join(" "); }
+    // Setup notes (email not connected, etc.) live in the guide's privacy
+    // section; this page stays to the question and the two buttons.
+    void notes;
   }).catch(function () {
-    var n = $("env-notice"); n.hidden = false; n.textContent = "The demo server isn't reachable right now. Please try again in a moment.";
-    $("about").open = true;
+    var n = $("env-notice"); n.hidden = false; n.textContent = "The server isn't reachable right now. Please try again in a moment.";
   });
 
   if (!canListen) {
     var vs = $("voice-support");
     vs.hidden = false;
     vs.textContent = "Talking isn't available in this browser. Type works here. Talking works in recent Chrome, Edge and Safari.";
-    $("space-hint").innerHTML = "<kbd>Space</kbd> Press the Space bar to start typing.";
+    $("start-voice").querySelector(".big-sub").textContent = "Talking isn't available in this browser.";
   }
 
   // ---------------------------------------------------------------- status
@@ -328,6 +334,98 @@
       });
   }
 
+  // ------------------------------------------------ welcome and display
+  // Spoken before anything else: is the display comfortable, then the
+  // page's question. Display commands ("bigger text", "less contrast") work
+  // here and at any point in the conversation, without leaving this device.
+  var SIZES = ["100", "125", "150", "200"];
+  var SIZE_WORDS = { "100": "regular size", "125": "large", "150": "extra large", "200": "the largest size" };
+  var THEME_WORDS = { standard: "standard colors, dark text on white", dark: "dark colors, light text on a dark background", high: "high contrast, yellow and white on black" };
+  function displayNow() { return "The text is " + SIZE_WORDS[settings.textSize] + ", with " + THEME_WORDS[settings.theme] + "."; }
+  function welcomeText() {
+    return displayNow() + " If you'd like the text bigger or smaller, or less contrast, just tell me. " + ASK.q + " " + ASK.sub;
+  }
+  var localN = 0;
+  function localTurn(text, showCard) {
+    addMessage("bot", text);
+    announce(text);
+    if (showCard) { var panel = $("panel"); panel.textContent = ""; panel.appendChild(welcomeCard()); }
+    if (settings.readAloud && canSpeak) speakDevice(text, "local-" + (++localN));
+    else afterAssistant();
+  }
+  function welcomeTurn() {
+    // Heard it on the start screen already: don't repeat it all.
+    var text = pre.heard ? "I'm listening. Tell me if you'd like the text bigger, smaller or with less contrast, or say yes to begin." : welcomeText();
+    localTurn(text, true);
+  }
+  function welcomeCard() {
+    var card = el("section", { class: "card", "aria-labelledby": "wh" });
+    card.appendChild(el("h3", { id: "wh", text: ASK.q }));
+    var row = el("div", { class: "action-row" });
+    row.appendChild(el("button", { type: "button", class: "btn btn-primary", text: "Yes, let's start", onclick: function () { addMessage("you", "Yes"); proceed(); } }));
+    row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "Bigger text", onclick: function () { handleLocal("bigger text", { text: "Bigger text" }); } }));
+    row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "Smaller text", onclick: function () { handleLocal("smaller text", { text: "Smaller text" }); } }));
+    row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: settings.theme === "high" ? "Less contrast" : "High contrast", onclick: function () { var t = settings.theme === "high" ? "less contrast" : "high contrast"; handleLocal(t, { text: t.charAt(0).toUpperCase() + t.slice(1) }); } }));
+    card.appendChild(row);
+    return card;
+  }
+  function proceed() {
+    if (!app.welcome) return;
+    app.welcome = false;
+    stopSpeaking("proceed", true);
+    var h = app.held; app.held = null;
+    if (h) applyTurn(h.turn, h.state);
+  }
+  function norm(t) { return String(t || "").toLowerCase().replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim(); }
+  // Returns { set: {key: value}, say } or null.
+  function displayCommand(raw, loose) {
+    var t = norm(raw);
+    if (!t || t.split(" ").length > 12) return null;
+    var aboutDisplay = /\b(text|font|print|letters|words|writing|screen|size|zoom|contrast|colou?rs?|dark mode|light mode|bright|brightness)\b/.test(t);
+    if (!loose && !aboutDisplay) return null;
+    var i = SIZES.indexOf(String(settings.textSize));
+    if (/\b(more|higher|high|increase|full|maximum|max) contrast\b|yellow on black/.test(t)) {
+      return settings.theme === "high" ? { say: "The colors are already high contrast." } : { set: { theme: "high" }, say: "Done. I've switched to high contrast, yellow and white on black." };
+    }
+    if (/dark (mode|colou?rs?|theme|background)/.test(t)) {
+      return settings.theme === "dark" ? { say: "The colors are already dark." } : { set: { theme: "dark" }, say: "Done. I've switched to dark colors." };
+    }
+    if (/\b(less|lower|reduce|softer|decrease|turn down|too much|not so much|no) contrast\b|\btoo (bright|harsh|much)\b|\b(normal|regular|standard|default) colou?rs?\b|light mode|white background/.test(t)) {
+      if (settings.theme === "high") return { set: { theme: "dark" }, say: "Done. I've lowered the contrast to dark colors: light text on a dark background. Say less contrast again for dark text on white." };
+      if (settings.theme === "dark") return { set: { theme: "standard" }, say: "Done. I've switched to standard colors: dark text on white." };
+      return { say: "These are already the standard colors, dark text on white." };
+    }
+    if (/\b(bigger|larger|increase|enlarge|zoom in|more zoom)\b/.test(t) && !/\b(too big|too large)\b/.test(t)) {
+      if (i >= SIZES.length - 1) return { say: "The text is already at the largest size. Your device's zoom can make it bigger still." };
+      var up = SIZES[i + 1];
+      return { set: { textSize: up }, say: "Done. The text is now " + SIZE_WORDS[up] + ", " + up + " percent." };
+    }
+    if (/\b(smaller|decrease|reduce|zoom out|less zoom|too big|too large|shrink)\b/.test(t)) {
+      if (i <= 0) return { say: "The text is already at the regular size." };
+      var down = SIZES[i - 1];
+      return { set: { textSize: down }, say: "Done. The text is now " + SIZE_WORDS[down] + ", " + down + " percent." };
+    }
+    return null;
+  }
+  function isNo(raw) { var t = norm(raw); return t.split(" ").length <= 6 && /^(no|nope|nah|not (now|yet|really|today)|no thanks?|no thank you|maybe later|later|i'm not ready|not ready)\b/.test(t); }
+  function isFine(raw) { var t = norm(raw); return t.split(" ").length <= 8 && /\b(it's |that's |looks |is )?(good|fine|great|perfect|comfortable|that works|easy to read|i can see it)\b/.test(t) && !/\b(yes|yeah|yep|sure|please|help|start|ready)\b/.test(t); }
+  // Handles words that never need the server. Returns true when handled.
+  function handleLocal(text, display) {
+    var cmd = displayCommand(text, app.welcome);
+    if (cmd) {
+      addMessage("you", (display && display.text) || text, { voice: display && display.voice });
+      if (cmd.set) { Object.keys(cmd.set).forEach(function (k) { settings[k] = cmd.set[k]; }); saveSettings(); }
+      localTurn(cmd.say + (app.welcome ? " Is that better? When you're ready, " + ASK.q.charAt(0).toLowerCase() + ASK.q.slice(1) : ""), app.welcome);
+      return true;
+    }
+    if (!app.welcome) return false;
+    addMessage("you", (display && display.text) || text, { voice: display && display.voice });
+    if (isNo(text)) { localTurn("That's okay. I'm here whenever you're ready. Just say yes, or tell me if you'd like the text bigger or smaller.", true); return true; }
+    if (isFine(text)) { localTurn("Good. " + ASK.q + " Just say yes when you're ready.", true); return true; }
+    proceed();
+    return true;
+  }
+
   function startSession(mode) {
     app.mode = mode;
     $("start").hidden = true;
@@ -339,9 +437,14 @@
     return api("POST", "/api/session", body).then(function (j) {
       app.sessionId = j.sessionId;
       app.token = j.token;
-      applyTurn(j.turn, j.state);
+      if (j.state) { app.state = j.state; app.revision = j.state.revision; }
+      // First the welcome: check the display is comfortable and ask the
+      // page's question. The server's first turn waits until they say yes.
+      app.welcome = true;
+      app.held = { turn: j.turn, state: j.state };
       updateModeUi();
-      if (mode === "voice") startVoice(); else { setStatus("ready"); $("message").focus(); }
+      if (mode === "voice") { voice.on = true; welcomeTurn(); startVoice(); }
+      else { welcomeTurn(); $("message").focus(); }
     }).catch(function (e) {
       setStatus("error", "Couldn't start: " + e.message);
       alertNow("Couldn't start the session. " + e.message + " Please try again in a moment.");
@@ -352,6 +455,7 @@
   // Sends one user turn. Turns are queued so they reach the server in order.
   function sendTurn(payload, display) {
     if (app.ended) return;
+    if (payload.text && handleLocal(payload.text, display)) return;
     payload.clientTurnId = uid();
     payload.mode = app.mode;
     payload.revision = app.revision;
@@ -417,11 +521,11 @@
     if (inp && app.mode !== "voice") { try { box.focus({ preventScroll: true }); } catch (e) {} }
     if (turn.expect === "ended") {
       // Say goodbye first, then close everything down.
-      if (app.mode === "voice" && settings.readAloud && (canSpeak || natural.available)) { app.endAfterSpeech = true; speak(turn.speech || turn.text, turn.turnId); }
+      if (settings.readAloud && (canSpeak || natural.available)) { app.endAfterSpeech = true; speak(turn.speech || turn.text, turn.turnId); }
       else finishSession(false);
       return;
     }
-    if (app.mode === "voice" && settings.readAloud && (canSpeak || natural.available)) speak(turn.speech || turn.text, turn.turnId);
+    if (settings.readAloud && (canSpeak || natural.available)) speak(turn.speech || turn.text, turn.turnId);
     else afterAssistant();
     watchActions();
   }
@@ -919,7 +1023,7 @@
   $("stop-speaking").addEventListener("click", function () { stopSpeaking("button"); });
   $("replay").addEventListener("click", function () {
     if (!app.lastTurn) return;
-    if (app.mode === "voice" && canSpeak && settings.readAloud) speak(app.lastTurn.speech || app.lastTurn.text, app.lastTurn.turnId);
+    if (canSpeak && settings.readAloud) speak(app.lastTurn.speech || app.lastTurn.text, app.lastTurn.turnId);
     else { announce(app.lastTurn.text, true); }
   });
   $("mic-toggle").addEventListener("click", function () {
@@ -992,6 +1096,33 @@
   }
 
   window.addEventListener("pagehide", function () { stopSpeaking("leave", true); stopListening(); });
+
+  // Say the welcome as the page opens. Most browsers only allow speech after
+  // the first tap or key press, so if it's blocked, say it on the first one
+  // (unless that press starts the conversation, which says it anyway).
+  var pre = { heard: false };
+  function speakOnStart() {
+    if (pre.heard || app.sessionId || !settings.readAloud || !canSpeak || $("start").hidden || $("start-voice").disabled) return;
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    var u = new SpeechSynthesisUtterance(welcomeText());
+    var v = currentVoice();
+    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "en-US";
+    u.rate = Number(settings.rate) || 1;
+    u.onstart = function () { pre.heard = true; };
+    try { window.speechSynthesis.speak(u); } catch (e) {}
+  }
+  setTimeout(speakOnStart, 600);
+  function firstPress(e) {
+    var t = e.target;
+    if (e.type === "keydown" && (e.key === " " || e.code === "Space")) return;
+    if (t && t.closest && t.closest("#start-voice, #start-text")) return;
+    document.removeEventListener("pointerdown", firstPress, true);
+    document.removeEventListener("keydown", firstPress, true);
+    if (!pre.heard) setTimeout(speakOnStart, 50);
+  }
+  document.addEventListener("pointerdown", firstPress, true);
+  document.addEventListener("keydown", firstPress, true);
+  window.addEventListener("pagehide", function () { try { window.speechSynthesis.cancel(); } catch (e) {} });
 
   $("start-voice").addEventListener("click", function () { startSession(canListen ? "voice" : "text").then(function () { if (!canListen) fallbackToText("Talking isn't available in this browser, so we'll type instead."); }); });
   $("start-text").addEventListener("click", function () { startSession("text"); });

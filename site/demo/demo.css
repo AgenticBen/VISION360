@@ -161,18 +161,18 @@ input[type="radio"], input[type="checkbox"] { width: 1.3rem; height: 1.3rem; acc
 .listen-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.4rem 0 0.8rem; }
 
 /* ---- Display settings bar: under the heading on every screen, collapsible ---- */
-.dbar { background: var(--surface); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); margin-bottom: 1.2rem; }
-.dbar-h { margin: 0; font-size: 1rem; }
-.dbar-toggle { width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 0.2rem 0.7rem; font: inherit; font-weight: 700; background: transparent; border: 0; color: var(--ink); min-height: 48px; padding: 0.3rem 0; cursor: pointer; text-align: left; }
-.dbar-summary { font-weight: 400; font-size: 0.9rem; color: var(--muted); order: 3; flex-basis: 100%; }
+.dbar { font-size: 1rem; background: var(--surface); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); margin-bottom: 1.2em; }
+.dbar-h { margin: 0; font-size: 1em; }
+.dbar-toggle { width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 0.2em 0.7em; font: inherit; font-weight: 700; background: transparent; border: 0; color: var(--ink); min-height: 48px; padding: 0.3em 0; cursor: pointer; text-align: left; }
+.dbar-summary { font-weight: 400; font-size: 0.9em; color: var(--muted); order: 3; flex-basis: 100%; }
 .dbar:not(.is-collapsed) .dbar-summary { display: none; }
-.dbar-action { margin-left: auto; border: 2px solid var(--line); border-radius: 8px; padding: 0.1rem 0.75rem; font-size: 0.95rem; min-height: 36px; display: inline-flex; align-items: center; }
+.dbar-action { margin-left: auto; border: 2px solid var(--line); border-radius: 8px; padding: 0.1em 0.75em; font-size: 0.95em; min-height: 36px; display: inline-flex; align-items: center; }
 .dbar-toggle:hover .dbar-action { background: var(--accent-wash); }
-.dbar-body { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; align-items: flex-end; padding-bottom: 0.75rem; }
-.dbar-group { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
-.dbar-label { font-weight: 700; font-size: 0.9rem; }
-.seg { display: flex; flex-wrap: wrap; gap: 0.3rem; }
-.seg-btn { overflow-wrap: normal; word-break: normal; hyphens: none; font: inherit; font-size: 0.95rem; font-weight: 600; line-height: 1.2; min-height: 44px; min-width: 44px; padding: 0.3rem 0.7rem; border: 2px solid var(--line); border-radius: 8px; background: var(--page); color: var(--ink); cursor: pointer; }
+.dbar-body { display: flex; flex-wrap: wrap; gap: 0.5em 1.4em; align-items: flex-end; padding-bottom: 0.75em; }
+.dbar-group { display: flex; flex-direction: column; gap: 0.2em; min-width: 0; }
+.dbar-label { font-weight: 700; font-size: 0.9em; }
+.seg { display: flex; flex-wrap: wrap; gap: 0.3em; }
+.seg-btn { overflow-wrap: normal; word-break: normal; hyphens: none; font: inherit; font-size: 0.95em; font-weight: 600; line-height: 1.2; min-height: 44px; min-width: 44px; padding: 0.3em 0.7em; border: 2px solid var(--line); border-radius: 8px; background: var(--page); color: var(--ink); cursor: pointer; }
 .seg-btn:hover { background: var(--accent-wash); }
 /* Chosen: filled, plus a thick underline so it never relies on color alone. */
 .seg-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: inset 0 -4px 0 var(--accent-ink); }
@@ -199,16 +199,17 @@ kbd { font: inherit; font-weight: 800; font-size: 0.95rem; padding: 0.1rem 0.6re
 @media (hover: none) and (pointer: coarse) { .space-hint { display: none; } }
 
 @media (max-width: 640px) {
-  .dbar-body { gap: 0.35rem; padding-bottom: 0.6rem; }
-  .dbar-group { flex-direction: row; align-items: center; gap: 0.5rem; width: 100%; }
-  .dbar-label { flex: 0 0 4.9rem; }
+  .dbar { font-size: clamp(15px, 1rem, 19px); }
+  .dbar-body { gap: 0.35em; padding-bottom: 0.6em; }
+  .dbar-group { flex-direction: row; align-items: center; gap: 0.5em; width: 100%; }
+  .dbar-label { flex: 0 0 4.9em; }
   .seg { flex: 1; flex-wrap: nowrap; }
-  .seg-btn { flex: 1 1 0; padding: 0.25rem 0.3rem; font-size: 0.9rem; }
-  .seg-btn { padding: 0.25rem 0.2rem; font-size: 0.85rem; }
+  .seg-btn { flex: 1 1 0; padding: 0.25em 0.3em; font-size: 0.9em; }
+  .seg-btn { padding: 0.25em 0.2em; font-size: 0.85em; }
   /* Read aloud and More settings share one row. */
   .dbar-read { width: auto; flex: 1 1 0; }
   .dbar-more { width: auto; flex: 0 0 auto; margin-left: auto; }
-  .dbar-more .seg-btn { padding: 0.25rem 0.7rem; }
+  .dbar-more .seg-btn { padding: 0.25em 0.7em; }
   /* Talk and Type sit side by side at the bottom of the screen, in easy reach. */
   #start { display: flex; flex-direction: column; }
   #start .choose { order: 99; }
@@ -217,3 +218,14 @@ kbd { font: inherit; font-weight: 800; font-size: 0.95rem; padding: 0.1rem 0.6re
   #start .big-sub { display: none; }
 }
 html[data-textsize="200"] .seg { flex-wrap: wrap; }
+
+/* The welcome question is the page's main text. */
+#start .ask { font-size: 1.6rem; line-height: 1.3; margin: 0.6rem 0 0.3rem; }
+#start .ask-sub { font-size: 1.15rem; margin: 0 0 1.2rem; }
+.dbar { border-top: 0; }
+@media (max-width: 640px) {
+  .brand-bar-inner { padding: 0.3rem 1rem; }
+  .brand-bar .brand-bar-connect { height: 44px; }
+  #start .ask { font-size: 1.25rem; margin-top: 0.4rem; }
+  #start .ask-sub { font-size: 1rem; }
+}

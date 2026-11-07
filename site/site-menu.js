@@ -1,17 +1,22 @@
-/* Shared site menu: one bar at the top of every page with a "Find help"
-   menu (the public tools) and a plain "Admin" link (no dropdown; the admin
-   has its own sidebar and sign-in). The menu is a disclosure button:
-   Enter/Space opens, Escape closes and returns focus, clicking elsewhere closes. Include with
+/* Shared site menu: one bar at the top of every page with three tabs
+   (Vision Assessment, Org Directory, Admin) and a ☰ "More" menu for
+   everything else. The menu is a disclosure button: Enter/Space opens,
+   Escape closes and returns focus, clicking elsewhere closes. Include with
    <link rel="stylesheet" href="/site-menu.css"> and <script src="/site-menu.js">. */
 (function () {
   "use strict";
+  var TABS = [
+    ["/assessment/", "Vision Assessment"],
+    ["/", "Org Directory"],
+    ["/admin/", "Admin"]
+  ];
   var MENUS = [
-    { id: "help", label: "Find help", items: [
-      ["/", "Directory", "Every organization, with search and filters"],
+    { id: "more", label: "More", icon: true, items: [
+      ["/demo/", "Talk or type", "The voice and chat assistant"],
       ["/#tab-quiz", "Find services", "Answer a few questions for suggestions"],
       ["/#tab-pathways", "Pathways", "Common routes through services"],
-      ["/demo/", "Talk or type", "The voice and chat assistant"],
-      ["/guide.html", "How to use VISION360", "Step-by-step guide to every page"]
+      ["/guide.html", "How to use VISION360", "Step-by-step guide to every page"],
+      ["/guide.html#privacy", "About and privacy", "What this demo saves and why"]
     ] }
   ];
 
@@ -34,13 +39,14 @@
 
   var groups = [];
   var nav = el("nav", { "class": "sm", id: "site-menu", "aria-label": "Site menu" });
-  var inner = el("div", { "class": "sm-inner" }, [el("a", { "class": "sm-home", href: "/" }, [
+  var inner = el("div", { "class": "sm-inner" }, [el("a", { "class": "sm-home", href: "/demo/" }, [
     el("span", { "class": "sm-eye", "aria-hidden": "true" }, [el("img", { src: "/brand/eye.png", alt: "" })]),
     document.createTextNode("Lions Services · VISION 360")
   ])]);
   /* Official logo strip above the menu: CONNECT wordmark on the assistant, the
      Lions Services | VISION 360 lockup everywhere else. */
-  var onDemo = norm(location.pathname).indexOf("/demo") === 0;
+  var here = norm(location.pathname);
+  var onDemo = here.indexOf("/demo") === 0 || here.indexOf("/assessment") === 0 || here.indexOf("/f/") === 0;
   var logoBar = el("div", { "class": "brand-bar" }, [el("div", { "class": "brand-bar-inner" }, [
     el("a", { href: onDemo ? "/demo/" : "/" }, [onDemo
       ? el("img", { "class": "brand-bar-connect", src: "/brand/vision-360-connect.png", alt: "Vision 360 CONNECT", width: "720", height: "199" })
@@ -48,9 +54,17 @@
   ])]);
   nav.appendChild(inner);
 
+  TABS.forEach(function (t) {
+    var a = el("a", { "class": "sm-link", href: t[0] }, [document.createTextNode(t[1])]);
+    if (norm(t[0]) === here || (t[0] === "/" && here === "/index.html")) a.setAttribute("aria-current", "page");
+    inner.appendChild(a);
+  });
+
   MENUS.forEach(function (m) {
     var panelId = "sm-panel-" + m.id;
-    var toggle = el("button", { type: "button", "class": "sm-toggle", "aria-expanded": "false", "aria-controls": panelId }, [
+    var toggle = el("button", { type: "button", "class": "sm-toggle" + (m.icon ? " sm-burger" : ""), "aria-expanded": "false", "aria-controls": panelId }, m.icon ? [
+      el("span", { "class": "sm-bars", "aria-hidden": "true" }, [el("span"), el("span"), el("span")]), document.createTextNode(m.label)
+    ] : [
       document.createTextNode(m.label), el("span", { "class": "sm-caret", "aria-hidden": "true", text: "▾" })
     ]);
     var list = el("ul");
@@ -72,9 +86,6 @@
     groups.push({ toggle: toggle, panel: panel, group: g });
     inner.appendChild(g);
   });
-
-  /* Admin: a plain link straight to the admin (sign-in if needed). */
-  inner.appendChild(el("a", { "class": "sm-link", href: "/admin/" }, [document.createTextNode("Admin")]));
 
   function closeAll() { groups.forEach(function (x) { x.toggle.setAttribute("aria-expanded", "false"); x.panel.hidden = true; }); }
   function markCurrent() {

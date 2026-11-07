@@ -36,7 +36,7 @@ test("handshake, notifications, tool list and method errors", async () => {
 test("Claude can edit a draft, check it, publish it and close a request into the change log", async () => {
   const app = await makeApp();
   let t = await tool(app, "list_workflows", {});
-  assert.equal(t.data.length, 2);
+  assert.equal(t.data.length, 3);
   t = await tool(app, "add_question", { flow: "v360-interest", section: "interest", after: "student", type: "yes_no", prompt_screen: "Do you use a screen magnifier?" });
   assert.equal(t.isError, false, t.content[0].text);
   const id = t.data.id;

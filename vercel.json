@@ -57,6 +57,19 @@
           "value": "no-referrer"
         }
       ]
+    },
+    {
+      "source": "/assessment(.*)",
+      "headers": [
+        {
+          "key": "Permissions-Policy",
+          "value": "microphone=(self), camera=()"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
     }
   ],
   "rewrites": [
@@ -70,6 +83,14 @@
     },
     {
       "source": "/f/:flow/",
+      "destination": "/demo/index.html"
+    },
+    {
+      "source": "/assessment",
+      "destination": "/demo/index.html"
+    },
+    {
+      "source": "/assessment/",
       "destination": "/demo/index.html"
     },
     {

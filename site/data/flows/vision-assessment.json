@@ -1,0 +1,937 @@
+{
+  "version": 1,
+  "_comment": "Vision Assessment: a short self-report check of how vision affects everyday tasks. A starter draft for Lions Services to review and edit; not a medical eye exam. Runs at /assessment/.",
+  "title": "Vision Assessment",
+  "intro": "This is a short check of how your vision affects everyday things. It isn't a medical eye exam, and it takes about five minutes. If your vision changed suddenly, or you have eye pain, please contact an eye doctor or urgent care today.",
+  "privacy_notice": "Your answers are kept private and used only so Lions Services can follow up with you.",
+  "blocks": [
+    {
+      "id": "about",
+      "title": "About you",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "for_whom"
+      ]
+    },
+    {
+      "id": "everyday",
+      "title": "Everyday seeing",
+      "skippable_as_block": false,
+      "preamble": "I'll ask about a few everyday things. For each one, tell me if it's no difficulty, a little, a lot, or something you can't do.",
+      "questions": [
+        "reading_print",
+        "faces",
+        "getting_around",
+        "light_glare",
+        "screens",
+        "daily_tasks",
+        "driving"
+      ]
+    },
+    {
+      "id": "changes",
+      "title": "Changes and eye care",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "vision_change",
+        "eye_care_last"
+      ]
+    },
+    {
+      "id": "tools",
+      "title": "Tools and help",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "tools_used",
+        "help_wanted"
+      ]
+    },
+    {
+      "id": "contact",
+      "title": "How to reach you",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "first_name",
+        "phone",
+        "email"
+      ]
+    },
+    {
+      "id": "consent",
+      "title": "Consent",
+      "skippable_as_block": false,
+      "preamble": null,
+      "questions": [
+        "contact_consent"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "for_whom",
+      "domain": "about",
+      "type": "single",
+      "prompt_screen": "Is this check for you or for someone else?",
+      "prompt_voice": "Is this check for you, or for someone else?",
+      "voice_template": null,
+      "help": null,
+      "required": true,
+      "sensitive": false,
+      "skippable": false,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "myself",
+          "label_screen": "For me",
+          "label_voice": "for me",
+          "aliases": [
+            "me",
+            "myself",
+            "mine"
+          ],
+          "effects": []
+        },
+        {
+          "value": "family",
+          "label_screen": "For a family member or friend",
+          "label_voice": "for a family member or friend",
+          "aliases": [
+            "family",
+            "friend",
+            "my mother",
+            "my father",
+            "my wife",
+            "my husband"
+          ],
+          "effects": []
+        },
+        {
+          "value": "professional",
+          "label_screen": "For someone I support at work",
+          "label_voice": "for someone I support at work",
+          "aliases": [
+            "client",
+            "patient",
+            "work"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "reading_print",
+      "domain": "everyday",
+      "type": "single",
+      "prompt_screen": "How hard is it to read regular print, like mail, labels or a newspaper?",
+      "prompt_voice": "How hard is it to read regular print, like mail, labels or a newspaper? No difficulty, a little, a lot, or can't do it?",
+      "voice_template": null,
+      "help": "Answers: no difficulty, a little, a lot, can't do it, or I don't do this for other reasons.",
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "none",
+          "label_screen": "No difficulty",
+          "label_voice": "no difficulty",
+          "aliases": [
+            "none",
+            "fine",
+            "no problem",
+            "easy"
+          ],
+          "effects": []
+        },
+        {
+          "value": "some",
+          "label_screen": "A little difficulty",
+          "label_voice": "a little",
+          "aliases": [
+            "a little",
+            "some",
+            "a bit",
+            "sometimes"
+          ],
+          "effects": []
+        },
+        {
+          "value": "a_lot",
+          "label_screen": "A lot of difficulty",
+          "label_voice": "a lot",
+          "aliases": [
+            "a lot",
+            "very hard",
+            "really hard",
+            "hard"
+          ],
+          "effects": []
+        },
+        {
+          "value": "cannot",
+          "label_screen": "I can't do this because of my vision",
+          "label_voice": "can't do it",
+          "aliases": [
+            "can't",
+            "cannot",
+            "not at all",
+            "impossible"
+          ],
+          "effects": []
+        },
+        {
+          "value": "not_applicable",
+          "label_screen": "I don't do this for other reasons",
+          "label_voice": "don't do this",
+          "aliases": [
+            "don't do it",
+            "doesn't apply",
+            "not applicable"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "faces",
+      "domain": "everyday",
+      "type": "single",
+      "prompt_screen": "How hard is it to recognize people's faces from across a room?",
+      "prompt_voice": "How hard is it to recognize people's faces from across a room?",
+      "voice_template": null,
+      "help": "Answers: no difficulty, a little, a lot, can't do it, or I don't do this for other reasons.",
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "none",
+          "label_screen": "No difficulty",
+          "label_voice": "no difficulty",
+          "aliases": [
+            "none",
+            "fine",
+            "no problem",
+            "easy"
+          ],
+          "effects": []
+        },
+        {
+          "value": "some",
+          "label_screen": "A little difficulty",
+          "label_voice": "a little",
+          "aliases": [
+            "a little",
+            "some",
+            "a bit",
+            "sometimes"
+          ],
+          "effects": []
+        },
+        {
+          "value": "a_lot",
+          "label_screen": "A lot of difficulty",
+          "label_voice": "a lot",
+          "aliases": [
+            "a lot",
+            "very hard",
+            "really hard",
+            "hard"
+          ],
+          "effects": []
+        },
+        {
+          "value": "cannot",
+          "label_screen": "I can't do this because of my vision",
+          "label_voice": "can't do it",
+          "aliases": [
+            "can't",
+            "cannot",
+            "not at all",
+            "impossible"
+          ],
+          "effects": []
+        },
+        {
+          "value": "not_applicable",
+          "label_screen": "I don't do this for other reasons",
+          "label_voice": "don't do this",
+          "aliases": [
+            "don't do it",
+            "doesn't apply",
+            "not applicable"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "getting_around",
+      "domain": "everyday",
+      "type": "single",
+      "prompt_screen": "How hard is it to get around safely, for example steps, curbs or busy places?",
+      "prompt_voice": "How hard is it to get around safely, for example steps, curbs or busy places?",
+      "voice_template": null,
+      "help": "Answers: no difficulty, a little, a lot, can't do it, or I don't do this for other reasons.",
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "none",
+          "label_screen": "No difficulty",
+          "label_voice": "no difficulty",
+          "aliases": [
+            "none",
+            "fine",
+            "no problem",
+            "easy"
+          ],
+          "effects": []
+        },
+        {
+          "value": "some",
+          "label_screen": "A little difficulty",
+          "label_voice": "a little",
+          "aliases": [
+            "a little",
+            "some",
+            "a bit",
+            "sometimes"
+          ],
+          "effects": []
+        },
+        {
+          "value": "a_lot",
+          "label_screen": "A lot of difficulty",
+          "label_voice": "a lot",
+          "aliases": [
+            "a lot",
+            "very hard",
+            "really hard",
+            "hard"
+          ],
+          "effects": []
+        },
+        {
+          "value": "cannot",
+          "label_screen": "I can't do this because of my vision",
+          "label_voice": "can't do it",
+          "aliases": [
+            "can't",
+            "cannot",
+            "not at all",
+            "impossible"
+          ],
+          "effects": []
+        },
+        {
+          "value": "not_applicable",
+          "label_screen": "I don't do this for other reasons",
+          "label_voice": "don't do this",
+          "aliases": [
+            "don't do it",
+            "doesn't apply",
+            "not applicable"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "light_glare",
+      "domain": "everyday",
+      "type": "single",
+      "prompt_screen": "How hard is it to see in dim light, or in bright light and glare?",
+      "prompt_voice": "How hard is it to see in dim light, or in bright light and glare?",
+      "voice_template": null,
+      "help": "Answers: no difficulty, a little, a lot, can't do it, or I don't do this for other reasons.",
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "none",
+          "label_screen": "No difficulty",
+          "label_voice": "no difficulty",
+          "aliases": [
+            "none",
+            "fine",
+            "no problem",
+            "easy"
+          ],
+          "effects": []
+        },
+        {
+          "value": "some",
+          "label_screen": "A little difficulty",
+          "label_voice": "a little",
+          "aliases": [
+            "a little",
+            "some",
+            "a bit",
+            "sometimes"
+          ],
+          "effects": []
+        },
+        {
+          "value": "a_lot",
+          "label_screen": "A lot of difficulty",
+          "label_voice": "a lot",
+          "aliases": [
+            "a lot",
+            "very hard",
+            "really hard",
+            "hard"
+          ],
+          "effects": []
+        },
+        {
+          "value": "cannot",
+          "label_screen": "I can't do this because of my vision",
+          "label_voice": "can't do it",
+          "aliases": [
+            "can't",
+            "cannot",
+            "not at all",
+            "impossible"
+          ],
+          "effects": []
+        },
+        {
+          "value": "not_applicable",
+          "label_screen": "I don't do this for other reasons",
+          "label_voice": "don't do this",
+          "aliases": [
+            "don't do it",
+            "doesn't apply",
+            "not applicable"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "screens",
+      "domain": "everyday",
+      "type": "single",
+      "prompt_screen": "How hard is it to use a phone, tablet or computer screen?",
+      "prompt_voice": "How hard is it to use a phone, tablet or computer screen?",
+      "voice_template": null,
+      "help": "Answers: no difficulty, a little, a lot, can't do it, or I don't do this for other reasons.",
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "none",
+          "label_screen": "No difficulty",
+          "label_voice": "no difficulty",
+          "aliases": [
+            "none",
+            "fine",
+            "no problem",
+            "easy"
+          ],
+          "effects": []
+        },
+        {
+          "value": "some",
+          "label_screen": "A little difficulty",
+          "label_voice": "a little",
+          "aliases": [
+            "a little",
+            "some",
+            "a bit",
+            "sometimes"
+          ],
+          "effects": []
+        },
+        {
+          "value": "a_lot",
+          "label_screen": "A lot of difficulty",
+          "label_voice": "a lot",
+          "aliases": [
+            "a lot",
+            "very hard",
+            "really hard",
+            "hard"
+          ],
+          "effects": []
+        },
+        {
+          "value": "cannot",
+          "label_screen": "I can't do this because of my vision",
+          "label_voice": "can't do it",
+          "aliases": [
+            "can't",
+            "cannot",
+            "not at all",
+            "impossible"
+          ],
+          "effects": []
+        },
+        {
+          "value": "not_applicable",
+          "label_screen": "I don't do this for other reasons",
+          "label_voice": "don't do this",
+          "aliases": [
+            "don't do it",
+            "doesn't apply",
+            "not applicable"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "daily_tasks",
+      "domain": "everyday",
+      "type": "single",
+      "prompt_screen": "How hard are everyday tasks like cooking, sorting medications or telling money apart?",
+      "prompt_voice": "How hard are everyday tasks like cooking, sorting medications or telling money apart?",
+      "voice_template": null,
+      "help": "Answers: no difficulty, a little, a lot, can't do it, or I don't do this for other reasons.",
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "none",
+          "label_screen": "No difficulty",
+          "label_voice": "no difficulty",
+          "aliases": [
+            "none",
+            "fine",
+            "no problem",
+            "easy"
+          ],
+          "effects": []
+        },
+        {
+          "value": "some",
+          "label_screen": "A little difficulty",
+          "label_voice": "a little",
+          "aliases": [
+            "a little",
+            "some",
+            "a bit",
+            "sometimes"
+          ],
+          "effects": []
+        },
+        {
+          "value": "a_lot",
+          "label_screen": "A lot of difficulty",
+          "label_voice": "a lot",
+          "aliases": [
+            "a lot",
+            "very hard",
+            "really hard",
+            "hard"
+          ],
+          "effects": []
+        },
+        {
+          "value": "cannot",
+          "label_screen": "I can't do this because of my vision",
+          "label_voice": "can't do it",
+          "aliases": [
+            "can't",
+            "cannot",
+            "not at all",
+            "impossible"
+          ],
+          "effects": []
+        },
+        {
+          "value": "not_applicable",
+          "label_screen": "I don't do this for other reasons",
+          "label_voice": "don't do this",
+          "aliases": [
+            "don't do it",
+            "doesn't apply",
+            "not applicable"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "driving",
+      "domain": "everyday",
+      "type": "single",
+      "prompt_screen": "Do you drive?",
+      "prompt_voice": "Do you drive?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes",
+          "label_voice": "yes",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "stopped_vision",
+          "label_screen": "I stopped driving because of my vision",
+          "label_voice": "stopped because of my vision",
+          "aliases": [
+            "stopped",
+            "gave up driving"
+          ],
+          "effects": []
+        },
+        {
+          "value": "no",
+          "label_screen": "No, for other reasons",
+          "label_voice": "no",
+          "aliases": [
+            "never",
+            "don't drive"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "vision_change",
+      "domain": "changes",
+      "type": "single",
+      "prompt_screen": "Has your vision changed recently?",
+      "prompt_voice": "Has your vision changed recently? Suddenly, slowly over time, or not at all?",
+      "voice_template": null,
+      "help": "If your vision changed suddenly, or you have eye pain, please contact an eye doctor or urgent care today.",
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "sudden",
+          "label_screen": "Yes, suddenly (in the last few days or weeks)",
+          "label_voice": "suddenly",
+          "aliases": [
+            "sudden",
+            "all of a sudden",
+            "quickly",
+            "overnight"
+          ],
+          "effects": []
+        },
+        {
+          "value": "gradual",
+          "label_screen": "Yes, slowly over months or years",
+          "label_voice": "slowly",
+          "aliases": [
+            "gradually",
+            "slowly",
+            "over time",
+            "getting worse"
+          ],
+          "effects": []
+        },
+        {
+          "value": "no_change",
+          "label_screen": "No change",
+          "label_voice": "no change",
+          "aliases": [
+            "no",
+            "the same",
+            "stable"
+          ],
+          "effects": []
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "I'm not sure",
+          "label_voice": "not sure",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "eye_care_last",
+      "domain": "changes",
+      "type": "single",
+      "prompt_screen": "When did you last see an eye doctor?",
+      "prompt_voice": "When did you last see an eye doctor? In the last year, one to two years ago, longer, or never?",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "within_year",
+          "label_screen": "In the last year",
+          "label_voice": "in the last year",
+          "aliases": [
+            "this year",
+            "recently",
+            "last year"
+          ],
+          "effects": []
+        },
+        {
+          "value": "one_two",
+          "label_screen": "One to two years ago",
+          "label_voice": "one to two years ago",
+          "aliases": [
+            "two years",
+            "a couple of years"
+          ],
+          "effects": []
+        },
+        {
+          "value": "longer",
+          "label_screen": "More than two years ago",
+          "label_voice": "more than two years ago",
+          "aliases": [
+            "a long time",
+            "years ago"
+          ],
+          "effects": []
+        },
+        {
+          "value": "never",
+          "label_screen": "Never",
+          "label_voice": "never",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "I'm not sure",
+          "label_voice": "not sure",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "tools_used",
+      "domain": "tools",
+      "type": "multi",
+      "prompt_screen": "What do you use now to help you see or read?",
+      "prompt_voice": "What do you use now to help you see or read? For example a magnifier, large print, your phone's voice features, or nothing yet.",
+      "voice_template": null,
+      "help": "Select all that apply.",
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "magnifier",
+          "label_screen": "A magnifier",
+          "label_voice": "a magnifier",
+          "aliases": [
+            "magnifying glass"
+          ],
+          "effects": []
+        },
+        {
+          "value": "large_print",
+          "label_screen": "Large print",
+          "label_voice": "large print",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "phone_voice",
+          "label_screen": "Phone or computer voice features (like a screen reader)",
+          "label_voice": "phone voice features",
+          "aliases": [
+            "voiceover",
+            "talkback",
+            "screen reader",
+            "siri",
+            "alexa"
+          ],
+          "effects": []
+        },
+        {
+          "value": "lighting",
+          "label_screen": "Brighter lighting",
+          "label_voice": "brighter lighting",
+          "aliases": [
+            "lamp",
+            "light"
+          ],
+          "effects": []
+        },
+        {
+          "value": "nothing_yet",
+          "label_screen": "Nothing yet",
+          "label_voice": "nothing yet",
+          "aliases": [
+            "nothing",
+            "none"
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "help_wanted",
+      "domain": "tools",
+      "type": "multi",
+      "prompt_screen": "What would you most like help with?",
+      "prompt_voice": "What would you most like help with? For example reading, using technology, getting around, everyday living, or talking with someone.",
+      "voice_template": null,
+      "help": "Select all that apply.",
+      "required": false,
+      "sensitive": false,
+      "skippable": true,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "reading",
+          "label_screen": "Reading and writing",
+          "label_voice": "reading",
+          "aliases": [],
+          "effects": []
+        },
+        {
+          "value": "technology",
+          "label_screen": "Using a phone, tablet or computer",
+          "label_voice": "using technology",
+          "aliases": [
+            "phone",
+            "computer",
+            "tablet",
+            "technology"
+          ],
+          "effects": []
+        },
+        {
+          "value": "mobility",
+          "label_screen": "Getting around safely",
+          "label_voice": "getting around",
+          "aliases": [
+            "mobility",
+            "cane",
+            "walking",
+            "transportation"
+          ],
+          "effects": []
+        },
+        {
+          "value": "daily_living",
+          "label_screen": "Everyday living skills",
+          "label_voice": "everyday living",
+          "aliases": [
+            "cooking",
+            "home",
+            "daily living"
+          ],
+          "effects": []
+        },
+        {
+          "value": "support",
+          "label_screen": "Support from people who understand",
+          "label_voice": "support",
+          "aliases": [
+            "support group",
+            "someone to talk to",
+            "emotional support"
+          ],
+          "effects": []
+        },
+        {
+          "value": "not_sure",
+          "label_screen": "I'm not sure yet",
+          "label_voice": "not sure",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "first_name",
+      "domain": "contact",
+      "type": "text",
+      "prompt_screen": "What's your first name?",
+      "prompt_voice": "What's your first name?",
+      "voice_template": null,
+      "help": "So a team member knows who they're talking to.",
+      "required": false,
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": []
+    },
+    {
+      "id": "phone",
+      "domain": "contact",
+      "type": "phone",
+      "prompt_screen": "What's the best phone number to reach you?",
+      "prompt_voice": "What's the best phone number to reach you? You can say skip.",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": []
+    },
+    {
+      "id": "email",
+      "domain": "contact",
+      "type": "email",
+      "prompt_screen": "Email address (optional)",
+      "prompt_voice": "Is there an email address you'd like us to use? You can say skip.",
+      "voice_template": null,
+      "help": null,
+      "required": false,
+      "sensitive": true,
+      "skippable": true,
+      "ask_if": null,
+      "options": []
+    },
+    {
+      "id": "contact_consent",
+      "domain": "consent",
+      "type": "consent",
+      "prompt_screen": "I give Lions Services permission to contact me about these answers.",
+      "prompt_voice": "Is it all right for Lions Services to contact you about these answers?",
+      "voice_template": null,
+      "help": "Your answers are kept private and used only to follow up with you.",
+      "required": true,
+      "sensitive": false,
+      "skippable": false,
+      "ask_if": null,
+      "options": [
+        {
+          "value": "yes",
+          "label_screen": "Yes, you may contact me",
+          "label_voice": "yes",
+          "aliases": [],
+          "effects": []
+        }
+      ]
+    }
+  ],
+  "handoffs": [],
+  "on_complete": {
+    "action": "staff_followup",
+    "message": "Thank you. Your answers have been sent to the Lions Services team, and someone will follow up. You can also call 704-921-1527. To look for services now, open the Org Directory."
+  }
+}

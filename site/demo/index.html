@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" data-textsize="100" data-theme="standard">
+<html lang="en" data-textsize="150" data-theme="high">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
 <meta name="referrer" content="no-referrer">
-<meta name="description" content="Vision 360 CONNECT demo: talk or type to learn about vision-loss resources in the greater Charlotte area.">
+<meta name="description" content="Vision 360 CONNECT: talk or type to learn about vision-loss resources in the greater Charlotte area.">
 <title>Vision 360 CONNECT — demo</title>
 <link rel="icon" type="image/png" href="/brand/favicon.png">
 <link rel="stylesheet" href="/brand/brand.css">
 <link rel="stylesheet" href="/demo/demo.css">
-<link rel="stylesheet" href="/whats-new.css">
 <link rel="stylesheet" href="/site-menu.css">
 <script>
   /* Apply saved display settings before first paint so text never jumps. */
   try {
     var s = JSON.parse(localStorage.getItem("v360-demo-settings") || "{}");
+    /* New visitors start in large print with high contrast. */
     if (s.textSize) document.documentElement.setAttribute("data-textsize", s.textSize);
     if (s.theme) document.documentElement.setAttribute("data-theme", s.theme);
   } catch (e) {}
@@ -25,15 +25,7 @@
 <a class="skip-link" href="#message">Skip to the message box</a>
 <a class="skip-link" href="#log">Skip to the conversation</a>
 
-<header class="top">
-  <div class="wrap top-inner">
-    <div>
-      <p class="brand">Lions Services · Vision 360 CONNECT</p>
-      <h1>Learn about vision-loss resources</h1>
-      <p class="demo-tag"><strong>Demo version.</strong> Please use made-up details only.</p>
-    </div>
-  </div>
-</header>
+<h1 class="sr-only" id="page-h">Vision 360 CONNECT assistant</h1>
 
 <!-- ===================== Display settings (always on screen) ===================== -->
 <section class="dbar" id="display-bar" aria-labelledby="dbar-h">
@@ -81,13 +73,12 @@
 
   <!-- ===================== Start screen ===================== -->
   <section id="start" aria-labelledby="start-h">
-    <h2 id="start-h">Hi there, I'm the Vision 360 assistant.</h2>
-    <p class="start-lead" id="start-lead">I'll ask a few questions, one at a time, then suggest services from the <a href="/">Lions Services directory</a>. I check everything with you first.</p>
-    <p class="space-hint" id="space-hint"><kbd>Space</kbd> Press the Space bar to start talking.</p>
+    <h2 id="start-h" class="ask">Would you like help understanding the services available?</h2>
+    <p class="ask-sub" id="start-sub">You can tell me the answer whenever you're ready!</p>
     <div class="choose" id="choose">
       <button type="button" class="btn btn-big btn-talk" id="start-voice">
         <span class="big-label">Talk</span>
-        <span class="big-sub">Uses your microphone. Your browser will ask for permission.</span>
+        <span class="big-sub">Press the Space bar, or click here.</span>
       </button>
       <button type="button" class="btn btn-big" id="start-text">
         <span class="big-label">Type</span>
@@ -95,16 +86,7 @@
       </button>
     </div>
     <p id="voice-support" class="hint" hidden></p>
-    <details class="about" id="about">
-      <summary>About this demo and your privacy</summary>
-      <p id="env-notice" class="notice" hidden></p>
-      <ul id="about-list">
-        <li>This is a <strong>demonstration</strong>. Please don't use a real person's health or personal details.</li>
-        <li id="about-what">An automated assistant, not a person, asks the questions and checks everything with you before suggesting anything.</li>
-        <li>The assistant will ask your first name, so a staff member knows who they're helping. Your answers are kept until Lions Services staff delete them, so staff can follow up if you ask. The full conversation isn't saved there, and this site doesn't record audio.</li>
-        <li><strong>If you choose Talk:</strong> your browser turns speech into text. In Chrome and Edge, the browser sends your voice to its maker's speech service to do that; Safari uses Apple's. Choose Type to avoid that.</li>
-      </ul>
-    </details>
+    <p id="env-notice" class="notice" hidden></p>
   </section>
 
   <!-- ===================== Conversation ===================== -->
@@ -206,7 +188,6 @@
 </dialog>
 
 <script src="/demo/demo.js"></script>
-<script src="/whats-new.js" data-page="demo" defer></script>
 <script src="/site-menu.js"></script>
 <script src="/request-button.js" defer></script>
 </body>
