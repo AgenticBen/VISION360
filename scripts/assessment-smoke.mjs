@@ -39,7 +39,10 @@ console.log("\nStructure");
 const { checkFlow } = await import("../server/lib/flow-check.mjs");
 const fc = checkFlow(assessment, { organizations: orgs, routing: true });
 check("workflow checks pass (same as the editor's publish gate)", fc.ok, fc.errors.slice(0, 3).map((e) => e.message).join(" | "));
-for (const f of ["site/data/flows/v360-interest.json"]) {
+// Every form-style workflow in the registry (including ones added from the admin).
+const registry = JSON.parse(readFileSync("site/data/flows/index.json", "utf8")).flows || [];
+check("every registered workflow file exists", registry.every((m) => existsSync(m.file)), registry.filter((m) => !existsSync(m.file)).map((m) => m.file).join(", "));
+for (const f of registry.filter((m) => !m.routing && m.status !== "retired").map((m) => m.file)) {
   if (!existsSync(f)) continue;
   const r = checkFlow(JSON.parse(readFileSync(f, "utf8")), { organizations: orgs, routing: false });
   check(`${f} passes the workflow checks`, r.ok, r.errors.slice(0, 3).map((e) => e.message).join(" | "));

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Flyer — VISION360 admin</title>
+<link rel="icon" type="image/png" href="/brand/favicon.png">
+<link rel="stylesheet" href="/brand/brand.css">
+<link rel="stylesheet" href="/admin/workflows/flyer/flyer.css">
+</head>
+<body>
+<div class="toolbar" role="toolbar" aria-label="Flyer">
+  <a class="tb-btn" href="/admin/workflows/">← Workflows</a>
+  <span class="tb-hint">Choose <strong>Save as PDF</strong> as the printer. One US Letter page.</span>
+  <button type="button" class="tb-btn primary" id="print">Download PDF</button>
+</div>
+<main class="sheet" id="sheet" aria-live="polite">
+  <header class="band">
+    <div class="logo-tile"><img src="/brand/lions-services-vision-360.png" alt="Lions Services | VISION 360"></div>
+  </header>
+  <div class="rule" aria-hidden="true"></div>
+  <section class="body">
+    <p class="eyebrow">Vision 360 CONNECT</p>
+    <h1 id="f-title">Loading…</h1>
+    <p class="lede" id="f-desc"></p>
+    <div class="qr-row">
+      <img id="f-qr" class="qr" alt="">
+      <div class="how">
+        <h2>Scan to start</h2>
+        <ol>
+          <li>Open your phone's camera and point it at the code.</li>
+          <li>Tap the link that appears.</li>
+          <li>Talk or type: the assistant asks one question at a time and reads your answers back before anything is sent.</li>
+        </ol>
+        <p class="url-label">Or go to</p>
+        <p class="url" id="f-url"></p>
+      </div>
+    </div>
+  </section>
+  <footer class="foot">
+    <p class="org">Lions Services, Inc.</p>
+    <p>4600 N. Tryon St., Charlotte, NC 28213 · 704-921-1527 · lionsservices.org</p>
+    <p class="small">Prefer to talk to a person? Call 704-921-1527. Large-print and braille copies are available on request.</p>
+  </footer>
+</main>
+<script src="/admin/workflows/flyer/flyer.js"></script>
+</body>
+</html>

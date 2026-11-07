@@ -18,13 +18,37 @@
   <div>
     <p class="eyebrow">Build</p>
     <h1>Workflows</h1>
-    <p class="sub">The question flows behind the assistant and the directory. Open one to edit it visually; every publish is a version you can revert.</p>
+    <p class="sub">The question flows behind the assistant and the directory. The <strong>main site</strong> workflow runs on the public home page; every other one has its own link, QR code and printable flyer to share. Open one to edit it visually; every publish is a version you can revert.</p>
   </div>
-  <div class="page-actions"></div>
+  <div class="page-actions"><button type="button" class="btn primary" id="new-flow" data-tour="new-workflow">+ New workflow</button></div>
 </header>
 <p class="note" id="gh-note" hidden></p>
 <section class="grid" id="flows" data-tour="flow-list" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"><p class="hint">Loading…</p></section>
 </main>
+<dialog id="new-dialog" class="del-dialog" aria-labelledby="new-title">
+  <form id="new-form" method="dialog">
+    <h2 id="new-title" style="color:var(--accent)">New workflow</h2>
+    <p class="hint">A new form-style workflow: the assistant asks its questions one at a time and sends the answers to the Lions Services team. It starts as a draft; publish it to get its link and QR code.</p>
+    <label class="fl" for="nf-title">Title</label><input class="inp" id="nf-title" required maxlength="120" placeholder="For example: Spring workshop sign-up">
+    <label class="fl" for="nf-id">Link name (used in the web address)</label><input class="inp" id="nf-id" required maxlength="40" pattern="[a-z][a-z0-9-]{1,38}[a-z0-9]" placeholder="spring-workshop">
+    <p class="hint" id="nf-url"></p>
+    <label class="fl" for="nf-desc">Short description (optional)</label><input class="inp" id="nf-desc" maxlength="400">
+    <label class="fl" for="nf-copy">Start from</label><select class="inp" id="nf-copy"><option value="">A blank form (one name question)</option></select>
+    <p id="nf-error" class="danger-text" role="alert" hidden></p>
+    <div class="dialog-actions"><button type="button" class="btn" id="nf-cancel">Cancel</button><button type="submit" class="btn primary" id="nf-go">Create draft</button></div>
+  </form>
+</dialog>
+<dialog id="del-dialog" class="del-dialog" aria-labelledby="del-title">
+  <form id="del-form" method="dialog">
+    <h2 id="del-title">Delete this workflow?</h2>
+    <p class="danger-text" id="del-warning"></p>
+    <p class="danger-text">To confirm, type <strong>DELETE</strong> in capital letters below, then press Delete workflow.</p>
+    <label class="fl" for="del-input">Type DELETE to confirm</label>
+    <input class="inp" id="del-input" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <p id="del-error" class="danger-text" role="alert" hidden></p>
+    <div class="dialog-actions"><button type="button" class="btn" id="del-cancel">Cancel</button><button type="submit" class="btn armed" id="del-go" disabled>Delete workflow</button></div>
+  </form>
+</dialog>
 </div>
 <script src="/admin/shell.js"></script>
 <script src="/admin/workflows/workflows.js"></script>

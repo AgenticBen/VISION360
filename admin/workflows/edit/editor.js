@@ -98,7 +98,7 @@
     var top = el("div", { class: "ed-top" }, [
       el("a", { class: "btn sm", href: "/admin/workflows/", text: "← Workflows" }),
       el("h1", { text: S.meta.title }),
-      el("span", { class: "chip sky", id: "ver-chip", text: "v" + S.version + " live" }),
+      el("span", { class: "chip sky", id: "ver-chip", text: S.version ? "v" + S.version + " live" : "Not published yet" }),
       status,
       el("span", { class: "grow" }),
       el("button", { type: "button", class: "btn sm", text: "Versions", onclick: function () { root.classList.toggle("no-rail"); root.classList.toggle("show-rail"); } }),
@@ -850,7 +850,7 @@
     if (r[1].publishing === "off") banner("Publishing is off on this site: you can edit and save drafts, and file a request. (" + (r[1].storage === "github" ? "The publish key isn't set up yet." : "GitHub isn't connected yet.") + ")", null);
     else if (r[1].storage !== "github") banner("GitHub isn't connected: published versions are kept on this machine only.", null);
     if (!S.editsOn) banner("Editing is switched off on this site.", null);
-    document.getElementById("discard").hidden = !S.hasDraft;
+    document.getElementById("discard").hidden = !S.hasDraft || !S.version; // a never-published workflow is removed with Delete instead
     renderRail(); render(); renderInspector();
     // Start readable at the first section; Fit shows the whole tree.
     S.zoom = 0.8; S.panX = 10; S.panY = 40; applyView();

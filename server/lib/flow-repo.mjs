@@ -8,13 +8,18 @@
 //   - tests/fixtures/golden-personas.json (the expected suggestions),
 // so the repository's own checks stay green. The editor shows the impact
 // (who gets different suggestions) before anyone publishes.
-import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { DATA_BRANCH, StoreConflict } from "./gh-store.mjs";
 import { checkFlow, MAX_FLOW_BYTES } from "./flow-check.mjs";
 import { impact, routeWith } from "./golden-route.mjs";
 
-const REGISTRY = JSON.parse(readFileSync(new URL("../../site/data/flows/index.json", import.meta.url), "utf8")).flows;
+// The registry (site/data/flows/index.json on main) lists every workflow.
+// A workflow created in the admin or over MCP waits in PENDING (admin data)
+// until its first publish adds it to the registry. Deleting a workflow marks
+// it "retired": it disappears from the admin, links and the assistant, but its
+// file stays so old conversations still show their answers.
+const REGISTRY_FILE = "site/data/flows/index.json";
+const PENDING = "drafts/registry-pending.json";
 const LOCK = "data/corpus.lock.json";
 const GOLDEN = "tests/fixtures/golden-personas.json";
 
@@ -43,23 +48,60 @@ function prBody({ who, why, imp, revertedFrom, version, title }) {
   return out.join("\n");
 }
 
+export const FLOW_ID = /^[a-z][a-z0-9-]{1,38}[a-z0-9]$/;
+
+// A new form-style workflow starts with one section and one question.
+function starterFlow(title) {
+  return {
+    version: 1,
+    title,
+    intro: "",
+    privacy_notice: "Your information is kept private and used only by Lions Services to follow up.",
+    handoffs: [],
+    on_complete: { action: "staff_followup", message: "Thank you — a Lions Services team member will follow up soon." },
+    blocks: [{ id: "contact", title: "Contact information", questions: ["full_name"] }],
+    questions: [{ id: "full_name", type: "text", required: true, skippable: false, sensitive: true, prompt_screen: "What is your full name?", prompt_voice: "What is your full name?", recap_label: "Name", options: [] }],
+  };
+}
+
 export function createFlowRepo({ gh, corpus, requests }) {
-  function meta(id) {
-    const m = REGISTRY.find((f) => f.id === id);
+  async function mainRegistry() {
+    const cur = await gh.readText("main", REGISTRY_FILE);
+    return cur ? JSON.parse(cur.text) : { flows: [] };
+  }
+  async function pending() {
+    const cur = await gh.readText(DATA_BRANCH, PENDING).catch(() => null);
+    return cur ? JSON.parse(cur.text).flows || [] : [];
+  }
+  // Every workflow that can be edited: published ones from main, then new ones not published yet.
+  async function registry({ withRetired = false } = {}) {
+    const main = (await mainRegistry()).flows || [];
+    const ids = new Set(main.map((m) => m.id));
+    const all = main.concat((await pending()).filter((p) => !ids.has(p.id)).map((p) => ({ ...p, status: "draft" })));
+    return withRetired ? all : all.filter((m) => m.status !== "retired");
+  }
+  async function meta(id) {
+    const m = (await registry()).find((f) => f.id === id);
     if (!m) throw bad("No workflow called " + id, 404);
     return m;
   }
   const draftPath = (id) => `drafts/${id}.json`;
 
+  // null when the workflow has never been published.
   async function published(id) {
-    const m = meta(id);
+    const m = await meta(id);
     const cur = await gh.readText("main", m.file);
-    if (!cur) throw bad("The published copy of " + m.title + " is missing.", 500);
+    if (!cur) {
+      if (m.status === "draft") return null;
+      throw bad("The published copy of " + m.title + " is missing.", 500);
+    }
     return { flow: JSON.parse(cur.text), sha: cur.sha };
   }
 
   async function versions(id) {
-    const commits = await gh.listCommits("main", meta(id).file, 100);
+    const m = await meta(id);
+    if (m.status === "draft") return [];
+    const commits = await gh.listCommits("main", m.file, 100);
     // Offline (no GitHub token) the file on disk is v1 and local publishes follow.
     const local = gh.kind === "local";
     const n = commits.length + (local ? 1 : 0);
@@ -79,8 +121,8 @@ export function createFlowRepo({ gh, corpus, requests }) {
     return d && d.flow ? { ...d, _sha: cur.sha } : null;
   }
 
-  function check(id, flow) {
-    const m = meta(id);
+  async function check(id, flow) {
+    const m = await meta(id);
     return checkFlow(flow, { organizations: corpus.organizations, routing: !!m.routing });
   }
 
@@ -90,7 +132,7 @@ export function createFlowRepo({ gh, corpus, requests }) {
   }
 
   async function impactOf(id, flow) {
-    const m = meta(id);
+    const m = await meta(id);
     if (!m.routing) return null;
     const fx = await goldenFixture();
     if (!fx) return null;
@@ -100,10 +142,20 @@ export function createFlowRepo({ gh, corpus, requests }) {
   }
 
   async function commitVersion(id, flow, { name, note, title, revertedFrom }) {
-    const m = meta(id);
-    const result = check(id, flow);
+    const m = await meta(id);
+    const result = await check(id, flow);
     if (!result.ok) throw bad("This workflow doesn't pass its checks yet, so it can't be published.", 422, { code: "checks_failed", details: result });
+    const prior = await versions(id);
+    const version = (prior.length ? prior[0].version : 0) + 1;
+    if (!m.routing) flow = { ...flow, version };
     const files = [{ path: m.file, text: text(flow) }];
+    // A new workflow's first publish also adds it to the registry, so the
+    // assistant can run it once the site redeploys.
+    if (m.status === "draft") {
+      const reg = await mainRegistry();
+      reg.flows = (reg.flows || []).filter((x) => x.id !== id).concat([{ id, title: m.title, description: m.description || "", file: m.file, usedBy: [`Voice and chat assistant (its own link: /f/${id})`], routing: false, status: "published" }]);
+      files.push({ path: REGISTRY_FILE, text: text(reg) });
+    }
     let imp = null;
     if (m.routing) {
       imp = await impactOf(id, flow);
@@ -125,8 +177,6 @@ export function createFlowRepo({ gh, corpus, requests }) {
         files.push({ path: GOLDEN, text: text(fx) });
       }
     }
-    const prior = await versions(id);
-    const version = (prior.length ? prior[0].version : 0) + 1;
     const who = clean(name, 60) || "Someone";
     const why = clean(note, 300);
     const head = title || `${m.title} v${version}${why ? ": " + why : ""}`;
@@ -174,29 +224,82 @@ export function createFlowRepo({ gh, corpus, requests }) {
   }
 
   return {
-    registry: REGISTRY,
+    registry,
     reconcile,
 
     async list() {
-      return Promise.all(REGISTRY.map(async (m) => {
+      return Promise.all((await registry()).map(async (m) => {
         const [pub, vs, draft] = await Promise.all([published(m.id), versions(m.id).catch(() => []), readDraft(m.id).catch(() => null)]);
+        const shown = pub ? pub.flow : draft ? draft.flow : { blocks: [], questions: [] };
         return {
-          id: m.id, title: m.title, description: m.description, usedBy: m.usedBy, routing: !!m.routing, file: m.file,
-          sections: pub.flow.blocks.length, questions: pub.flow.questions.length, followUps: pub.flow.questions.filter((q) => q.ask_if).length,
-          version: vs.length || 1, lastPublished: vs[0] || null,
+          id: m.id, title: m.title, description: m.description, usedBy: m.usedBy || [], routing: !!m.routing, file: m.file,
+          status: pub ? "published" : "draft",
+          sections: shown.blocks.length, questions: shown.questions.length, followUps: shown.questions.filter((q) => q.ask_if).length,
+          version: pub ? vs.length || 1 : 0, lastPublished: vs[0] || null,
           draft: draft ? { updated_at: draft.updated_at, author: draft.author, draftRevision: draft.draftRevision } : null,
         };
       }));
     },
 
     async get(id) {
-      const m = meta(id);
+      const m = await meta(id);
       const [pub, vs, draft] = await Promise.all([published(id), versions(id), readDraft(id)]);
-      return { meta: m, published: pub.flow, version: vs.length || 1, versions: vs, draft: draft ? { flow: draft.flow, draftRevision: draft.draftRevision, updated_at: draft.updated_at, author: draft.author, base_version: draft.base_version } : null };
+      return { meta: m, published: pub ? pub.flow : null, version: pub ? vs.length || 1 : 0, versions: vs, draft: draft ? { flow: draft.flow, draftRevision: draft.draftRevision, updated_at: draft.updated_at, author: draft.author, base_version: draft.base_version } : null };
+    },
+
+    // New form-style workflow: a draft plus a pending registry entry. It runs
+    // publicly only after its first publish (and the redeploy that follows).
+    async create({ id, title, description, copyFrom, author }) {
+      id = String(id || "").trim().toLowerCase();
+      if (!FLOW_ID.test(id)) throw bad("The workflow id must be 3–40 lowercase letters, numbers and dashes, starting with a letter (for example spring-workshop).");
+      const name = clean(title, 120);
+      if (!name) throw bad("Give the workflow a title.");
+      if ((await registry({ withRetired: true })).some((m) => m.id === id)) throw bad(`There's already a workflow called ${id}. Pick another id.`, 409);
+      let flow = starterFlow(name);
+      if (copyFrom) {
+        const src = await meta(String(copyFrom));
+        if (src.routing) throw bad("Only form-style workflows can be copied. The referral finder ranks services and can't be duplicated.");
+        const p = await published(src.id);
+        const d = await readDraft(src.id).catch(() => null);
+        flow = { ...structuredClone((p && p.flow) || (d && d.flow)), version: 1, title: name };
+      }
+      const entry = { id, title: name, description: clean(description, 400), file: `site/data/flows/${id}.json`, usedBy: [], routing: false, created_at: new Date().toISOString(), author: clean(author, 60) || "Someone" };
+      await gh.updateJson(DATA_BRANCH, PENDING, (d) => { d.flows = (d.flows || []).filter((x) => x.id !== id).concat([entry]); }, `New workflow: ${name}`, { flows: [] });
+      const saved = await this.saveDraft(id, { flow, author });
+      if (requests) await requests.logChange({ title: `New workflow: ${name}`, summary: `Created as a draft (${id}). Publish it to get its link and QR code.`, kind: "workflow", highlight: { page: "/admin/workflows/", target: "flow-list" } }).catch(() => {});
+      return { id, title: name, status: "draft", draftRevision: saved.draftRevision, checks: saved.checks };
+    },
+
+    // Deleting a published workflow opens a pull request that marks it retired.
+    // A workflow that was never published is simply removed.
+    async remove(id, { name, mainFlow } = {}) {
+      const m = await meta(id);
+      if (id === "referral") throw bad("The referral finder can't be deleted: the directory's Find services uses it.", 400);
+      if (id === mainFlow) throw bad("This is the main workflow on the public site. Make another workflow the main one first.", 400);
+      if (m.status === "draft") {
+        await gh.updateJson(DATA_BRANCH, PENDING, (d) => { d.flows = (d.flows || []).filter((x) => x.id !== id); }, `Remove draft workflow: ${id}`, { flows: [] });
+        await this.discardDraft(id);
+        if (requests) await requests.logChange({ title: `Draft workflow deleted: ${m.title}`, summary: "It was never published.", kind: "workflow" }).catch(() => {});
+        return { state: "removed" };
+      }
+      const reg = await mainRegistry();
+      reg.flows = (reg.flows || []).map((x) => (x.id === id ? { ...x, status: "retired", retired_at: new Date().toISOString() } : x));
+      const who = clean(name, 60) || "Someone";
+      const message = `Delete workflow: ${m.title}\n\nDeleted by ${who} from the VISION360 admin. The file stays so earlier conversations still show their answers.`;
+      const files = [{ path: REGISTRY_FILE, text: text(reg) }];
+      let sha, proposal = null;
+      if (gh.proposeToMain) {
+        proposal = await gh.proposeToMain(files, message, { branch: `publish/retire-${id}-${Date.now().toString(36)}`, title: `Delete workflow: ${m.title}`, body: `**${m.title}** deleted by ${who} from the VISION360 admin.\n\nIt's marked retired in the registry: its link, QR code and admin card go away, and conversations already saved keep their answers.\n\nThe publish workflow merges this automatically once \`npm run verify\` passes.` });
+        sha = proposal.sha;
+      } else {
+        ({ sha } = await gh.commitFiles("main", files, message));
+      }
+      if (requests) await requests.logChange({ title: `Workflow deleted: ${m.title}`, summary: "Its link and QR code stop working once this is live. Saved conversations are kept.", kind: "workflow", ref: sha, ...(proposal ? { state: "proposed", pr: proposal.pr, pr_url: proposal.url } : {}) }).catch(() => {});
+      return { sha, ...(proposal ? { state: "proposed", pr: proposal.pr, prUrl: proposal.url } : { state: "live" }) };
     },
 
     async versionAt(id, sha) {
-      const m = meta(id);
+      const m = await meta(id);
       if (sha !== "working-copy" && !/^[0-9a-f]{7,40}$/.test(sha)) throw bad("Invalid version id");
       const cur = await gh.readText(sha, m.file);
       if (!cur) throw bad("That version wasn't found", 404);
@@ -204,7 +307,7 @@ export function createFlowRepo({ gh, corpus, requests }) {
     },
 
     async saveDraft(id, { flow, draftRevision, author }) {
-      meta(id);
+      const m = await meta(id);
       if (!flow || typeof flow !== "object") throw bad("Send the whole workflow as `flow`.");
       if (Buffer.byteLength(JSON.stringify(flow)) > MAX_FLOW_BYTES) throw bad("The workflow is too large.");
       const cur = await gh.readText(DATA_BRANCH, draftPath(id));
@@ -214,12 +317,12 @@ export function createFlowRepo({ gh, corpus, requests }) {
       const vs = await versions(id).catch(() => []);
       const next = { flow, draftRevision: prevRev + 1, updated_at: new Date().toISOString(), author: clean(author, 60) || "Someone", base_version: (prev && prev.flow && prev.base_version) || vs.length || 1 };
       try {
-        await gh.writeText(DATA_BRANCH, draftPath(id), text(next), cur ? cur.sha : null, `Draft: ${meta(id).title} (rev ${next.draftRevision}) by ${next.author}`);
+        await gh.writeText(DATA_BRANCH, draftPath(id), text(next), cur ? cur.sha : null, `Draft: ${m.title} (rev ${next.draftRevision}) by ${next.author}`);
       } catch (e) {
         if (e instanceof StoreConflict) throw bad("Someone else changed this draft. Reload to see their changes.", 409, { code: "stale" });
         throw e;
       }
-      return { draftRevision: next.draftRevision, updated_at: next.updated_at, checks: check(id, flow) };
+      return { draftRevision: next.draftRevision, updated_at: next.updated_at, checks: await check(id, flow) };
     },
 
     async discardDraft(id) {
@@ -229,8 +332,9 @@ export function createFlowRepo({ gh, corpus, requests }) {
     },
 
     async check(id, flow) {
-      const target = flow || (await readDraft(id) || {}).flow || (await published(id)).flow;
-      return { checks: check(id, target), impact: await impactOf(id, target) };
+      const target = flow || (await readDraft(id) || {}).flow || ((await published(id)) || {}).flow;
+      if (!target) throw bad("This workflow has nothing to check yet.", 404);
+      return { checks: await check(id, target), impact: await impactOf(id, target) };
     },
 
     async publish(id, { name, note }) {
@@ -244,7 +348,7 @@ export function createFlowRepo({ gh, corpus, requests }) {
       const v = vs.find((x) => (sha && x.sha.startsWith(sha)) || (version != null && x.version === Number(version)));
       if (!v) throw bad("That version wasn't found.", 404);
       const flow = await this.versionAt(id, v.sha);
-      return commitVersion(id, flow, { name, note: note || `Revert to v${v.version}`, revertedFrom: v.version, title: `${meta(id).title}: revert to v${v.version}` });
+      return commitVersion(id, flow, { name, note: note || `Revert to v${v.version}`, revertedFrom: v.version, title: `${(await meta(id)).title}: revert to v${v.version}` });
     },
   };
 }

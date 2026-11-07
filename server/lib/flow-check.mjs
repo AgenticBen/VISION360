@@ -34,11 +34,15 @@ export function checkFlow(flow, { organizations = [], routing = true } = {}) {
 
   // ---- questions
   const byId = new Map();
+  // These ids get the referral finder's own wording and answer parsing, so a
+  // form must not use them.
+  const RESERVED = new Set(["actor", "county", "goals", "age_band", "hearing_loss", "eye_doctor", "eye_exam_recency", "insurance", "veteran", "va_enrolled", "discharge", "housing_stable", "food_worry", "utilities", "transport_barrier", "legal_matter", "loneliness", "broadband", "devices"]);
   for (const q of flow.questions) {
     const w = "question:" + (q && q.id);
     if (!q || typeof q !== "object") { err("flow", "A question is empty."); continue; }
     if (!ID.test(q.id || "")) err(w, `Question id "${q.id}" must be lowercase letters, numbers and underscores, starting with a letter.`);
     if (byId.has(q.id)) err(w, `Two questions share the id "${q.id}".`);
+    if (!routing && RESERVED.has(q.id)) err(w, `"${q.id}" is reserved for the referral finder. Give this question another id (for example ${q.id}_answer).`);
     byId.set(q.id, q);
     if (!QUESTION_TYPES.includes(q.type)) err(w, `"${q.id}" has an unknown answer type "${q.type}".`);
     if (!str(q.prompt_screen, 600)) err(w, `"${q.id}" needs on-screen wording (up to 600 characters).`);

@@ -23,6 +23,7 @@ import { verifyWebhook, deliveryEvent } from "./email-webhook.mjs";
 import { supabaseConfigured, supabaseKeyProblem, createSupabaseSessions, createDurableSessions } from "./supabase-sessions.mjs";
 import { createSiteSettings } from "./site-settings.mjs";
 import { serveAdmin } from "./admin-pages.mjs";
+import { qrSvg } from "./qr.mjs";
 
 import { randomUUID } from "node:crypto";
 
@@ -330,6 +331,15 @@ export async function createApp(opts = {}) {
         const main = (await settings.site()).mainFlow;
         return send(res, 200, { flow: { id: F.id, title: F.title, description: F.description, intro: F.flow.intro || null, privacy: F.flow.privacy_notice || null, routing: F.routing, main: F.id === main } });
       }
+      // QR code for a workflow's public link (/f/<id>), for posters and flyers.
+      let qm = p.match(/^\/api\/qr\/([a-z0-9-]{1,40})\.svg$/);
+      if (qm && method === "GET") {
+        const F = flowMeta(corpus, qm[1]);
+        if (!F) throw httpError(404, "No published workflow called " + qm[1]);
+        const svg = qrSvg(`${publicOrigin(req)}/f/${F.id}`, { title: F.title });
+        res.writeHead(200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Content-Disposition": `inline; filename="vision360-${F.id}-qr.svg"` });
+        return res.end(svg);
+      }
       if (p === "/api/site" && method === "GET") {
         const main = (await settings.site()).mainFlow;
         const origin = publicOrigin(req);
@@ -527,11 +537,29 @@ export async function createApp(opts = {}) {
           if (!access.writesAllowed) throw httpError(503, access.note);
           if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
         }
-        if (p === "/api/flows" && method === "GET") return send(res, 200, { flows: await flows.list(), storage: gh.kind, editsOn, publishing: access.publishing, keyRequired: access.keyRequired });
+        if (p === "/api/flows" && method === "GET") {
+          const main = (await settings.site()).mainFlow;
+          const origin = publicOrigin(req);
+          const list = (await flows.list()).map((f) => ({ ...f, main: f.id === main, live: flowRunnable(f.id), url: flowRunnable(f.id) ? `${origin}/f/${f.id}` : null, qr: flowRunnable(f.id) ? `/api/qr/${f.id}.svg` : null }));
+          return send(res, 200, { flows: list, mainFlow: main, storage: gh.kind, editsOn, publishing: access.publishing, keyRequired: access.keyRequired });
+        }
+        if (p === "/api/flows" && method === "POST") {
+          const u = await requireStaff(req);
+          const b = await readJson(req);
+          return send(res, 201, await flows.create({ id: b.id, title: b.title, description: b.description, copyFrom: b.copyFrom || null, author: b.author || u.username }));
+        }
         const fm = p.match(/^\/api\/flows\/([a-z0-9-]{1,40})(?:\/(draft|check|publish|revert|versions)(?:\/([0-9a-z-]{7,40}))?)?$/);
         if (fm) {
           const [, id, action, arg] = fm;
           if (!action && method === "GET") return send(res, 200, await flows.get(id));
+          if (!action && method === "DELETE") {
+            const b = await readJson(req);
+            if (b.confirm !== "DELETE") throw httpError(400, "Type DELETE to confirm.");
+            const m = (await flows.registry()).find((x) => x.id === id);
+            if (m && m.status !== "draft") requirePublishKey(req);
+            const out = await flows.remove(id, { name: b.name, mainFlow: (await settings.site()).mainFlow });
+            return send(res, 200, { ...out, live: out.state === "removed" ? "Removed." : liveMessage(out) });
+          }
           if (action === "versions" && arg && method === "GET") return send(res, 200, { flow: await flows.versionAt(id, arg) });
           if (action === "draft" && method === "PUT") return send(res, 200, await flows.saveDraft(id, await readJson(req, BIG_BODY)));
           if (action === "draft" && method === "DELETE") return send(res, 200, await flows.discardDraft(id));
