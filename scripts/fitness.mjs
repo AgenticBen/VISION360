@@ -84,6 +84,15 @@ const CHECKS = [
     },
   },
   {
+    id: "FC10",
+    title: "A Vercel Cron runs the scheduled work (due emails, retention purge)",
+    run: () => {
+      const v = JSON.parse(readFileSync("vercel.json", "utf8"));
+      const ok = (v.crons || []).some((c) => c.path === "/api/cron/tick");
+      return ok ? [] : ["vercel.json has no cron for /api/cron/tick"];
+    },
+  },
+  {
     id: "FC12",
     title: "Every admin write checks the Origin, and publish/revert check the publish key",
     run: () => {

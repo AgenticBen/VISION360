@@ -17,6 +17,7 @@ import { createAdminStore } from "./supabase-store.mjs";
 import { createRequests } from "./requests.mjs";
 import { createFlowRepo } from "./flow-repo.mjs";
 import { createMcp } from "./mcp.mjs";
+import { supabaseConfigured, createSupabaseSessions, createDurableSessions } from "./supabase-sessions.mjs";
 
 import { randomUUID } from "node:crypto";
 
@@ -52,7 +53,27 @@ export async function createApp(opts = {}) {
 
   // Sessions are loaded once and saved once per request (see session-repo.mjs);
   // the turn service runs the conversation itself, independent of HTTP.
-  const repo = createSqliteSessionRepo(store);
+  // With Supabase configured, conversations are kept there and each server
+  // copy works from its SQLite cache (see supabase-sessions.mjs).
+  const sqliteRepo = createSqliteSessionRepo(store);
+  const durable = opts.durable !== undefined ? opts.durable
+    : opts.sessionRemote ? createDurableSessions({ store, sqliteRepo, remote: opts.sessionRemote })
+    : supabaseConfigured(env) ? createDurableSessions({ store, sqliteRepo, remote: createSupabaseSessions(env, opts.supabaseFetch) }) : null;
+  const repo = durable ? durable.repo : sqliteRepo;
+  store.durableKind = durable ? "supabase" : "local";
+  // Conversations changed outside a guarded turn save (emails sent, replay
+  // cache, staff status) are copied to the database before each reply.
+  const dirty = new Set();
+  ctx.markDirty = (id) => { if (id) dirty.add(id); };
+  async function flushDirty() {
+    if (!durable || !dirty.size) return;
+    const ids = [...dirty];
+    dirty.clear();
+    await durable.flush(ids);
+  }
+  async function pullRecent(days = 30) {
+    if (durable) await durable.pullRecent(new Date(Date.now() - days * 864e5).toISOString());
+  }
   const turns = createTurnService({ corpus, store, repo, dialogue, actions: ctx.actions, env, aiFetch });
 
   const locks = new Map();
@@ -67,7 +88,8 @@ export async function createApp(opts = {}) {
     try { return await fn(); } finally { release(); if (locks.get(id) === next) locks.delete(id); }
   }
 
-  function send(res, status, body, headers = {}) {
+  async function send(res, status, body, headers = {}) {
+    await flushDirty();
     const data = JSON.stringify(body);
     res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", ...headers });
     res.end(data);
@@ -179,7 +201,7 @@ export async function createApp(opts = {}) {
           settings: {
             corpusVersion: corpus.version, organizations: corpus.organizations.length, policyVersion: POLICY_VERSION,
             emailTransport: ctx.actions.transportName(), tts, aiUnderstanding: ai,
-            storage: { ...(gh.kind === "github" ? { kind: "github", repo: gh.repo } : { kind: "local" }), data: gh.dataKind || gh.kind },
+            storage: { ...(gh.kind === "github" ? { kind: "github", repo: gh.repo } : { kind: "local" }), data: gh.dataKind || gh.kind, sessions: store.durableKind },
             editsOn, mcpKeyRequired: !!env.V360_MCP_KEY, publishing: access.publishing, publishingNote: access.note,
           },
     };
@@ -232,12 +254,14 @@ export async function createApp(opts = {}) {
         if (body.noticeAccepted !== true) throw httpError(400, "The demo notice must be accepted first.");
         const token = newToken();
         const { session, turn } = await turns.start({ mode: body.mode, tokenHash: tokenHash(token) });
+        ctx.markDirty(session.id);
         return send(res, 201, { sessionId: session.id, token, ...turnResponse(session, turn) });
       }
 
       let m = p.match(/^\/api\/session\/([0-9a-f-]{36})(?:\/(turn|state|event|end|tts))?$/);
       if (m) {
         const id = m[1], sub = m[2] || "state";
+        if (method !== "GET") ctx.markDirty(id);
         if (sub === "state" && method === "GET") {
           const s = await loadSession(req, id);
           return send(res, 200, { state: dialogue.snapshot(s) });
@@ -369,10 +393,12 @@ export async function createApp(opts = {}) {
       }
       if (p === "/api/admin/overview" && method === "GET") {
         requireStaff(req);
+        await pullRecent();
         return send(res, 200, adminOverview());
       }
       if (p === "/api/staff/sessions" && method === "GET") {
         requireStaff(req);
+        await pullRecent(RETENTION_DAYS + 30);
         const open = new Map(store.allOpenReviews().map((r) => [r.session_id, r.n]));
         const rows = store.listSessions().map((s) => ({ ...s, openReviews: open.get(s.id) || 0, actions: store.actionsForSession(s.id).map((a) => ({ type: a.type, status: a.status })) }));
         return send(res, 200, { sessions: rows });
@@ -384,6 +410,7 @@ export async function createApp(opts = {}) {
         if (!s) throw httpError(404, "Not found");
         if (m[2] === "status" && method === "POST") {
           requireSameSite(req);
+          ctx.markDirty(s.id);
           const body = await readJson(req);
           const allowed = ["pending", "reviewed", "needs_follow_up"];
           if (!allowed.includes(body.staffStatus)) throw httpError(400, "Invalid status");
@@ -409,10 +436,24 @@ export async function createApp(opts = {}) {
       if (m && method === "POST") {
         const u = requireStaff(req);
         requireSameSite(req);
+        const act = store.getAction(m[1]);
+        if (act) ctx.markDirty(act.session_id);
         const ok = ctx.actions.retry(m[1]);
         store.audit("staff:" + u.username, null, "action_retry", { actionId: m[1], ok });
         if (ok) await processQueueSoon();
         return send(res, ok ? 200 : 409, { ok });
+      }
+
+      // ---------------- scheduled work (Vercel Cron) ----------------------
+      // Sends due emails (retries from any server copy) and removes expired
+      // conversations. With CRON_SECRET set, only Vercel's scheduler may call it.
+      if (p === "/api/cron/tick" && method === "GET") {
+        if (env.CRON_SECRET && String(req.headers.authorization || "") !== "Bearer " + env.CRON_SECRET) throw httpError(401, "Not allowed");
+        const due = durable ? await durable.pullDue() : 0;
+        const sent = await ctx.actions.drain(10);
+        const purgedLocal = store.purgeExpired();
+        const purgedDb = durable ? await durable.purge() : 0;
+        return send(res, 200, { ok: true, due, processed: sent.length, purged: { local: purgedLocal, database: purgedDb } });
       }
 
       throw httpError(404, "Not found");

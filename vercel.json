@@ -113,5 +113,11 @@
       "destination": "/admin/conversations/",
       "permanent": false
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/tick",
+      "schedule": "0 10 * * *"
+    }
   ]
 }

@@ -68,6 +68,7 @@ export function createActions(ctx) {
   async function runOnce() {
     const action = store.claimDueAction();
     if (!action) return null;
+    if (ctx.markDirty) ctx.markDirty(action.session_id);
     const session = store.getSession(action.session_id);
     const auth = action.authorization_id ? store.getAuthorization(action.authorization_id) : null;
     const payload = JSON.parse(action.payload_json);

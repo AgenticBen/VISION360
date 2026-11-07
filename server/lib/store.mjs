@@ -127,6 +127,8 @@ CREATE TABLE IF NOT EXISTS audit_events (
 );
 `;
 
+const SESSION_TABLES = ["answers", "answer_events", "recommendations", "authorizations", "actions", "staff_reviews", "turn_cache", "audit_events"];
+
 export const RETENTION_DAYS = Number(process.env.V360_RETENTION_DAYS || 7);
 
 export function nowIso() {
@@ -146,6 +148,18 @@ export function openStore(file) {
   const q = (sql) => db.prepare(sql);
   const bumpSessionOf = (actionId) =>
     q(`UPDATE sessions SET version=version+1 WHERE id=(SELECT session_id FROM actions WHERE id=?)`).run(actionId);
+
+  const cols = new Map();
+  const columnsOf = (tbl) => {
+    if (!cols.has(tbl)) cols.set(tbl, new Set(db.prepare(`PRAGMA table_info(${tbl})`).all().map((c) => c.name)));
+    return cols.get(tbl);
+  };
+  // Inserts only columns this table has (bundles from older code still load).
+  const insertRow = (tbl, row) => {
+    const known = columnsOf(tbl);
+    const keys = Object.keys(row).filter((k) => known.has(k));
+    q(`INSERT INTO ${tbl} (${keys.join(",")}) VALUES (${keys.map(() => "?").join(",")})`).run(...keys.map((k) => row[k] === undefined ? null : row[k]));
+  };
 
   const store = {
     db,
@@ -372,12 +386,42 @@ export function openStore(file) {
       return q(`SELECT at, actor, event, detail_json FROM audit_events WHERE session_id=? ORDER BY id`).all(sessionId);
     },
 
+    // Durable copy: everything about one conversation as plain rows, so a
+    // hosted database can keep it and another server copy can load it.
+    exportSession(id) {
+      const session = q(`SELECT * FROM sessions WHERE id=?`).get(id);
+      if (!session) return null;
+      const rows = {};
+      for (const tbl of SESSION_TABLES) {
+        const order = tbl === "answer_events" || tbl === "audit_events" ? " ORDER BY id" : "";
+        rows[tbl] = q(`SELECT * FROM ${tbl} WHERE session_id=?${order}`).all(id).map((r) => {
+          const o = { ...r };
+          if (tbl === "answer_events" || tbl === "audit_events") delete o.id; // local row numbers
+          return o;
+        });
+      }
+      return { format: 1, session: { ...session }, rows };
+    },
+    // Replaces this copy's rows for the conversation with the given bundle.
+    importSession(bundle) {
+      const id = bundle.session.id;
+      store.tx(() => {
+        for (const tbl of SESSION_TABLES) q(`DELETE FROM ${tbl} WHERE session_id=?`).run(id);
+        q(`DELETE FROM sessions WHERE id=?`).run(id);
+        insertRow("sessions", bundle.session);
+        for (const tbl of SESSION_TABLES) for (const r of (bundle.rows && bundle.rows[tbl]) || []) insertRow(tbl, r);
+      });
+    },
+    localSessionVersions() {
+      return new Map(q(`SELECT id, version FROM sessions`).all().map((r) => [r.id, r.version]));
+    },
+
     // Retention: synthetic demo content expires after RETENTION_DAYS.
     purgeExpired() {
       const t = nowIso();
       const ids = q(`SELECT id FROM sessions WHERE expires_at < ?`).all(t).map((r) => r.id);
       for (const id of ids) {
-        for (const tbl of ["answers", "answer_events", "recommendations", "authorizations", "actions", "staff_reviews", "turn_cache", "audit_events"]) {
+        for (const tbl of SESSION_TABLES) {
           q(`DELETE FROM ${tbl} WHERE session_id=?`).run(id);
         }
         q(`DELETE FROM sessions WHERE id=?`).run(id);
