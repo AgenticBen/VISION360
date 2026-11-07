@@ -188,6 +188,10 @@ input[type="radio"], input[type="checkbox"] { width: 1.3rem; height: 1.3rem; acc
 kbd { font: inherit; font-weight: 800; font-size: 0.95rem; padding: 0.1rem 0.6rem; border: 2px solid var(--ink); border-bottom-width: 4px; border-radius: 6px; background: var(--page); color: var(--ink); }
 .about { margin: 0.4rem 0 1rem; }
 .about summary { cursor: pointer; font-weight: 700; color: var(--accent); min-height: 44px; display: flex; align-items: center; }
+/* display:flex hides the browser's own marker, so draw the arrow: points down when closed, up when open. */
+.about summary::-webkit-details-marker { display: none; }
+.about summary::before { content: ""; flex: none; width: 0.55em; height: 0.55em; margin: 0 0.6em 0.2em 0.15em; border-right: 3px solid currentColor; border-bottom: 3px solid currentColor; transform: rotate(45deg); }
+.about[open] summary::before { transform: rotate(-135deg); margin-bottom: -0.2em; }
 .about ul { margin: 0.2rem 0 0.4rem; padding-left: 1.2rem; }
 .about li { margin: 0.35rem 0; }
 .choose { margin-bottom: 1.5rem; }
