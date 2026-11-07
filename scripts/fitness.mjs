@@ -49,6 +49,11 @@ const CHECKS = [
     ]),
   },
   {
+    id: "FC2",
+    title: "The browser never talks to Supabase or holds a server key",
+    run: () => findAll(sourceFiles(["site"]), [/supabase\.co\b/i, /sb_secret_|service_role|@supabase\/supabase-js/, /\bghp_|github_pat_/]),
+  },
+  {
     id: "FC5",
     title: "Geography ranking and result selection are defined only in site/quiz-engine.js",
     run: () => findAll(
@@ -137,6 +142,27 @@ const CHECKS = [
       const a = accessRules({}, { kind: "github" });
       const problems = [];
       if (a.writesAllowed || a.publishAllowed || a.publishing !== "off") problems.push("GitHub without V360_MCP_KEY still allows writes or publishing");
+      return problems;
+    },
+  },
+  {
+    id: "FC15",
+    title: "Every What's new tour target exists on the site (an element id or a data-tour key)",
+    run: () => {
+      const tour = readFileSync(path.join("site", "whats-new.js"), "utf8");
+      const files = [];
+      const walk = (d) => { for (const n of readdirSync(d)) { const p = path.join(d, n); if (statSync(p).isDirectory()) { if (p !== path.join("site", "data") && n !== "fonts" && n !== "brand") walk(p); } else if (/\.(html|m?js)$/.test(n) && p !== path.join("site", "whats-new.js")) files.push(readFileSync(p, "utf8")); } };
+      walk("site");
+      const all = files.join("\n");
+      const problems = [];
+      for (const [, t] of tour.matchAll(/target:\s*"([^"]+)"/g)) {
+        const id = (t.match(/^#([\w-]+)/) || [])[1];
+        if (id) {
+          if (!new RegExp(`id(=|:\\s*)["']${id}["']|["']id["'],\\s*["']${id}["']`).test(all)) problems.push(`target ${t}: no element with id "${id}"`);
+        } else if (/^[\w-]+$/.test(t)) {
+          if (!new RegExp(`data-tour(=|["']?:\\s*|["'],\\s*)["']${t}["']`).test(all)) problems.push(`target "${t}": no data-tour="${t}"`);
+        }
+      }
       return problems;
     },
   },

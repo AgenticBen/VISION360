@@ -46,22 +46,6 @@ export function createActions(ctx) {
     return ok ? { ok: true } : { ok: false, reason: "In this demo I can only send to approved test inboxes, and that address isn't on the list, so I haven't sent anything." };
   }
 
-  function authorizeAndEnqueueEmail(session, { recipient, plan, recommendationId, method }) {
-    return store.tx(() => {
-      const authId = store.saveAuthorization({
-        sessionId: session.id, actionType: "email_plan", destination: recipient, payloadHash: plan.hash,
-        purpose: EMAIL_PURPOSE, revision: session.revision, recommendationId, method,
-      });
-      const idempotencyKey = emailIdempotencyKey(session.id, recipient, plan.hash, session.revision);
-      const res = store.enqueueAction({
-        sessionId: session.id, type: "email_plan", idempotencyKey, authorizationId: authId, revision: session.revision,
-        payload: { to: recipient, subject: plan.subject, text: plan.text, html: plan.html, hash: plan.hash, recommendationId },
-      });
-      store.audit("caller", session.id, res.duplicate ? "action_duplicate_ignored" : "action_authorized", { actionId: res.action.id, type: "email_plan" });
-      return res;
-    });
-  }
-
   // Worker: claims one due action and runs it. Re-checks authorisation and the
   // answer revision immediately before acting, so a correction made after the
   // yes cancels the send.
@@ -123,7 +107,7 @@ export function createActions(ctx) {
     return true;
   }
 
-  return { transportName, recipientAllowed, authorizeAndEnqueueEmail, runOnce, drain, retry };
+  return { transportName, recipientAllowed, runOnce, drain, retry };
 }
 
 function redact(s) {

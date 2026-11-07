@@ -333,10 +333,15 @@ test("direct double-enqueue with the same authorisation is deduplicated", async 
   const rec = app.store.currentRecommendation(s.id);
   const { buildPlan } = await import("../server/lib/plan.mjs");
   const plan = buildPlan(app.corpus, rec.result);
-  const one = app.ctx.actions.authorizeAndEnqueueEmail(session, { recipient: "sam@example.com", plan, recommendationId: rec.id, method: "test" });
-  const two = app.ctx.actions.authorizeAndEnqueueEmail(session, { recipient: "sam@example.com", plan, recommendationId: rec.id, method: "test" });
+  const { createSqliteSessionRepo } = await import("../server/lib/session-repo.mjs");
+  const repo = createSqliteSessionRepo(app.store);
+  const loaded = await repo.load(s.id);
+  const one = loaded.work.enqueueEmail(session, { recipient: "sam@example.com", plan, recommendationId: rec.id, method: "test" });
+  const two = loaded.work.enqueueEmail(session, { recipient: "sam@example.com", plan, recommendationId: rec.id, method: "test" });
+  await repo.save(loaded);
   assert.equal(one.action.id, two.action.id);
   assert.equal(two.duplicate, true);
+  assert.equal(app.store.actionsForSession(s.id).filter((a) => a.type === "email_plan").length, 1);
 });
 
 test("a correction after consent cancels the queued email", async () => {

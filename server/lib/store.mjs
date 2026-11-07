@@ -184,10 +184,6 @@ export function openStore(file) {
       if (!r) return null;
       return { ...r, state: JSON.parse(r.state_json), channels: JSON.parse(r.channels) };
     },
-    saveSession(s) {
-      q(`UPDATE sessions SET updated_at=?, status=?, revision=?, notice_ack_at=?, staff_status=?, channels=?, state_json=?, version=version+1 WHERE id=?`)
-        .run(nowIso(), s.status, s.revision, s.notice_ack_at || null, s.staff_status, JSON.stringify(s.channels || []), JSON.stringify(s.state || {}), s.id);
-    },
     // Saves only if nobody else saved this session since it was loaded
     // (same save counter). Returns rows changed: 0 means another save won.
     saveSessionGuarded(s, expectedVersion) {
