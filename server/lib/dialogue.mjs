@@ -17,7 +17,9 @@ import { createHash } from "node:crypto";
 import {
   interpretAnswer, extractMany, detectGlobal, yesNo, strictConfirm, findCorrectionTarget, mentionedTopics,
   looksLikeCorrection, parseEmail, parseName, spellEmail, normalize,
+  isTyped, formatTyped, interpretTyped, spellPhone,
 } from "./understand.mjs";
+import { corpusView, flowMeta } from "./corpus.mjs";
 import { buildResults, resultsSpeech } from "./results.mjs";
 import { buildPlan } from "./plan.mjs";
 import { who, askOpen, askWithChoices, sectionIntro, ack, recapLine, screenLabel, greetingText, joinList, noConcernTopic } from "./phrasing.mjs";
@@ -32,6 +34,10 @@ function recapLabel(corpus, id) {
   const qq = corpus.assessment.questions.find((x) => x.id === id);
   return (qq && (qq.recap_label || qq.prompt_screen)) || "That answer";
 }
+
+// Form-style workflows (routing: false) collect details for staff instead of
+// suggesting services; email and phone answers are read back before saving.
+const READ_BACK = new Set(["email", "phone"]);
 
 // ------------------------------------------------------------------ helpers
 export function newDialogueState() {
@@ -71,6 +77,7 @@ export function optionLabel(question, value, screen = false) {
 
 function answerText(corpus, a, screen = false) {
   const question = q(corpus, a.questionId);
+  if (a.kind === "answer" && isTyped(question)) return formatTyped(question, a.value, a.detail);
   if (a.kind === "answer" && a.detail && ["age_band", "county"].includes(a.questionId)) return a.detail;
   if (a.kind === "answer") return optionLabel(question, a.value, screen);
   // "I don't know" shows as "not sure" everywhere, matching what the assistant said,
@@ -104,20 +111,43 @@ function questionPayload(question, w) {
     prompt_screen: prompt,
     help: question.help,
     type: question.type,
-    skippable: question.skippable !== false,
+    required: question.required === true,
+    skippable: question.required !== true && question.skippable !== false,
     sensitive: !!question.sensitive,
-    options: (question.options || []).map((o) => ({ value: o.value, label: o.label_screen || o.label_voice })),
+    options: (question.options || []).map((o) => ({ value: o.value, label: o.label_screen || o.label_voice }))
+      .concat(question.type === "consent" && !(question.options || []).some((o) => o.value === "no") ? [{ value: "no", label: "No" }] : []),
+    ...(isTyped(question) && question.type !== "consent" ? { input: TYPED_INPUT[question.type] } : {}),
   };
 }
 
+// How the page should show a free-text answer box for each type.
+const TYPED_INPUT = {
+  text: { inputmode: "text", autocomplete: "name", maxlength: 200 },
+  long_text: { inputmode: "text", autocomplete: "off", maxlength: 1000, multiline: true },
+  email: { inputmode: "email", autocomplete: "email", maxlength: 200 },
+  phone: { inputmode: "tel", autocomplete: "tel", maxlength: 40 },
+  address: { inputmode: "text", autocomplete: "street-address", maxlength: 300 },
+  date: { inputmode: "text", autocomplete: "bday", maxlength: 40, placeholder: "For example March 4, 1950" },
+};
+
 // ------------------------------------------------------------------ engine
 export function createDialogue(ctx) {
-  const { corpus } = ctx;
+  const base = ctx.corpus;
+  // Each conversation runs the workflow it started with (session.flow_id).
+  // C(session) is that workflow's view of the corpus; referral is the corpus itself.
+  function C(session) {
+    const v = corpusView(base, (session && session.flow_id) || "referral");
+    if (!v) { const e = new Error("This form is no longer available."); e.status = 410; throw e; }
+    return v;
+  }
+  const F = (session) => flowMeta(base, (session && session.flow_id) || "referral");
+  const isForm = (session) => { const f = F(session); return !!f && !f.routing; };
   // Optional AI readings for the current turn, passed in explicitly by the
   // turn service (never stored on the session). Empty when AI is off.
   let turnAi = {};
 
   function answersOf(session) {
+    const corpus = C(session);
     const order = corpus.assessment.questions.map((x) => x.id);
     return session.work.getAnswers().sort((a, b) => order.indexOf(a.questionId) - order.indexOf(b.questionId));
   }
@@ -155,6 +185,7 @@ export function createDialogue(ctx) {
   // Changing "veteran" to no means the VA follow-ups no longer apply. Remove
   // them (recorded as an event) rather than letting them keep scoring.
   function pruneNotApplicable(session) {
+    const corpus = C(session);
     let changed = true;
     while (changed) {
       changed = false;
@@ -172,11 +203,13 @@ export function createDialogue(ctx) {
   }
 
   function nextQuestion(session) {
+    const corpus = C(session);
     const st = engineState(corpus, answersOf(session), session.state.skippedBlocks);
     return corpus.engine.nextQuestion(st);
   }
 
   function progress(session) {
+    const corpus = C(session);
     const st = engineState(corpus, answersOf(session), session.state.skippedBlocks);
     return corpus.engine.progress(st);
   }
@@ -191,7 +224,21 @@ export function createDialogue(ctx) {
     return { turnId, text, speech, ...extra };
   }
 
+  // A conversation whose workflow has since been deleted: show what was saved.
+  function ghostSnapshot(session) {
+    const human = (id) => String(id).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+    const answers = session.work.getAnswers().map((a) => ({
+      questionId: a.questionId, label: human(a.questionId), kind: a.kind, value: a.value, detail: a.detail || null,
+      display: a.kind === "answer" ? (a.detail || [].concat(a.value).join(", ")) : (KIND_TEXT[a.kind] || a.kind),
+      status: a.confirmedRevision !== null && a.confirmedRevision !== undefined && a.confirmedRevision === session.state.confirmedRevision ? "confirmed" : "proposed",
+      source: a.source,
+    }));
+    return { sessionId: session.id, revision: session.revision, phase: session.state.phase, names: session.state.names, confirmedRevision: session.state.confirmedRevision, currentQuestion: null, pending: null, answers, progress: null, results: null, actions: session.work.actionsForSession().map(publicAction), staffRequested: session.work.staffReviews().some((r) => r.reason.startsWith("Requested")), email: null, corpusVersion: session.corpus_version, policyVersion: POLICY_VERSION, lastAssistant: session.state.lastAssistant, flowGone: true };
+  }
+
   function snapshot(session) {
+    if (!corpusView(base, session.flow_id || "referral")) return ghostSnapshot(session);
+    const corpus = C(session);
     const w = whoFor(session);
     const answers = answersOf(session).map((a) => ({
       questionId: a.questionId,
@@ -225,6 +272,7 @@ export function createDialogue(ctx) {
   }
 
   function recapPayload(session) {
+    const corpus = C(session);
     const w = whoFor(session);
     const items = answersOf(session).map((a) => ({
       questionId: a.questionId,
@@ -236,10 +284,12 @@ export function createDialogue(ctx) {
   }
 
   function lineFor(session, a) {
+    const corpus = C(session);
     return recapLine(q(corpus, a.questionId), a, whoFor(session), recapLabel(corpus, a.questionId));
   }
 
   function recapSpeech(session) {
+    const corpus = C(session);
     const lines = [];
     const fine = [];
     for (const a of answersOf(session)) {
@@ -252,6 +302,7 @@ export function createDialogue(ctx) {
 
   // ---------------------------------------------------------------- phases
   function askNext(session, lead = []) {
+    const corpus = C(session);
     const st = session.state;
     const w = whoFor(session);
     // Helping someone else: learn their first name once, so we can use it.
@@ -283,6 +334,7 @@ export function createDialogue(ctx) {
   }
 
   function startRecap(session, lead = []) {
+    const corpus = C(session);
     const st = session.state;
     st.phase = "recap";
     st.currentQuestion = null;
@@ -291,11 +343,13 @@ export function createDialogue(ctx) {
     st.recapRevision = session.revision;
     const recap = recapPayload(session);
     const name = st.names.caller;
-    const text = [...lead, `Okay${name ? ", " + name : ""}, before I suggest anything, let me make sure I have this right.`, `${recapSpeech(session).replace(/^./, (c) => c.toUpperCase())}.`, "Does that all sound right? If anything's off, just tell me what to change."];
+    const text = [...lead, isForm(session) ? "Before I send this to the Lions Services team, let me make sure I have it right." : `Okay${name ? ", " + name : ""}, before I suggest anything, let me make sure I have this right.`, `${recapSpeech(session).replace(/^./, (c) => c.toUpperCase())}.`, "Does that all sound right? If anything's off, just tell me what to change."];
     return reply(session, text, { expect: "confirm_recap", recap });
   }
 
   function confirmRecap(session) {
+    if (isForm(session)) return submitForm(session);
+    const corpus = C(session);
     const st = session.state;
     st.confirmedRevision = session.revision;
     session.work.confirmAllAnswers(session.revision);
@@ -326,6 +380,42 @@ export function createDialogue(ctx) {
     return reply(session, [speech.text], { expect: "results", results, speech: speech.speech });
   }
 
+  // A form-style workflow ends here: the answers go to the Lions Services team
+  // as a follow-up (marked "do not contact" if the person said no to contact).
+  function submitForm(session) {
+    const corpus = C(session);
+    const f = F(session);
+    const st = session.state;
+    st.confirmedRevision = session.revision;
+    session.work.confirmAllAnswers(session.revision);
+    session.work.answerEvent(null, "recap_confirmed", null, null, session.revision);
+    session.work.audit("caller", "recap_confirmed", { revision: session.revision });
+    const answers = answersOf(session);
+    const firstOf = (type) => {
+      for (const x of corpus.assessment.questions) {
+        if (x.type !== type) continue;
+        const a = answers.find((y) => y.questionId === x.id && y.kind === "answer");
+        if (a) return a.value;
+      }
+      return null;
+    };
+    const consentQ = corpus.assessment.questions.find((x) => x.type === "consent");
+    const consentA = consentQ ? answers.find((a) => a.questionId === consentQ.id) : null;
+    const noContact = !!consentQ && !(consentA && consentA.value === "yes");
+    const phone = firstOf("phone"), email = firstOf("email"), name = firstOf("text");
+    const people = { callerName: name || st.names.caller || null };
+    if (noContact) session.work.createStaffReview(`Form submitted: ${f.title} — do not contact`, people, false);
+    else session.work.createStaffReview(`Form submitted: ${f.title}`, phone ? { method: "phone", value: phone, ...people } : email ? { method: "email", value: email, ...people } : people, !!(phone || email));
+    session.work.audit("caller", "form_submitted", { flow: f.id, revision: session.revision });
+    st.phase = "closed";
+    st.wrapStep = "done";
+    session.status = "ended";
+    session.work.audit("caller", "session_completed", null);
+    const done = (f.flow.on_complete && f.flow.on_complete.message) || "Thank you — a Lions Services team member will follow up.";
+    const msg = noContact ? "Thank you. I've saved your answers, and since you'd rather not be contacted, nobody from Lions Services will reach out about this." : done;
+    return reply(session, ["Thank you — that's everything.", msg, "Take care!"], { expect: "ended", recap: recapPayload(session), submitted: true });
+  }
+
   // -------------------------------------------------------------- wrap-up
   function staffQuestion(session) {
     const w = whoFor(session);
@@ -348,11 +438,13 @@ export function createDialogue(ctx) {
     st.wrapStep = "done";
     session.status = "ended";
     session.work.audit("caller", "session_completed", null);
+    if (isForm(session)) return reply(session, [...lead, "Okay. I've kept what you told me so far, but the form wasn't finished, so it hasn't been sent to the team.", bits.length ? `Also, ${joinList(bits)}.` : "", "Thanks for talking with me. Take care!"], { expect: "ended" });
     return reply(session, [...lead, `You're all set${name ? ", " + name : ""}.`, `Your suggestions will stay on the screen${bits.length ? ", and " + joinList(bits) : ""}.`, "Thanks so much for talking with me. Take care!"], { expect: "ended" });
   }
 
   // -------------------------------------------------------------- corrections
   function tryCorrection(session, text, { requireCue }) {
+    const corpus = C(session);
     if (requireCue && !looksLikeCorrection(text)) return null;
     const askable = answersOf(session).map((a) => a.questionId);
     const target = findCorrectionTarget(text, corpus.assessment, askable, { geography: corpus.geography });
@@ -383,10 +475,16 @@ export function createDialogue(ctx) {
   }
 
   function handleTurn(session, input) {
+    const corpus = C(session);
     const text = String(input.text || "").slice(0, 1000);
     const st = session.state;
     if (!st.names) st.names = { caller: null, subject: null };
     const g = detectGlobal(text);
+    // While a free-text question is open ("anything else we should know?"),
+    // words like "start over" or "a real person" inside a longer answer are
+    // part of the answer. They only count when they're most of the reply.
+    const openQ = st.phase === "intake" && !st.pending && st.currentQuestion ? q(corpus, st.currentQuestion) : null;
+    if (openQ && isTyped(openQ) && normalize(text).trim().split(" ").length > 4) { delete g.end; delete g.startOver; delete g.staff; delete g.repeat; delete g.skipSection; }
 
     // Explicit structured actions from buttons -------------------------------
     if (input.action === "confirm_recap") {
@@ -460,8 +558,11 @@ export function createDialogue(ctx) {
     }
     if (st.pending && st.pending.type === "reask_for_correction") {
       const question = q(corpus, st.pending.questionId);
-      const interp = input.choice && input.choice.questionId === question.id ? { kind: "answer", value: input.choice.value } : interpretAnswer(text, question, { geography: corpus.geography });
+      const interp = input.choice && input.choice.questionId === question.id ? choiceInterp(question, input.choice.value) : interpretAnswer(text, question, { geography: corpus.geography, aiEmail: turnAi.email, attempts: (st.unclearCount[question.id] || 0) });
       if (interp.kind === "ambiguous") return clarify(session, question, interp, st.pending);
+      if (interp.kind === "invalid") return reply(session, [interp.reason, askOpen(question, whoFor(session))], { expect: "answer", question: questionPayload(question, whoFor(session)) });
+      if (question.required === true && ["skipped", "declined", "unknown"].includes(interp.kind)) return reply(session, ["I need this one for the form.", askOpen(question, whoFor(session))], { expect: "answer", question: questionPayload(question, whoFor(session)) });
+      if (interp.kind === "answer" && READ_BACK.has(question.type)) return readBack(session, question, interp, { correction: true, resumePhase: st.pending.resumePhase });
       if (interp.kind === "unclear") return reply(session, ["Sorry, I didn't quite catch that.", askWithChoices(question, whoFor(session))], { expect: "answer", question: questionPayload(question, whoFor(session)) });
       const resume = st.pending.resumePhase;
       st.pending = null;
@@ -472,6 +573,8 @@ export function createDialogue(ctx) {
       if (resume === "intake") return askNext(session, [ackText]);
       return afterCorrection(session, ackText);
     }
+
+    if (st.pending && st.pending.type === "confirm_typed") return handleConfirmTyped(session, text, input);
 
     // Phase handlers ---------------------------------------------------------
     switch (st.phase) {
@@ -537,6 +640,7 @@ export function createDialogue(ctx) {
   }
 
   function handleOpening(session, text, leadIn = []) {
+    const corpus = C(session);
     const st = session.state;
     const n = normalize(text);
     const justAsk = /just ask|ask me|questions|not sure where to start|don't know where to start/.test(n);
@@ -565,6 +669,7 @@ export function createDialogue(ctx) {
   }
 
   function clarify(session, question, interp, keepPending) {
+    const corpus = C(session);
     const names = interp.options.map((v) => optionLabel(question, v));
     const reason = interp.reason ? `Just to check — ${interp.reason}.` : "Just to check.";
     const w = whoFor(session);
@@ -579,6 +684,7 @@ export function createDialogue(ctx) {
   }
 
   function handleIntake(session, text, input) {
+    const corpus = C(session);
     const st = session.state;
     // Section offer ("go through them, or skip them?")
     if (st.pending && st.pending.type === "block_offer") {
@@ -621,14 +727,17 @@ export function createDialogue(ctx) {
   }
 
   function handleAnswerText(session, text, input) {
+    const corpus = C(session);
     const st = session.state;
     const question = q(corpus, st.currentQuestion || (nextQuestion(session) || {}).id);
     if (!question) return startRecap(session);
     st.currentQuestion = question.id;
     const w = whoFor(session);
     const g = detectGlobal(text);
+    const typed = isTyped(question);
+    const shortReply = normalize(text).trim().split(" ").length <= 4;
 
-    if (g.help) {
+    if (g.help && (!typed || shortReply)) {
       return reply(session, [question.help || "It helps me find the right services.", askOpen(question, w)], { expect: "answer", question: questionPayload(question, w) });
     }
 
@@ -638,15 +747,13 @@ export function createDialogue(ctx) {
         return reply(session, ["That answer was for an earlier question, so I didn't use it.", askOpen(question, w)], { expect: "answer", question: questionPayload(question, w) });
       }
       const vals = [].concat(input.choice.value);
-      const valid = vals.every((v) => (question.options || []).some((o) => o.value === v));
+      const valid = vals.every((v) => (question.options || []).some((o) => o.value === v) || (question.type === "consent" && v === "no"));
       if (!valid) return reply(session, ["That isn't one of the choices for this question.", askOpen(question, w)], { expect: "answer", question: questionPayload(question, w) });
-      const value = question.type === "multi" ? vals : vals[0];
-      const kind = ["not_sure", "never_or_unknown"].includes(vals[0]) && vals.length === 1 ? "unknown" : "answer";
-      return acceptAnswer(session, question, { kind, value });
+      return acceptAnswer(session, question, choiceInterp(question, input.choice.value));
     }
 
     // Correction of an EARLIER answer while answering this one ("actually I live in Gaston").
-    if (looksLikeCorrection(text)) {
+    if (!typed && looksLikeCorrection(text)) {
       const askable = answersOf(session).map((a) => a.questionId).filter((id) => id !== question.id);
       const target = findCorrectionTarget(text, corpus.assessment, askable, { geography: corpus.geography });
       const own = interpretAnswer(text, question, { geography: corpus.geography });
@@ -657,7 +764,16 @@ export function createDialogue(ctx) {
       }
     }
 
-    let interp = interpretAnswer(text, question, { geography: corpus.geography });
+    let interp = interpretAnswer(text, question, { geography: corpus.geography, aiEmail: turnAi.email, attempts: (st.unclearCount[question.id] || 0) });
+    if (interp.kind === "invalid") {
+      st.unclearCount[question.id] = (st.unclearCount[question.id] || 0) + 1;
+      const tail = question.required === true ? "" : " You can also say skip.";
+      return reply(session, [interp.reason + tail, askOpen(question, w)], { expect: "answer", question: questionPayload(question, w) });
+    }
+    if (question.required === true && ["skipped", "declined", "unknown"].includes(interp.kind)) {
+      return reply(session, ["I need this one for the form. If you'd rather talk it through with someone, say talk to a person.", askOpen(question, w)], { expect: "answer", question: questionPayload(question, w) });
+    }
+    if (interp.kind === "answer" && READ_BACK.has(question.type)) return readBack(session, question, interp, {});
     // Within a clarification, restrict to the options we offered when possible.
     if (st.pending && st.pending.type === "clarify" && st.pending.questionId === question.id) {
       if (interp.kind === "ambiguous") {
@@ -700,6 +816,8 @@ export function createDialogue(ctx) {
   }
 
   function noteOtherAnswers(session, text, currentId) {
+    const corpus = C(session);
+    if (isForm(session)) return [];
     const already = new Set(answersOf(session).map((a) => a.questionId));
     const noted = [];
     for (const f of extractMany(text, corpus.assessment, { geography: corpus.geography })) {
@@ -714,6 +832,7 @@ export function createDialogue(ctx) {
   }
 
   function acceptAnswer(session, question, interp, source = "intake", alsoNoted = []) {
+    const corpus = C(session);
     const st = session.state;
     st.pending = null;
     setAnswer(session, question.id, interp.kind, interp.value ?? null, source, interp.detail || null);
@@ -722,9 +841,54 @@ export function createDialogue(ctx) {
     return askNext(session, [text]);
   }
 
-  function handleRecap(session, text, input) {
+  // A button press for a question: consent's "No" isn't a listed option.
+  function choiceInterp(question, value) {
+    const vals = [].concat(value);
+    if (question.type === "consent") return { kind: "answer", value: vals[0] === "yes" ? "yes" : "no", detail: vals[0] === "yes" ? "Yes" : "No" };
+    const v = question.type === "multi" ? vals : vals[0];
+    const kind = ["not_sure", "never_or_unknown"].includes(vals[0]) && vals.length === 1 ? "unknown" : "answer";
+    return { kind, value: v };
+  }
+
+  // Email addresses and phone numbers are read back before they're saved.
+  function readBack(session, question, interp, { correction = false, resumePhase = null }) {
     const st = session.state;
-    if (detectGlobal(text).email) return beginEmail(session);
+    const spoken = question.type === "phone" ? spellPhone(interp.value) : spellEmail(interp.value);
+    st.pending = { type: "confirm_typed", questionId: question.id, value: interp.value, correction, resumePhase };
+    return reply(session, [`I have ${interp.value}.`, "Is that right?"], { expect: "yes_no", speech: `I have ${spoken}. Is that right?` });
+  }
+
+  function handleConfirmTyped(session, text, input) {
+    const corpus = C(session);
+    const st = session.state;
+    const p = st.pending;
+    const question = q(corpus, p.questionId);
+    const w = whoFor(session);
+    const again = text ? interpretTyped(text, question, { aiEmail: turnAi.email }) : { kind: "none" };
+    if (again.kind === "answer" && again.value !== p.value) return readBack(session, question, again, p);
+    const yes = input.action === "confirm_typed" || strictConfirm(text) || (again.kind === "answer" && again.value === p.value);
+    if (yes) {
+      st.pending = null;
+      if (p.correction) {
+        setAnswer(session, question.id, "answer", p.value, "correction", p.value);
+        session.work.answerEvent(question.id, "corrected", p.value, "answer", session.revision);
+        const ackText = `Okay, I've changed that to ${p.value}.`;
+        if (p.resumePhase === "intake") return askNext(session, [ackText]);
+        return afterCorrection(session, ackText);
+      }
+      return acceptAnswer(session, question, { kind: "answer", value: p.value, detail: p.value });
+    }
+    if (yesNo(text) === "no") {
+      st.pending = p.correction ? { type: "reask_for_correction", questionId: question.id, resumePhase: p.resumePhase } : null;
+      return reply(session, ["Okay, let's try that again.", askOpen(question, w)], { expect: "answer", question: questionPayload(question, w) });
+    }
+    return reply(session, [`Is ${p.value} exactly right? Say yes, or tell me the right one.`], { expect: "yes_no" });
+  }
+
+  function handleRecap(session, text, input) {
+    const corpus = C(session);
+    const st = session.state;
+    if (!isForm(session) && detectGlobal(text).email) return beginEmail(session);
     // A reply that talks about one of the answers ("I do have an eye doctor")
     // is a correction even if it contains a yes-word. Never treat it as "yes".
     const namesAnswer = mentionedTopics(text, answersOf(session).map((a) => a.questionId), corpus.assessment).length > 0;
@@ -748,6 +912,7 @@ export function createDialogue(ctx) {
       st.recapAwaitingChange = true;
       return reply(session, ["No problem. What should I change? For example, you could say: change the county to Gaston. You can also use the Change buttons."], { expect: "free", recap: recapPayload(session) });
     }
+    if (isForm(session)) return reply(session, ["I just need a clear yes before I send this. Does the summary sound right? Say yes, or use the Change buttons to fix anything."], { expect: "confirm_recap", recap: recapPayload(session) });
     return reply(session, ["I just need a clear yes before I suggest anything. Does the summary sound right? Say yes, or tell me what to change."], { expect: "confirm_recap", recap: recapPayload(session) });
   }
 
@@ -834,6 +999,7 @@ export function createDialogue(ctx) {
   }
 
   function handleEmail(session, text) {
+    const corpus = C(session);
     const st = session.state;
     const results = currentResults(session);
     if (!results) return startRecap(session, ["Your answers changed, so the plan needs re-checking first."]);
@@ -907,7 +1073,7 @@ export function createDialogue(ctx) {
     st.staff = { resumePhase: ["results", "recap", "intake", "opening"].includes(st.phase) ? st.phase : "results" };
     st.phase = "staff_contact";
     const known = st.email && st.email.address;
-    const lead = "Great. Someone from Lions Services can follow up and help with next steps. They'll see your answers and suggestions, so you won't have to start over.";
+    const lead = `Great. Someone from Lions Services can follow up and help with next steps. They'll see your answers${isForm(session) ? "" : " and suggestions"}, so you won't have to start over.`;
     const askHow = known
       ? `Should they email you at ${known}, or would you rather they call? If calling, what's the best number?`
       : "What's the best phone number or email for them to reach you? Or say no contact if you'd just like them to see your notes.";
@@ -947,7 +1113,7 @@ export function createDialogue(ctx) {
       const resume = st.staff.resumePhase;
       st.staff = { requested: true };
       st.phase = resume;
-      const doneText = ["Done — I've passed your answers and suggestions to the Lions Services team.", c.method === "none" ? "" : "Since this is a demo, nobody will actually contact you."];
+      const doneText = [`Done — I've passed your answers${isForm(session) ? "" : " and suggestions"} to the Lions Services team.`, c.method === "none" ? "" : "Since this is a demo, nobody will actually contact you."];
       if (resume === "results") { st.wrapStep = "anything"; return reply(session, [...doneText, anythingElse()], { expect: "results" }); }
       return resumeAfterAside(session, doneText);
     }
@@ -967,12 +1133,18 @@ export function createDialogue(ctx) {
   }
 
   function greeting(session) {
+    if (isForm(session)) {
+      const f = F(session);
+      session.state.phase = "intake";
+      return askNext(session, [`Hi there! I'm the Vision 360 assistant from Lions Services. I'm an automated helper, and I'll help you fill in the ${f.title}.`, f.flow.intro || "", "This is a demo, so please use made-up details. You can say skip for any question that isn't required."]);
+    }
     session.state.phase = "name";
     return reply(session, greetingText(), { expect: "name" });
   }
 
   // What the optional AI helper may be asked about right now.
   function aiContext(session) {
+    const corpus = C(session);
     const st = session.state;
     const answered = new Set(answersOf(session).map((a) => a.questionId));
     const eng = engineState(corpus, answersOf(session), st.skippedBlocks);

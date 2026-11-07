@@ -277,6 +277,7 @@ function countyFromGeography(n, geography) {
 //   {kind:"ambiguous", options:[...], reason}
 //   {kind:"unclear"}
 export function interpretAnswer(text, q, ctx = {}) {
+  if (TYPED.has(q.type)) return interpretTyped(text, q, ctx);
   const n = normalize(text);
   const g = detectGlobal(text);
   const today = ctx.today || new Date();
@@ -485,4 +486,174 @@ function countyDetail(n, geography) {
 
 function titleCase(s) {
   return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// ---------------------------------------------------------------- typed answers
+// Free-text answer types used by form-style workflows (for example the V360
+// TECH interest form). The answer is what the person said, checked and tidied:
+// "invalid" means it doesn't look like the right kind of answer, so the
+// assistant says why and asks again. Skip, decline and "don't know" only count
+// when that is ALL the person said, so "I'm not sure, maybe learn JAWS" is kept
+// as an answer.
+export const TYPED = new Set(["text", "long_text", "email", "phone", "address", "date", "consent"]);
+const TYPED_FILLER = new Set(["i", "i'd", "id", "would", "we'd", "to", "answer", "rather", "i'll", "just", "please", "um", "uh", "well", "oh", "so", "okay", "ok", "that", "this", "one", "it", "can", "we", "let's", "lets", "thanks", "thank", "you", "really", "honestly", "yeah", "no", "the", "question", "for", "now", "on"]);
+const DIGIT_WORDS = { zero: "0", oh: "0", o: "0", one: "1", two: "2", to: "2", too: "2", three: "3", four: "4", for: "4", five: "5", six: "6", seven: "7", eight: "8", nine: "9" };
+
+export function isTyped(q) {
+  return !!q && TYPED.has(q.type);
+}
+
+function invalid(reason) {
+  return { kind: "invalid", reason };
+}
+
+export function interpretTyped(text, q, ctx = {}) {
+  const raw = String(text || "").trim();
+  const n = normalize(raw);
+  if (!raw) return invalid("I didn't hear anything.");
+  const only = (list) => anyOf(n, list) && onlyPhrases(n, list, TYPED_FILLER);
+  if (only(GLOBAL.skip)) return { kind: "skipped" };
+  if (only(GLOBAL.declined)) return { kind: "declined" };
+  if (only(GLOBAL.unknown)) return { kind: "unknown", value: null };
+  switch (q.type) {
+    case "consent": {
+      const yn = yesNo(raw);
+      if (yn === "yes") return { kind: "answer", value: "yes", detail: "Yes" };
+      if (yn === "no") return { kind: "answer", value: "no", detail: "No" };
+      return invalid("I need a yes or a no for this one.");
+    }
+    case "email": {
+      const e = parseEmail(raw) || ctx.aiEmail || null;
+      return e ? { kind: "answer", value: e, detail: e } : invalid("I didn't catch a full email address. You could say it like “sam at example dot com”, or type it.");
+    }
+    case "phone": {
+      const p = parsePhone(raw);
+      return p ? { kind: "answer", value: p, detail: p } : invalid("I need a 10-digit phone number, with the area code.");
+    }
+    case "date": {
+      const d = parseDate(raw, ctx.today);
+      return d ? { kind: "answer", value: d.iso, detail: d.display } : invalid("I didn't catch a full date. You could say something like “March 4th, 1950”, or type 3/4/1950.");
+    }
+    case "address": {
+      const t = tidy(raw).replace(/^(?:it's|it is|my address is|the address is|address is|i live at|they live at|she lives at|he lives at)\s+/i, "");
+      const words = t.split(/\s+/).filter(Boolean).length;
+      const ok = (words >= 3 && /\d/.test(t)) || ((ctx.attempts || 0) >= 1 && words >= 2);
+      if (t.length > 300) return invalid("That's longer than an address. Just the street, city and ZIP code, please.");
+      return ok ? { kind: "answer", value: t, detail: t } : invalid("I need the street address with the house number, and the city and ZIP code if you can.");
+    }
+    case "long_text": {
+      const t = tidy(raw);
+      return t.length <= 1000 ? { kind: "answer", value: t, detail: t } : invalid("That's a bit long. Could you say it more briefly?");
+    }
+    default: {
+      // text: names and short answers.
+      const t = tidy(raw).replace(/^(?:my name is|my name's|her name is|his name is|their name is|the name is|name is|it's|it is|this is)\s+/i, "");
+      if (!t) return invalid("I didn't catch that.");
+      return t.length <= 200 ? { kind: "answer", value: t, detail: t } : invalid("That's a bit long for this one. Just the short answer, please.");
+    }
+  }
+}
+
+function tidy(s) {
+  return String(s).replace(/\s+/g, " ").replace(/^[\s,.;:]+|[\s,;:]+$/g, "").trim();
+}
+
+// "704 555 1212", "(704) 555-1212", "seven oh four, five five five, one two one two",
+// "double five" -> 704-555-1212. US numbers only.
+export function parsePhone(text) {
+  const words = String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ");
+  let digits = "";
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (/^\d+$/.test(w)) { digits += w; continue; }
+    if ((w === "double" || w === "triple") && i + 1 < words.length) {
+      const nx = words[i + 1];
+      const d = /^\d$/.test(nx) ? nx : DIGIT_WORDS[nx];
+      if (d) { digits += d.repeat(w === "double" ? 2 : 3); i++; continue; }
+    }
+    if (DIGIT_WORDS[w] && !(["to", "too", "for", "o"].includes(w) && !digits)) digits += DIGIT_WORDS[w];
+  }
+  if (digits.length === 11 && digits[0] === "1") digits = digits.slice(1);
+  if (digits.length !== 10) return null;
+  return digits.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+}
+
+export function spellPhone(p) {
+  return String(p).split("-").map((g) => g.split("").join(" ")).join(", ");
+}
+
+const ORDINAL_DAYS = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10, eleventh: 11, twelfth: 12, thirteenth: 13, fourteenth: 14, fifteenth: 15, sixteenth: 16, seventeenth: 17, eighteenth: 18, nineteenth: 19, twentieth: 20, thirtieth: 30 };
+const MONTH_SHORT = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, sept: 8, oct: 9, nov: 10, dec: 11 };
+
+// Spoken years: "nineteen fifty two" -> 1952, "two thousand five" -> 2005.
+function spokenYear(words) {
+  const t = words.join(" ");
+  for (const m of t.matchAll(/\b(nineteen|twenty) (oh )?([a-z]+)(?: ([a-z]+))?/g)) {
+    const hi = m[1] === "nineteen" ? 1900 : 2000;
+    let lo = NUMBER_WORDS[m[3]];
+    if (lo === undefined || lo === 100) continue;
+    if (m[4] && NUMBER_WORDS[m[4]] !== undefined && lo >= 20 && NUMBER_WORDS[m[4]] < 10) lo += NUMBER_WORDS[m[4]];
+    if (m[1] === "twenty" && lo >= 30) continue;
+    return hi + lo;
+  }
+  const m = t.match(/\btwo thousand(?: and)?(?: ([a-z]+))?(?: ([a-z]+))?\b/);
+  if (m) {
+    let lo = m[1] ? NUMBER_WORDS[m[1]] || 0 : 0;
+    if (m[2] && NUMBER_WORDS[m[2]] !== undefined && lo >= 20) lo += NUMBER_WORDS[m[2]];
+    return 2000 + lo;
+  }
+  return null;
+}
+
+function spokenDay(words) {
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    const d = w.match(/^(\d{1,2})(st|nd|rd|th)?$/);
+    if (d && Number(d[1]) >= 1 && Number(d[1]) <= 31 && !(words[i + 1] && /^\d{4}$/.test(words[i]))) return Number(d[1]);
+    if (ORDINAL_DAYS[w]) {
+      if ((w === "twentieth" || w === "thirtieth")) return ORDINAL_DAYS[w];
+      return ORDINAL_DAYS[w];
+    }
+    if ((w === "twenty" || w === "thirty") && ORDINAL_DAYS[words[i + 1]] && ORDINAL_DAYS[words[i + 1]] < 10) return (w === "twenty" ? 20 : 30) + ORDINAL_DAYS[words[i + 1]];
+  }
+  return null;
+}
+
+export function parseDate(text, today = new Date()) {
+  const s = String(text || "").toLowerCase().trim();
+  let y = null, mo = null, d = null;
+  let m = s.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+  if (m) { y = +m[1]; mo = +m[2] - 1; d = +m[3]; }
+  if (y === null && (m = s.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2}|\d{4})\b/))) {
+    mo = +m[1] - 1; d = +m[2]; y = +m[3];
+    if (m[3].length === 2) y += y > today.getFullYear() % 100 ? 1900 : 2000;
+  }
+  if (y === null) {
+    const words = s.replace(/[^a-z0-9]+/g, " ").trim().split(" ");
+    for (const w of words) {
+      const full = MONTHS.indexOf(w);
+      if (full !== -1) { mo = full; break; }
+      if (MONTH_SHORT[w] !== undefined && w !== "may") { mo = MONTH_SHORT[w]; break; }
+      if (w === "may") { mo = 4; break; }
+    }
+    if (mo === null) return null;
+    const four = words.find((w) => /^\d{4}$/.test(w));
+    y = four ? +four : spokenYear(words);
+    d = spokenDay(words.filter((w) => !/^\d{4}$/.test(w)));
+  }
+  if (y === null || mo === null || d === null) return null;
+  const dt = new Date(Date.UTC(y, mo, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo || dt.getUTCDate() !== d) return null;
+  if (y < 1900 || dt.getTime() > today.getTime() + 5 * 365.25 * 864e5) return null;
+  const iso = `${y}-${String(mo + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const display = `${MONTHS[mo][0].toUpperCase()}${MONTHS[mo].slice(1)} ${d}, ${y}`;
+  return { iso, display };
+}
+
+// Display text for a typed answer (detail is stored with the answer).
+export function formatTyped(q, value, detail) {
+  if (detail) return detail;
+  if (q && q.type === "date") { const d = parseDate(String(value)); return d ? d.display : String(value); }
+  if (q && q.type === "consent") return value === "yes" ? "Yes" : value === "no" ? "No" : String(value);
+  return value == null ? "" : String(value);
 }

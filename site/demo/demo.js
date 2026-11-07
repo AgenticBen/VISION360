@@ -170,6 +170,31 @@
     busy: false, queue: [], ended: false, lastTurn: null, seenActions: {},
   };
 
+  // Which workflow this page runs: /f/<id> (a shared link or QR code), ?flow=<id>,
+  // or the main workflow the admin picked for the home page.
+  var FLOW = (location.pathname.match(/^\/f\/([a-z0-9-]{1,40})\/?$/) || [])[1] || new URLSearchParams(location.search).get("flow") || null;
+  app.flow = { id: FLOW, routing: true };
+  fetch("/api/assistant" + (FLOW ? "?flow=" + encodeURIComponent(FLOW) : ""), { cache: "no-store" }).then(function (r) {
+    if (r.status === 404) throw new Error("gone");
+    return r.json();
+  }).then(function (j) {
+    app.flow = j.flow;
+    if (!j.flow.routing) {
+      document.title = j.flow.title + " — Vision 360 CONNECT";
+      document.querySelector(".top h1").textContent = j.flow.title;
+      var li = document.querySelector("#start .notice li:nth-child(2)");
+      if (li) li.textContent = "An automated assistant, not a person, will ask the questions on this form one at a time, then read your answers back so you can check them before anything is sent to Lions Services.";
+      if (j.flow.privacy) { var n = $("start").querySelector(".notice ul"); n.appendChild(el("li", { text: j.flow.privacy })); }
+    }
+  }).catch(function (e) {
+    if (e.message !== "gone") return;
+    $("start-h").textContent = "This form isn't available";
+    var box = $("start").querySelector(".notice");
+    box.textContent = "";
+    box.appendChild(el("p", null, ["This link doesn't lead to a form that's open right now. ", el("a", { href: "/demo", text: "Go to the Vision 360 CONNECT assistant" }), "."]));
+    $("start-voice").disabled = true; $("start-text").disabled = true;
+  });
+
   // Tell people plainly when this deployment can't keep data or send email.
   fetch("/api/health").then(function (r) { return r.json(); }).then(function (h) {
     if (h.tts && h.tts.provider === "elevenlabs") { natural.available = true; fillVoiceSelect(); }
@@ -273,7 +298,9 @@
     $("convo").hidden = false;
     $("ended").hidden = true;
     setStatus("connecting");
-    return api("POST", "/api/session", { noticeAccepted: true, mode: mode }).then(function (j) {
+    var body = { noticeAccepted: true, mode: mode };
+    if (FLOW) body.flow = FLOW;
+    return api("POST", "/api/session", body).then(function (j) {
       app.sessionId = j.sessionId;
       app.token = j.token;
       applyTurn(j.turn, j.state);
@@ -346,8 +373,12 @@
     }
     // Typing help: email keyboard when an address is expected.
     var box = $("message");
-    box.setAttribute("inputmode", turn.expect === "email" ? "email" : "text");
-    box.setAttribute("placeholder", turn.expect === "email" ? "Type your email address" : turn.expect === "name" ? "Type your first name" : "");
+    var inp = turn.question && turn.question.input;
+    box.setAttribute("inputmode", inp ? inp.inputmode : turn.expect === "email" ? "email" : "text");
+    box.setAttribute("autocomplete", inp ? inp.autocomplete : "off");
+    box.setAttribute("maxlength", String(inp ? inp.maxlength : 500));
+    box.setAttribute("placeholder", inp && inp.placeholder ? inp.placeholder : turn.expect === "email" || (inp && inp.inputmode === "email") ? "Type your email address" : inp && inp.inputmode === "tel" ? "Type the phone number" : turn.expect === "name" ? "Type your first name" : inp ? "Type your answer" : "");
+    if (inp && app.mode !== "voice") { try { box.focus({ preventScroll: true }); } catch (e) {} }
     if (turn.expect === "ended") {
       // Say goodbye first, then close everything down.
       if (app.mode === "voice" && settings.readAloud && (canSpeak || natural.available)) { app.endAfterSpeech = true; speak(turn.speech || turn.text, turn.turnId); }
@@ -375,6 +406,7 @@
     if (turn.recap || (state && state.phase === "recap" && turn.expect === "confirm_recap")) panel.appendChild(recapCard(turn.recap || { revision: state.revision, items: state.answers }));
     else if (turn.question) panel.appendChild(questionCard(turn.question));
     else if (turn.expect === "block_offer") panel.appendChild(blockOfferCard());
+    else if (turn.expect === "yes_no") panel.appendChild(yesNoCard());
     if (turn.consent) panel.appendChild(consentCard(turn.consent));
     var results = turn.results || (state && state.results);
     if (results && ["results", "email_address", "email_confirm_address", "email_consent", "staff_contact", "staff_confirm"].indexOf(state.phase) !== -1) {
@@ -385,9 +417,9 @@
 
   function quickButtons(question) {
     var row = el("div", { class: "action-row" });
-    row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "I don't know", onclick: function () { sendTurn({ action: "unknown" }, { text: "I don't know" }); } }));
+    if (!question.required) row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "I don't know", onclick: function () { sendTurn({ action: "unknown" }, { text: "I don't know" }); } }));
     if (question.skippable) row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "Skip", onclick: function () { sendTurn({ action: "skip" }, { text: "Skip" }); } }));
-    if (question.sensitive) row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "Prefer not to say", onclick: function () { sendTurn({ action: "decline" }, { text: "I'd rather not say" }); } }));
+    if (question.sensitive && !question.required) row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "Prefer not to say", onclick: function () { sendTurn({ action: "decline" }, { text: "I'd rather not say" }); } }));
     row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "Why do you ask?", onclick: function () { sendTurn({ text: "why do you ask" }, { text: "Why do you ask?" }); } }));
     return row;
   }
@@ -396,6 +428,7 @@
     var card = el("section", { class: "card", "aria-labelledby": "qh" });
     card.appendChild(el("h3", { id: "qh", text: question.prompt_screen || question.prompt }));
     if (question.help) card.appendChild(el("p", { class: "hint", text: question.help }));
+    if (question.input) card.appendChild(el("p", { class: "hint", text: (question.required ? "Required. " : "") + (app.mode === "voice" ? "Say your answer, or type it in the box below." : "Type your answer in the box below.") }));
     if (question.type === "multi") {
       var fs = el("fieldset", { class: "multi" }, [el("legend", { class: "sr-only", text: question.prompt_screen || question.prompt })]);
       var grid = el("div", { class: "grid" });
@@ -423,6 +456,15 @@
     return card;
   }
 
+  function yesNoCard() {
+    var card = el("section", { class: "card" });
+    card.appendChild(el("div", { class: "action-row", role: "group", "aria-label": "Answer yes or no" }, [
+      el("button", { type: "button", class: "btn btn-primary", text: "Yes", onclick: function () { sendTurn({ text: "yes" }, { text: "Yes" }); } }),
+      el("button", { type: "button", class: "btn", text: "No", onclick: function () { sendTurn({ text: "no" }, { text: "No" }); } }),
+    ]));
+    return card;
+  }
+
   function blockOfferCard() {
     var card = el("section", { class: "card" });
     card.appendChild(el("h3", { text: "Answer these questions, or skip this section?" }));
@@ -436,7 +478,7 @@
   function recapCard(recap) {
     var card = el("section", { class: "card recap", "aria-labelledby": "rh" });
     card.appendChild(el("h3", { id: "rh", text: "Please check your answers" }));
-    card.appendChild(el("p", { class: "hint", text: "Nothing is suggested until you confirm. Change anything that's wrong." }));
+    card.appendChild(el("p", { class: "hint", text: app.flow && app.flow.routing === false ? "Nothing is sent until you confirm. Change anything that's wrong." : "Nothing is suggested until you confirm. Change anything that's wrong." }));
     var ul = el("ul", { class: "recap-list" });
     (recap.items || []).forEach(function (it) {
       var value = it.display;

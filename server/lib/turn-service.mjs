@@ -24,7 +24,8 @@ export function createTurnService({ corpus, store, repo, dialogue, actions, env,
     const g = detectGlobal(input.text);
     if (g.repeat || g.help || g.staff || g.end || g.startOver || g.skipSection) return out;
     try {
-      if ((c.phase === "email_address" || c.phase === "staff_contact") && /@| at /i.test(input.text) && !parseEmail(input.text)) {
+      const emailQuestion = c.phase === "intake" && c.currentQuestion && c.currentQuestion.type === "email";
+      if ((c.phase === "email_address" || c.phase === "staff_contact" || emailQuestion || c.pending === "confirm_typed") && /@| at /i.test(input.text) && !parseEmail(input.text)) {
         out.email = await extractEmailWithAI(env, aiFetch, { utterance: input.text });
         session.work.audit("system", "ai_email", { found: !!out.email });
       } else if (c.phase === "opening") {
@@ -50,8 +51,8 @@ export function createTurnService({ corpus, store, repo, dialogue, actions, env,
     if (awaitIt) await job;
   }
 
-  async function start({ mode, tokenHash }) {
-    const id = store.createSession({ tokenHash, corpusVersion: corpus.version, state: newDialogueState() });
+  async function start({ mode, tokenHash, flow }) {
+    const id = store.createSession({ tokenHash, corpusVersion: corpus.version, state: newDialogueState(), flow });
     const s = await repo.load(id);
     s.notice_ack_at = new Date().toISOString();
     s.channels = [{ mode: mode === "voice" ? "voice" : "text", at: s.notice_ack_at }];

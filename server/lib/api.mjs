@@ -244,6 +244,28 @@ export async function createApp(opts = {}) {
     };
   }
 
+  // A named workflow must be published and pass its checks, or the link is
+  // refused: a broken link must never collect details into the wrong form.
+  // No name means the main workflow (falling back to referral).
+  async function flowForStart(id) {
+    if (id !== undefined && id !== null && id !== "") {
+      const name = String(id);
+      const F = /^[a-z0-9-]{1,40}$/.test(name) ? flowMeta(corpus, name) : null;
+      if (!F) { const e = httpError(404, "This form isn't available."); e.code = "unknown_flow"; throw e; }
+      return F;
+    }
+    const main = (await settings.site().catch(() => ({ mainFlow: "referral" }))).mainFlow;
+    return flowMeta(corpus, main) || flowMeta(corpus, "referral");
+  }
+
+  function publicOrigin(req) {
+    if (env.V360_PUBLIC_ORIGIN) return String(env.V360_PUBLIC_ORIGIN).replace(/\/+$/, "");
+    if (env.V360_SERVERLESS) return "https://vision360.agenticarc.ai";
+    const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost:8360";
+    return (isSecure(req) ? "https://" : "http://") + host;
+  }
+  ctx.publicOrigin = publicOrigin;
+
   function turnResponse(session, turn) {
     return { turn, state: dialogue.snapshot(session) };
   }
@@ -296,10 +318,22 @@ export async function createApp(opts = {}) {
       if (p === "/api/session" && method === "POST") {
         const body = await readJson(req);
         if (body.noticeAccepted !== true) throw httpError(400, "The demo notice must be accepted first.");
+        const F = await flowForStart(body.flow);
         const token = newToken();
-        const { session, turn } = await turns.start({ mode: body.mode, tokenHash: tokenHash(token) });
+        const { session, turn } = await turns.start({ mode: body.mode, tokenHash: tokenHash(token), flow: { id: F.id, title: F.title, version: F.version } });
         ctx.markDirty(session.id);
-        return send(res, 201, { sessionId: session.id, token, ...turnResponse(session, turn) });
+        return send(res, 201, { sessionId: session.id, token, flow: { id: F.id, title: F.title }, ...turnResponse(session, turn) });
+      }
+      // Which workflow a public page runs: /f/<id>, or the main one for the home page.
+      if (p === "/api/assistant" && method === "GET") {
+        const F = await flowForStart(url.searchParams.get("flow") || undefined);
+        const main = (await settings.site()).mainFlow;
+        return send(res, 200, { flow: { id: F.id, title: F.title, description: F.description, intro: F.flow.intro || null, privacy: F.flow.privacy_notice || null, routing: F.routing, main: F.id === main } });
+      }
+      if (p === "/api/site" && method === "GET") {
+        const main = (await settings.site()).mainFlow;
+        const origin = publicOrigin(req);
+        return send(res, 200, { mainFlow: flowRunnable(main) ? main : "referral", flows: [...corpus.flows.values()].map((F) => ({ id: F.id, title: F.title, main: F.id === main, url: `${origin}/f/${F.id}` })) });
       }
 
       let m = p.match(/^\/api\/session\/([0-9a-f-]{36})(?:\/(turn|state|event|end|tts))?$/);

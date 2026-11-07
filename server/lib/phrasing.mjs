@@ -74,6 +74,7 @@ export function joinList(items, word = "and") {
 
 // Offered after an unclear answer.
 export function askWithChoices(question, w) {
+  if (TYPED_TYPES.has(question.type) && question.type !== "consent") return askOpen(question, w) + (question.help ? " " + question.help : "");
   const vals = (question.options || []).map((o) => o.value).filter((v) => !["not_sure", "never_or_unknown"].includes(v));
   if (question.id === "actor") return "Is this for you, for a family member or friend, or are you a professional making a referral?";
   if (question.type === "yes_no") return `Was that a yes or a no? ${askOpen(question, w)}`;
@@ -92,11 +93,15 @@ export function sectionIntro(block, w) {
 // ------------------------------------------------------------- acknowledgements
 const FILLERS = ["Got it.", "Okay.", "Thanks.", "Okay, got it.", "Great."];
 
+const TYPED_TYPES = new Set(["text", "long_text", "email", "phone", "address", "date", "consent"]);
+
 export function ack(question, kind, value, detail, w, n = 0) {
   const filler = FILLERS[n % FILLERS.length];
   if (kind === "unknown") return "That's okay — I'll mark that as not sure.";
   if (kind === "declined") return "No problem, we'll leave that one out.";
   if (kind === "skipped") return "Sure, let's skip that one.";
+  if (question && question.type === "date" && detail) return `${detail} — got it.`;
+  if (question && TYPED_TYPES.has(question.type)) return filler;
   const v = Array.isArray(value) ? value : [value];
   switch (question.id) {
     case "actor":
@@ -127,6 +132,10 @@ export function ack(question, kind, value, detail, w, n = 0) {
 const KIND_TEXT = { unknown: "not sure", declined: "you'd rather not say", skipped: "skipped" };
 
 export function recapLine(question, a, w, label) {
+  if (question && TYPED_TYPES.has(question.type) && a.kind === "answer") {
+    const shown = a.detail || (question.type === "consent" ? (a.value === "yes" ? "yes" : "no") : String(a.value));
+    return `${label.toLowerCase()}: ${shown}`;
+  }
   if (a.kind !== "answer" && !(a.kind === "unknown" && a.value && question.id !== "eye_exam_recency")) {
     return `${label.toLowerCase()}: ${KIND_TEXT[a.kind] || a.kind}`;
   }

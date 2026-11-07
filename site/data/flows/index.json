@@ -1,20 +1,25 @@
 {
-  "_comment": "Workflows the admin editor can open. `file` is the published copy (a commit on main is a version). `usedBy` says what reads it live.",
+  "_comment": "Workflows the admin editor can open and the assistant can run. `file` is the published copy (a commit on main is a version). `status`: published (default) or retired (kept for old conversations, hidden everywhere else). routing: true = suggests services; false = a form whose answers go to staff.",
   "flows": [
     {
       "id": "referral",
       "title": "Referral finder",
       "description": "The questions the voice and chat assistant and the directory's Find services ask, and how each answer moves organizations up or down.",
       "file": "site/data/assessment.json",
-      "usedBy": ["Voice and chat assistant", "Directory › Find services"],
+      "usedBy": [
+        "Voice and chat assistant",
+        "Directory \u203a Find services"
+      ],
       "routing": true
     },
     {
       "id": "v360-interest",
       "title": "V360 TECH interest form",
-      "description": "The V360 TECH community interest form (lionsservices.org/programs/lions-denn/v360-interest) as an editable workflow. Not used by the assistant yet: it needs answer types for names, phone numbers, addresses and dates first.",
+      "description": "The V360 TECH community interest form (lionsservices.org/programs/lions-denn/v360-interest) as a form-style workflow: the assistant asks each question, reads back phone numbers and emails, and sends the answers to the Lions Services team. Shared by its own link and QR code.",
       "file": "site/data/flows/v360-interest.json",
-      "usedBy": [],
+      "usedBy": [
+        "Voice and chat assistant (its own link: /f/v360-interest)"
+      ],
       "routing": false
     }
   ]
