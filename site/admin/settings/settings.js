@@ -4,7 +4,7 @@
   var A = window.V360Admin, el = A.el;
   var url = location.origin + "/api/mcp";
   document.getElementById("mcp-url").textContent = url;
-  document.getElementById("cc-cmd").textContent = "claude mcp add --transport http vision360 " + url;
+  document.getElementById("cc-cmd").textContent = "claude mcp add --transport http vision360 " + url + " --header \"x-v360-key: YOUR-KEY\"";
   document.getElementById("copy-url").addEventListener("click", function (e) {
     var b = e.currentTarget;
     (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1500); }).catch(function () { b.textContent = "Select and copy"; });

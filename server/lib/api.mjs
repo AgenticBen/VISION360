@@ -354,7 +354,9 @@ export async function createApp(opts = {}) {
         if (method === "DELETE") { res.writeHead(200, { "Cache-Control": "no-store" }); return res.end(); }
         if (method !== "POST") return send(res, 405, { error: "This MCP endpoint takes POST (Streamable HTTP, JSON responses)." }, { Allow: "POST, DELETE" });
         if (env.V360_MCP_KEY) {
-          const given = req.headers["x-v360-key"] || String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+          // Header for clients that can send one (Claude Code); ?key= in the
+          // connector URL for Claude.ai and ChatGPT custom connectors.
+          const given = req.headers["x-v360-key"] || String(req.headers.authorization || "").replace(/^Bearer\s+/i, "") || url.searchParams.get("key") || "";
           if (!given || !tokenMatches(given, tokenHash(env.V360_MCP_KEY))) throw httpError(401, "This connector needs its key.");
         }
         if (!limiter(ip + ":mcp", 120)) throw httpError(429, "Too many requests — please wait a moment.");
