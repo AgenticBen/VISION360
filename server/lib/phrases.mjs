@@ -22,6 +22,11 @@ export function voicePhrases() {
     else allowed.add(line);
   }
   if (sc.say && sc.say.magIntro) allowed.add(sc.say.magIntro + " " + sc.say.magWord);
+  // Device setup steps are read one at a time.
+  for (const [os, g] of Object.entries(sc.guides || {})) {
+    if (os.startsWith("_")) continue;
+    for (const [k, steps] of Object.entries(g)) if (Array.isArray(steps)) steps.forEach((x) => allowed.add(x));
+  }
   cached = { P, allowed };
   return cached;
 }

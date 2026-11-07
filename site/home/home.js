@@ -30,6 +30,14 @@
   setOpen(barSaved !== "closed", false);
   apply();
 
+  // The screen settings check appears once an admin switches it on.
+  // (site-menu.js loads after this file and shares one cached lookup.)
+  window.addEventListener("load", function () {
+    (window.V360SiteFeatures ? window.V360SiteFeatures() : Promise.resolve({})).then(function (f) {
+      if (f.screenCheck && $("go-check")) $("go-check").hidden = false;
+    }).catch(function () {});
+  });
+
   $("dbar-toggle").addEventListener("click", function () { setOpen($("dbar-toggle").getAttribute("aria-expanded") !== "true", true); });
   $("display-bar").addEventListener("click", function (e) {
     var b = e.target.closest ? e.target.closest("[data-set]") : null;
