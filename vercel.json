@@ -116,7 +116,7 @@
   ],
   "functions": {
     "api/v360.mjs": {
-      "includeFiles": "{site/data/**,site/quiz-engine.js,server/**,admin/**}",
+      "includeFiles": "{site/data/**,site/quiz-engine.js,site/voice-phrases.js,server/**,admin/**}",
       "maxDuration": 30
     }
   },

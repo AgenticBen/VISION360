@@ -209,9 +209,8 @@
   var FLOW = (ON_ASSESSMENT ? "vision-assessment" : null) || (location.pathname.match(/^\/f\/([a-z0-9-]{1,40})\/?$/) || [])[1] || new URLSearchParams(location.search).get("flow") || null;
   app.flow = { id: FLOW, routing: true };
   // The question on the start screen, which the assistant also asks out loud.
-  var ASK = ON_ASSESSMENT
-    ? { q: "Would you like to check how your vision affects everyday things?", sub: "It takes about five minutes, and it isn't a medical exam. You can tell me the answer whenever you're ready!" }
-    : { q: "Would you like help understanding the services available?", sub: "You can tell me the answer whenever you're ready!" };
+  var PH = window.V360_PHRASES;
+  var ASK = ON_ASSESSMENT ? PH.ASKS.assessment : PH.ASKS.demo;
   function setAsk(q, sub) { ASK = { q: q, sub: sub }; $("start-h").textContent = q; $("start-sub").textContent = sub; }
   setAsk(ASK.q, ASK.sub);
   if (ON_ASSESSMENT) { document.title = "Vision Assessment — Vision 360"; $("page-h").textContent = "Vision Assessment"; }
@@ -338,24 +337,19 @@
   // Spoken before anything else: is the display comfortable, then the
   // page's question. Display commands ("bigger text", "less contrast") work
   // here and at any point in the conversation, without leaving this device.
-  var SIZES = ["100", "125", "150", "200"];
-  var SIZE_WORDS = { "100": "regular size", "125": "large", "150": "extra large", "200": "the largest size" };
-  var THEME_WORDS = { standard: "standard colors, dark text on white", dark: "dark colors, light text on a dark background", high: "high contrast, yellow and white on black" };
-  function displayNow() { return "The text is " + SIZE_WORDS[settings.textSize] + ", with " + THEME_WORDS[settings.theme] + "."; }
-  function welcomeText() {
-    return displayNow() + " If you'd like the text bigger or smaller, or less contrast, just tell me. " + ASK.q + " " + ASK.sub;
-  }
+  var SIZES = PH.SIZES;
+  function welcomeText() { return PH.welcome(ASK, settings.textSize, settings.theme); }
   var localN = 0;
   function localTurn(text, showCard) {
     addMessage("bot", text);
     announce(text);
     if (showCard) { var panel = $("panel"); panel.textContent = ""; panel.appendChild(welcomeCard()); }
-    if (settings.readAloud && canSpeak) speakDevice(text, "local-" + (++localN));
+    if (settings.readAloud && (canSpeak || natural.available)) speak(text, "local-" + (++localN));
     else afterAssistant();
   }
   function welcomeTurn() {
     // Heard it on the start screen already: don't repeat it all.
-    var text = pre.heard ? "I'm listening. Tell me if you'd like the text bigger, smaller or with less contrast, or say yes to begin." : welcomeText();
+    var text = pre.heard ? PH.listening : welcomeText();
     localTurn(text, true);
   }
   function welcomeCard() {
@@ -373,6 +367,7 @@
     if (!app.welcome) return;
     app.welcome = false;
     stopSpeaking("proceed", true);
+    hideBarForConversation();
     var h = app.held; app.held = null;
     if (h) applyTurn(h.turn, h.state);
   }
@@ -384,26 +379,33 @@
     var aboutDisplay = /\b(text|font|print|letters|words|writing|screen|size|zoom|contrast|colou?rs?|dark mode|light mode|bright|brightness)\b/.test(t);
     if (!loose && !aboutDisplay) return null;
     var i = SIZES.indexOf(String(settings.textSize));
-    if (/\b(more|higher|high|increase|full|maximum|max) contrast\b|yellow on black/.test(t)) {
-      return settings.theme === "high" ? { say: "The colors are already high contrast." } : { set: { theme: "high" }, say: "Done. I've switched to high contrast, yellow and white on black." };
+    // Contrast goes in steps, so "less contrast" or "more contrast" can be
+    // said again and again: standard, dark, high.
+    if (/\b(high|full|maximum|max|highest) contrast\b|yellow on black/.test(t) && !/\b(less|lower|reduce|not)\b/.test(t)) {
+      return settings.theme === "high" ? { say: PH.say.highAlready } : { set: { theme: "high" }, say: PH.say.toHigh };
+    }
+    if (/\b(more|higher|increase|raise|turn up|stronger)( the)? contrast\b|\bcontrast (up|higher)\b/.test(t)) {
+      if (settings.theme === "high") return { say: PH.say.highAlready };
+      if (settings.theme === "dark") return { set: { theme: "high" }, say: PH.say.toHigh };
+      return { set: { theme: "dark" }, say: PH.say.moreToDark };
     }
     if (/dark (mode|colou?rs?|theme|background)/.test(t)) {
-      return settings.theme === "dark" ? { say: "The colors are already dark." } : { set: { theme: "dark" }, say: "Done. I've switched to dark colors." };
+      return settings.theme === "dark" ? { say: PH.say.darkAlready } : { set: { theme: "dark" }, say: PH.say.toDark };
     }
-    if (/\b(less|lower|reduce|softer|decrease|turn down|too much|not so much|no) contrast\b|\btoo (bright|harsh|much)\b|\b(normal|regular|standard|default) colou?rs?\b|light mode|white background/.test(t)) {
-      if (settings.theme === "high") return { set: { theme: "dark" }, say: "Done. I've lowered the contrast to dark colors: light text on a dark background. Say less contrast again for dark text on white." };
-      if (settings.theme === "dark") return { set: { theme: "standard" }, say: "Done. I've switched to standard colors: dark text on white." };
-      return { say: "These are already the standard colors, dark text on white." };
+    if (/\b(less|lower|reduce|softer|decrease|turn down|too much|not so much|no)( the)? contrast\b|\bcontrast (down|lower)\b|\bless bright\b|\btoo (bright|harsh|much)\b|\b(normal|regular|standard|default) colou?rs?\b|light mode|white background/.test(t)) {
+      if (settings.theme === "high") return { set: { theme: "dark" }, say: PH.say.lessFromHigh };
+      if (settings.theme === "dark") return { set: { theme: "standard" }, say: PH.say.lessFromDark };
+      return { say: PH.say.lessAlready };
     }
     if (/\b(bigger|larger|increase|enlarge|zoom in|more zoom)\b/.test(t) && !/\b(too big|too large)\b/.test(t)) {
-      if (i >= SIZES.length - 1) return { say: "The text is already at the largest size. Your device's zoom can make it bigger still." };
+      if (i >= SIZES.length - 1) return { say: PH.say.sizeMax };
       var up = SIZES[i + 1];
-      return { set: { textSize: up }, say: "Done. The text is now " + SIZE_WORDS[up] + ", " + up + " percent." };
+      return { set: { textSize: up }, say: PH.say.sizeTo(up) };
     }
     if (/\b(smaller|decrease|reduce|zoom out|less zoom|too big|too large|shrink)\b/.test(t)) {
-      if (i <= 0) return { say: "The text is already at the regular size." };
+      if (i <= 0) return { say: PH.say.sizeMin };
       var down = SIZES[i - 1];
-      return { set: { textSize: down }, say: "Done. The text is now " + SIZE_WORDS[down] + ", " + down + " percent." };
+      return { set: { textSize: down }, say: PH.say.sizeTo(down) };
     }
     return null;
   }
@@ -415,18 +417,19 @@
     if (cmd) {
       addMessage("you", (display && display.text) || text, { voice: display && display.voice });
       if (cmd.set) { Object.keys(cmd.set).forEach(function (k) { settings[k] = cmd.set[k]; }); saveSettings(); }
-      localTurn(cmd.say + (app.welcome ? " Is that better? When you're ready, " + ASK.q.charAt(0).toLowerCase() + ASK.q.slice(1) : ""), app.welcome);
+      localTurn(cmd.say + (app.welcome ? PH.better(ASK) : ""), app.welcome);
       return true;
     }
     if (!app.welcome) return false;
     addMessage("you", (display && display.text) || text, { voice: display && display.voice });
-    if (isNo(text)) { localTurn("That's okay. I'm here whenever you're ready. Just say yes, or tell me if you'd like the text bigger or smaller.", true); return true; }
-    if (isFine(text)) { localTurn("Good. " + ASK.q + " Just say yes when you're ready.", true); return true; }
+    if (isNo(text)) { localTurn(PH.notReady, true); return true; }
+    if (isFine(text)) { localTurn(PH.fine(ASK), true); return true; }
     proceed();
     return true;
   }
 
   function startSession(mode) {
+    stopPreListen();
     app.mode = mode;
     $("start").hidden = true;
     $("convo").hidden = false;
@@ -438,11 +441,20 @@
       app.sessionId = j.sessionId;
       app.token = j.token;
       if (j.state) { app.state = j.state; app.revision = j.state.revision; }
-      // First the welcome: check the display is comfortable and ask the
-      // page's question. The server's first turn waits until they say yes.
-      app.welcome = true;
       app.held = { turn: j.turn, state: j.state };
+      app.welcome = true;
       updateModeUi();
+      // They've heard the welcome and said yes (or pressed Space, Talk or
+      // Type after hearing it): go straight into the conversation.
+      if (app.saidYes || pre.heard) {
+        if (app.saidYes) addMessage("you", app.saidYes, { voice: true });
+        if (mode === "voice") voice.on = true;
+        proceed();
+        if (mode === "voice") startVoice(); else $("message").focus();
+        return;
+      }
+      // Otherwise the welcome first: check the display is comfortable and
+      // ask the page's question. The server's first turn waits for a yes.
       if (mode === "voice") { voice.on = true; welcomeTurn(); startVoice(); }
       else { welcomeTurn(); $("message").focus(); }
     }).catch(function (e) {
@@ -938,20 +950,29 @@
   }
 
   function speak(text, turnId) {
-    if (useNatural() && app.sessionId && app.lastTurn && turnId === app.lastTurn.turnId) return speakNatural(text, turnId);
+    if (useNatural() && app.sessionId && app.lastTurn && turnId === app.lastTurn.turnId) return speakNatural(text, turnId, sessionAudio);
+    if (useNatural() && String(turnId).indexOf("local-") === 0) return speakNatural(text, turnId, phraseAudio);
     return speakDevice(text, turnId);
+  }
+  function sessionAudio(text, turnId) {
+    return fetch("/api/session/" + app.sessionId + "/tts", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + app.token }, body: JSON.stringify({ turnId: turnId, rate: settings.rate }) });
+  }
+  // The assistant's fixed lines (welcome, display replies): the server voices
+  // only lines listed in /voice-phrases.js.
+  function phraseAudio(text) {
+    return fetch("/api/tts-phrase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: text, rate: settings.rate }) });
   }
 
   // Natural voice: fetch the audio for this exact reply, play it, and fall
   // back to the device voice if anything goes wrong.
-  function speakNatural(text, turnId) {
+  function speakNatural(text, turnId, getAudio) {
     stopSpeaking("new-turn", true);
     voice.speaking = true;
     voice.speakingTurn = turnId;
     $("stop-speaking").disabled = false;
     setStatus("speaking");
     if (!settings.bargeIn) stopListening(true); else startListening();
-    fetch("/api/session/" + app.sessionId + "/tts", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + app.token }, body: JSON.stringify({ turnId: turnId, rate: settings.rate }) })
+    getAudio(text, turnId)
       .then(function (r) { if (!r.ok) throw new Error("tts " + r.status); return r.blob(); })
       .then(function (blob) {
         if (!voice.speaking || voice.speakingTurn !== turnId) return;
@@ -1097,32 +1118,97 @@
 
   window.addEventListener("pagehide", function () { stopSpeaking("leave", true); stopListening(); });
 
-  // Say the welcome as the page opens. Most browsers only allow speech after
-  // the first tap or key press, so if it's blocked, say it on the first one
-  // (unless that press starts the conversation, which says it anyway).
-  var pre = { heard: false };
-  function speakOnStart() {
-    if (pre.heard || app.sessionId || !settings.readAloud || !canSpeak || $("start").hidden || $("start-voice").disabled) return;
-    try { window.speechSynthesis.cancel(); } catch (e) {}
-    var u = new SpeechSynthesisUtterance(welcomeText());
-    var v = currentVoice();
-    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "en-US";
-    u.rate = Number(settings.rate) || 1;
-    u.onstart = function () { pre.heard = true; };
-    try { window.speechSynthesis.speak(u); } catch (e) {}
+  // Five seconds after the page opens, say the welcome, then listen: saying
+  // yes starts the conversation, and "bigger text" or "less contrast" change
+  // the display. Most browsers only allow speech after the first tap or key
+  // press; if it's blocked, the welcome plays on the first one.
+  var pre = { heard: false, blocked: false, due: false, rec: null, listening: false, until: 0 };
+  function sayStart(text, done) {
+    // Never listen while the assistant is talking (it would hear itself).
+    pre.speaking = true;
+    function onDone(ok) { if (!pre.speaking) return; pre.speaking = false; done(ok); }
+    stopPreListen();
+    function device() {
+      if (!canSpeak) { onDone(false); return; }
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+      var u = new SpeechSynthesisUtterance(text);
+      var v = currentVoice();
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "en-US";
+      u.rate = Number(settings.rate) || 1;
+      u.onstart = function () { pre.heard = true; };
+      u.onend = function () { onDone(true); };
+      u.onerror = function (e) { if (e.error === "not-allowed") pre.blocked = true; onDone(false); };
+      try { window.speechSynthesis.speak(u); } catch (e) { onDone(false); }
+    }
+    if (!useNatural()) return device();
+    stopNaturalAudio();
+    phraseAudio(text).then(function (r) { if (!r.ok) throw new Error("tts " + r.status); return r.blob(); }).then(function (blob) {
+      if (app.sessionId) return;
+      natural.url = URL.createObjectURL(blob);
+      var a = new Audio(natural.url);
+      natural.audio = a;
+      a.onended = function () { stopNaturalAudio(); onDone(true); };
+      return a.play().then(function () { pre.heard = true; }, function (e) {
+        stopNaturalAudio();
+        if (e && e.name === "NotAllowedError") { pre.blocked = true; onDone(false); } else device();
+      });
+    }).catch(function () { device(); });
   }
-  setTimeout(speakOnStart, 600);
+  function onStartScreen() { return !app.sessionId && !$("start").hidden && !$("start-voice").disabled; }
+  function speakOnStart() {
+    if (pre.heard || !pre.due || !onStartScreen() || !settings.readAloud) return;
+    pre.blocked = false;
+    sayStart(welcomeText(), function (ok) { if (ok) startPreListen(); });
+  }
+  setTimeout(function () { pre.due = true; speakOnStart(); }, 5000);
   function firstPress(e) {
     var t = e.target;
-    if (e.type === "keydown" && (e.key === " " || e.code === "Space")) return;
+    if (e.type === "keydown" && (e.key === " " || e.code === "Space" || e.key === "Enter")) return;
     if (t && t.closest && t.closest("#start-voice, #start-text")) return;
-    document.removeEventListener("pointerdown", firstPress, true);
-    document.removeEventListener("keydown", firstPress, true);
-    if (!pre.heard) setTimeout(speakOnStart, 50);
+    if (pre.heard) { document.removeEventListener("pointerdown", firstPress, true); document.removeEventListener("keydown", firstPress, true); return; }
+    if (pre.blocked) setTimeout(speakOnStart, 50);
   }
   document.addEventListener("pointerdown", firstPress, true);
   document.addEventListener("keydown", firstPress, true);
-  window.addEventListener("pagehide", function () { try { window.speechSynthesis.cancel(); } catch (e) {} });
+
+  // Listening on the start screen, for a few minutes after the welcome.
+  function startPreListen() {
+    if (!canListen || !onStartScreen() || pre.speaking) return;
+    if (!pre.until) pre.until = Date.now() + 3 * 60 * 1000;
+    if (Date.now() > pre.until || pre.listening) return;
+    var r = new SR();
+    r.lang = "en-US"; r.interimResults = false; r.continuous = false; r.maxAlternatives = 1;
+    var heard = "";
+    r.onresult = function (ev) { for (var i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) heard += " " + ev.results[i][0].transcript; };
+    r.onerror = function (ev) { if (ev.error === "not-allowed" || ev.error === "service-not-allowed" || ev.error === "audio-capture") pre.until = 1; };
+    r.onend = function () {
+      pre.listening = false; pre.rec = null;
+      var text = heard.trim();
+      if (!onStartScreen()) return;
+      if (text) return startReply(text);
+      setTimeout(startPreListen, 300);
+    };
+    try { r.start(); pre.rec = r; pre.listening = true; } catch (e) { pre.listening = false; }
+  }
+  function stopPreListen() {
+    if (pre.rec) { try { pre.rec.abort(); } catch (e) {} }
+    pre.rec = null; pre.listening = false;
+  }
+  function startReply(text) {
+    var cmd = displayCommand(text, true);
+    if (cmd) {
+      if (cmd.set) { Object.keys(cmd.set).forEach(function (k) { settings[k] = cmd.set[k]; }); saveSettings(); }
+      return sayStart(cmd.say + PH.better(ASK), function () { pre.until = 0; startPreListen(); });
+    }
+    if (isNo(text)) return sayStart(PH.notReady, function () { pre.until = 0; startPreListen(); });
+    if (isFine(text)) return sayStart(PH.fine(ASK), function () { pre.until = 0; startPreListen(); });
+    app.saidYes = text;
+    startSession("voice");
+  }
+
+  // Once the conversation is under way, fold the display settings away to
+  // leave room for it (without changing what's remembered for next time).
+  function hideBarForConversation() { if ($("dbar-toggle").getAttribute("aria-expanded") === "true") setBarOpen(false, false); }
 
   $("start-voice").addEventListener("click", function () { startSession(canListen ? "voice" : "text").then(function () { if (!canListen) fallbackToText("Talking isn't available in this browser, so we'll type instead."); }); });
   $("start-text").addEventListener("click", function () { startSession("text"); });
@@ -1136,7 +1222,7 @@
     $("start-voice").click();
   }
   document.addEventListener("keydown", function (e) {
-    if (e.key !== " " && e.code !== "Space") return;
+    if (e.key !== " " && e.code !== "Space" && e.key !== "Enter") return;
     if (e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     if ($("start").hidden || dlg.open || app.sessionId) return;
     var t = e.target;

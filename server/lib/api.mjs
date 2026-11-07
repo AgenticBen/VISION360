@@ -14,6 +14,7 @@ import {
 import { RETENTION_DAYS } from "./store.mjs";
 import { flowMeta } from "./corpus.mjs";
 import { ttsEnabled, ttsInfo, ttsKeySet, synthesize, DEFAULT_VOICE_ID, DEFAULT_TTS_MODEL } from "./tts.mjs";
+import { voicePhrases } from "./phrases.mjs";
 import { aiEnabled, DEFAULT_MODEL } from "./ai-understanding.mjs";
 import { createAdminStore } from "./supabase-store.mjs";
 import { createRequests } from "./requests.mjs";
@@ -78,6 +79,7 @@ export async function createApp(opts = {}) {
   const ttsFetch = opts.ttsFetch || globalThis.fetch;
   const ttsCount = new Map();
   const sampleCache = new Map();
+  const phraseCache = new Map();
 
   // Sessions are loaded once and saved once per request (see session-repo.mjs);
   // the turn service runs the conversation itself, independent of HTTP.
@@ -342,6 +344,24 @@ export async function createApp(opts = {}) {
       }
 
       // Fixed sample sentence for the voice picker (never arbitrary text).
+      // The assistant's fixed lines (welcome, display replies), voiced only
+      // when the line is listed in site/voice-phrases.js. Cached per server copy.
+      if (p === "/api/tts-phrase" && method === "POST") {
+        if (!ttsEnabled(env, await voiceSwitch())) throw httpError(404, "Natural voice is not set up");
+        const body = await readJson(req);
+        const text = String(body.text || "");
+        if (!voicePhrases().allowed.has(text)) throw httpError(404, "That line isn't one the assistant says");
+        const rate = [0.85, 1, 1.2, 1.4].includes(Number(body.rate)) ? Number(body.rate) : 1;
+        const key = rate + "|" + text;
+        if (!phraseCache.has(key)) {
+          if (phraseCache.size > 400) phraseCache.clear();
+          phraseCache.set(key, await synthesize(env, ttsFetch, { text, rate }));
+          store.audit("system", null, "tts", { chars: text.length });
+        }
+        const audio = phraseCache.get(key);
+        res.writeHead(200, { "Content-Type": "audio/mpeg", "Cache-Control": "no-store", "Content-Length": audio.length });
+        return res.end(audio);
+      }
       if (p === "/api/tts-sample" && method === "GET") {
         if (!ttsEnabled(env, await voiceSwitch())) throw httpError(404, "Natural voice is not set up");
         const rate = Number(url.searchParams.get("rate")) || 1;

@@ -4,7 +4,7 @@
 
    Usage: <script src="/whats-new.js" data-page="directory|demo|admin-<page>" defer>
 
-   - New sections get a small "New" pill until you've seen them. They come
+   - New sections are listed in the tour (no "New" bubbles on the page). They come
      from NEW below (hand-written for each release) and, on admin pages, from
      change-log entries that point at this page.
    - The button starts a spotlight tour: the page dims, a ring frames the part
@@ -120,13 +120,8 @@
 
   function addPills() {
     [].forEach.call(document.querySelectorAll(".wn-new-pill"), function (p) { p.remove(); });
-    unseen().forEach(function (n) {
-      var t = find(n.target);
-      if (!t || t.id === "admin-nav" || t.classList.contains("rq-btn")) return;
-      var host = /^(H1|H2|H3|A|BUTTON|SUMMARY)$/.test(t.tagName) ? t : (t.querySelector("h1,h2,h3") || t);
-      if (host.querySelector(":scope > .wn-new-pill")) return;
-      host.appendChild(el("span", { class: "wn-new-pill", text: "New", "aria-hidden": "true" }));
-    });
+    // No "New" bubbles on the page (Ben, 2026-11-07): the What's new button
+    // and its dot are enough.
     var dot = button.querySelector(".wn-dot");
     if (unseen().length && !dot) button.appendChild(el("span", { class: "wn-dot", "aria-hidden": "true" }));
     if (!unseen().length && dot) dot.remove();

@@ -1,5 +1,5 @@
-/* Shared site menu: one bar at the top of every page with three tabs
-   (Vision Assessment, Org Directory, Admin) and a ☰ "More" menu for
+/* Shared site menu: one bar at the top of every page with two tabs
+   (Vision Assessment and Resource Assistant) and a ☰ "More" menu for
    everything else. The menu is a disclosure button: Enter/Space opens,
    Escape closes and returns focus, clicking elsewhere closes. Include with
    <link rel="stylesheet" href="/site-menu.css"> and <script src="/site-menu.js">. */
@@ -7,12 +7,12 @@
   "use strict";
   var TABS = [
     ["/assessment/", "Vision Assessment"],
-    ["/", "Org Directory"],
-    ["/admin/", "Admin"]
+    ["/demo/", "Resource Assistant"]
   ];
   var MENUS = [
     { id: "more", label: "More", icon: true, items: [
-      ["/demo/", "Talk or type", "The voice and chat assistant"],
+      ["/", "Org Directory", "Every organization, with search and filters"],
+      ["/admin/", "Admin", "Staff sign-in"],
       ["/#tab-quiz", "Find services", "Answer a few questions for suggestions"],
       ["/#tab-pathways", "Pathways", "Common routes through services"],
       ["/guide.html", "How to use VISION360", "Step-by-step guide to every page"],
@@ -103,7 +103,8 @@
     var skips = document.querySelectorAll("body > .skip-link");
     var after = skips.length ? skips[skips.length - 1] : null;
     if (after) after.insertAdjacentElement("afterend", nav); else document.body.insertBefore(nav, document.body.firstChild);
-    nav.insertAdjacentElement("beforebegin", logoBar);
+    /* The assistant pages give the screen to the conversation: no logo strip. */
+    if (!onDemo) nav.insertAdjacentElement("beforebegin", logoBar);
   }
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
 })();

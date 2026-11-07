@@ -486,6 +486,47 @@
       "ask_if": null,
       "options": [
         {
+          "value": "eye_care",
+          "label_screen": "Eye care and low vision services",
+          "label_voice": "eye care and low vision services",
+          "short_label": "eye care and low vision services",
+          "aliases": [
+            "vision services",
+            "vision care",
+            "eye care",
+            "low vision exam",
+            "low vision clinic",
+            "low vision services",
+            "low vision care",
+            "magnifier",
+            "magnifiers"
+          ],
+          "effects": [
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "low_vision_clinic",
+              "weight": 30,
+              "because": "You said eye care and low vision services matter. A low vision clinic checks how you see now and finds magnifiers and other aids that help.",
+              "evidence": {
+                "org_id": "carolina-eye-doctors",
+                "branch_condition": "The low-vision clinic is not yet open, or the person needs a low-vision exam now"
+              }
+            },
+            {
+              "op": "boost",
+              "target": "category",
+              "id": "eye_care_access",
+              "weight": 20,
+              "because": "You said eye care matters. These help people get an eye exam or pay for eye care.",
+              "evidence": {
+                "org_id": "university-eye-associates",
+                "branch_condition": "The person cannot afford an eye exam"
+              }
+            }
+          ]
+        },
+        {
           "value": "work",
           "label_screen": "Finding or keeping work",
           "label_voice": "finding or keeping work",

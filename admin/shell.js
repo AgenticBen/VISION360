@@ -119,7 +119,7 @@
       document.body.classList.toggle("nav-collapsed");
       try { localStorage.setItem("v360-admin-nav", document.body.classList.contains("nav-collapsed") ? "collapsed" : "open"); } catch (e) {}
     });
-    var back = el("a", { class: "sb-link", href: "/demo/", title: "Public site: Talk or type", html: svg("back") + '<span class="sb-label">Talk or type (public)</span>' });
+    var back = el("a", { class: "sb-link", href: "/demo/", title: "Public site: Resource Assistant", html: svg("back") + '<span class="sb-label">Resource Assistant (public)</span>' });
     var out = el("button", { type: "button", class: "sb-collapse", title: "Sign out", html: svg("logout") + '<span class="sb-label">Sign out</span>' });
     out.addEventListener("click", function () {
       fetch("/api/admin/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", credentials: "same-origin" }).finally(function () { location.href = "/admin/login/"; });
