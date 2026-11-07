@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" data-textsize="150" data-theme="high">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Vision 360 screen settings check: find the text size, colors, speaking speed and pointer that are easiest for you, by voice, keyboard or touch.">
+<title>Screen Settings Check — Vision 360</title>
+<link rel="icon" type="image/png" href="/brand/favicon.png">
+<link rel="stylesheet" href="/brand/brand.css">
+<link rel="stylesheet" href="/demo/demo.css">
+<link rel="stylesheet" href="/site-menu.css">
+<link rel="stylesheet" href="/screen-check/check.css">
+<!-- Display settings, shared by every page, applied before first paint.
+     The check changes them as it goes. -->
+<script src="/display-settings.js" data-default-size="150" data-default-theme="high"></script>
+</head>
+<body>
+<a class="skip-link" href="#stage">Skip to the check</a>
+
+<main id="main" class="wrap check-main">
+  <p class="check-progress" id="progress" aria-live="off"></p>
+
+  <section id="stage" class="stage" tabindex="-1" aria-labelledby="stage-h">
+    <h1 id="stage-h" class="stage-h">Screen settings check</h1>
+    <p id="stage-sub" class="stage-sub">Loading…</p>
+    <div id="stage-body" class="stage-body"></div>
+    <div id="stage-actions" class="stage-actions"></div>
+  </section>
+
+  <div class="voice-row" id="voice-row" hidden>
+    <p class="listen-status" id="listen-status"><span class="status-dot" aria-hidden="true"></span><span id="listen-text"></span></p>
+    <button type="button" class="btn btn-secondary" id="repeat-btn">Repeat</button>
+    <button type="button" class="btn btn-secondary" id="listen-btn" aria-pressed="true">Stop listening</button>
+  </div>
+</main>
+
+<div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<div id="alerter" class="sr-only" role="alert"></div>
+
+<script src="/screen-check/check.js"></script>
+<script src="/site-menu.js"></script>
+<script src="/request-button.js" defer></script>
+</body>
+</html>

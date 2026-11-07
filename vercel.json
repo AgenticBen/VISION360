@@ -70,6 +70,19 @@
           "value": "no-referrer"
         }
       ]
+    },
+    {
+      "source": "/screen-check(.*)",
+      "headers": [
+        {
+          "key": "Permissions-Policy",
+          "value": "microphone=(self), camera=()"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
     }
   ],
   "rewrites": [
@@ -96,6 +109,10 @@
     {
       "source": "/assessment/",
       "destination": "/demo/index.html"
+    },
+    {
+      "source": "/screen-check",
+      "destination": "/screen-check/index.html"
     },
     {
       "source": "/admin/",

@@ -1,0 +1,113 @@
+{
+  "_comment": "Wording for the Screen Settings Check (/screen-check/). Draft for Lions Services to approve (Dana). The assistant may voice only the lines under 'say' with the natural voice. Scoring rules live in server/lib/screen-check.mjs, not here. No client data ever goes in this file.",
+  "version": 1,
+  "status": "draft",
+  "say": {
+    "intro": "Hi, I'm the Vision 360 screen check. In about ten minutes, we'll find the text size, colors, speaking speed and pointer that are easiest for you, and set them up as we go. Press the Space bar, or say ready, to begin.",
+    "screenReader": "Okay. I'll stay quiet so your screen reader can lead. Everything on this page works with the keyboard.",
+    "practice": "First, a quick practice. You can answer by talking, by pressing a button, or by typing. Say ready, or press the Space bar.",
+    "practiceHeard": "Great. That works.",
+    "deviceFix": "Thanks. Which are you using: a phone, a tablet, or a computer?",
+    "goal": "What would you like to do on this device? For example, read email, video call family, or read the news. You can also say skip.",
+    "rateIntro": "Let's set how fast I talk. This is my slowest speed. Say faster, slower, or keep this.",
+    "rateNow": "This is how I sound now. Faster, slower, or keep this?",
+    "rateKept": "Okay, I'll keep this speed.",
+    "magIntro": "Now the text size. I'll show a word. Say the word, type it, or say I can't tell. There are no wrong answers.",
+    "magWord": "What word do you see?",
+    "magDone": "Thank you. I've set the text to a size that should be comfortable.",
+    "contrastIntro": "Now colors. I'll show two choices, one on the left and one on the right. Say left or right for the one that's easier to read, or say same.",
+    "contrastNext": "Which is easier to read: left or right?",
+    "contrastDone": "Thanks. I've switched to those colors.",
+    "cursorIntro": "Now the mouse pointer. When you find the pointer, click the big round button. If you can't find it, say I can't find it, or press the N key.",
+    "cursorNext": "Find the pointer, then click the round button.",
+    "cursorColor": "Which pointer is easier to see: left or right?",
+    "cursorDone": "Thanks. I've set the pointer.",
+    "boldIntro": "One more. Which text is easier to read: left or right?",
+    "boldDone": "Thanks. I've set the text weight.",
+    "review": "All done. I've set your text size, colors, speaking speed and pointer. Say keep, or press the Space bar, to keep them.",
+    "contactAsk": "Would you like someone from Lions Services to contact you about these settings? Say yes or no.",
+    "finished": "Thank you. Your results are on the screen. You can print them, or save them as a P D F.",
+    "cantHear": "Sorry, I didn't catch that. You can also press a button.",
+    "stopped": "Okay, I've stopped listening. Press the Space bar when you want me to listen again.",
+    "deviceAsk": "You're using {device}. Is that right? Say yes or no."
+  },
+  "deviceNames": {
+    "iphone": "an iPhone",
+    "ipad": "an iPad",
+    "android_phone": "an Android phone",
+    "android_tablet": "an Android tablet",
+    "mac": "a Mac",
+    "windows": "a Windows computer",
+    "chromebook": "a Chromebook",
+    "phone": "a phone",
+    "tablet": "a tablet",
+    "computer": "a computer"
+  },
+  "words": [
+    "apple",
+    "house",
+    "river",
+    "green",
+    "chair",
+    "bread",
+    "music",
+    "phone",
+    "table",
+    "water",
+    "smile",
+    "cloud",
+    "horse",
+    "plant",
+    "light",
+    "train",
+    "beach",
+    "clock",
+    "heart",
+    "money",
+    "lemon",
+    "candle",
+    "garden",
+    "pencil",
+    "rabbit",
+    "window",
+    "basket",
+    "button",
+    "doctor",
+    "summer"
+  ],
+  "sounds_like": {
+    "bread": [
+      "bred"
+    ],
+    "heart": [
+      "hart"
+    ],
+    "plant": [
+      "plants"
+    ],
+    "clock": [
+      "clocks"
+    ],
+    "horse": [
+      "hoarse"
+    ],
+    "train": [
+      "trains"
+    ],
+    "beach": [
+      "beech"
+    ],
+    "light": [
+      "lite"
+    ],
+    "money": [
+      "monday"
+    ],
+    "candle": [
+      "handle"
+    ],
+    "music": [
+      "musik"
+    ]
+  }
+}

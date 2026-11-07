@@ -17,7 +17,7 @@
 
   var SETTINGS_KEY = "v360-demo-settings";
   var DEFAULTS = { textSize: "150", theme: "high", readAloud: true, rate: "1", bargeIn: false, announce: true, voiceName: "", endSilence: "2000" };
-  var RATES = ["0.85", "1", "1.2", "1.4"];
+  var RATES = ["0.7", "0.85", "1", "1.2", "1.4"];
   var SILENCES = ["1200", "2000", "3200"];
 
   var $ = function (id) { return document.getElementById(id); };
@@ -40,7 +40,7 @@
     try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); } catch (e) {}
     var out = {};
     Object.keys(DEFAULTS).forEach(function (k) { out[k] = s[k] !== undefined ? s[k] : DEFAULTS[k]; });
-    if (RATES.indexOf(String(out.rate)) === -1) out.rate = Number(out.rate) < 1 ? "0.85" : "1";
+    if (RATES.indexOf(String(out.rate)) === -1) out.rate = Number(out.rate) < 0.8 ? "0.7" : Number(out.rate) < 1 ? "0.85" : "1";
     if (SILENCES.indexOf(String(out.endSilence)) === -1) out.endSilence = DEFAULTS.endSilence;
     // Text size and colors are shared with every page (display-settings.js).
     if (window.V360Display) { var d = window.V360Display.get(); out.textSize = d.textSize; out.theme = d.theme; }
