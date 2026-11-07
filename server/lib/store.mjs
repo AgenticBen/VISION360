@@ -148,6 +148,11 @@ export function openStore(file) {
   try { db.exec("ALTER TABLE answers ADD COLUMN detail TEXT"); } catch (e) { /* already there */ }
   // Migration: a save counter, so two saves of the same session can't silently overwrite each other.
   try { db.exec("ALTER TABLE sessions ADD COLUMN version INTEGER NOT NULL DEFAULT 0"); } catch (e) { /* already there */ }
+  // Migration: which workflow a conversation ran, fixed when it starts (so it
+  // still lists and filters after that workflow is deleted).
+  try { db.exec("ALTER TABLE sessions ADD COLUMN flow_id TEXT NOT NULL DEFAULT 'referral'"); } catch (e) { /* already there */ }
+  try { db.exec("ALTER TABLE sessions ADD COLUMN flow_title TEXT"); } catch (e) { /* already there */ }
+  try { db.exec("ALTER TABLE sessions ADD COLUMN flow_version TEXT"); } catch (e) { /* already there */ }
   const q = (sql) => db.prepare(sql);
   const bumpSessionOf = (actionId) =>
     q(`UPDATE sessions SET version=version+1 WHERE id=(SELECT session_id FROM actions WHERE id=?)`).run(actionId);
@@ -174,12 +179,13 @@ export function openStore(file) {
     },
 
     // sessions ---------------------------------------------------------
-    createSession({ tokenHash, corpusVersion, state }) {
+    createSession({ tokenHash, corpusVersion, state, flow }) {
       const id = randomUUID();
       const t = nowIso();
       const exp = RETENTION_DAYS ? new Date(Date.now() + RETENTION_DAYS * 864e5).toISOString() : KEEP_UNTIL_DELETED;
-      q(`INSERT INTO sessions (id, token_hash, created_at, updated_at, expires_at, corpus_version, state_json) VALUES (?,?,?,?,?,?,?)`)
-        .run(id, tokenHash, t, t, exp, corpusVersion, JSON.stringify(state || {}));
+      const f = flow || { id: "referral", title: "Referral finder", version: null };
+      q(`INSERT INTO sessions (id, token_hash, created_at, updated_at, expires_at, corpus_version, state_json, flow_id, flow_title, flow_version) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+        .run(id, tokenHash, t, t, exp, corpusVersion, JSON.stringify(state || {}), f.id, f.title || null, f.version || null);
       return id;
     },
     getSession(id) {
@@ -197,8 +203,8 @@ export function openStore(file) {
     setStaffStatus(id, staffStatus) {
       q(`UPDATE sessions SET staff_status=?, updated_at=? WHERE id=?`).run(staffStatus, nowIso(), id);
     },
-    listSessions(limit = 200) {
-      return q(`SELECT id, created_at, updated_at, status, revision, staff_status, channels, corpus_version, state_json FROM sessions ORDER BY updated_at DESC LIMIT ?`).all(limit)
+    listSessions(limit = 5000) {
+      return q(`SELECT id, created_at, updated_at, status, revision, staff_status, channels, corpus_version, state_json, flow_id, flow_title, flow_version FROM sessions ORDER BY updated_at DESC LIMIT ?`).all(limit)
         .map((r) => ({ ...r, channels: JSON.parse(r.channels), phase: JSON.parse(r.state_json).phase, state_json: undefined }));
     },
 
@@ -417,6 +423,18 @@ export function openStore(file) {
     },
     localSessionVersions() {
       return new Map(q(`SELECT id, version FROM sessions`).all().map((r) => [r.id, r.version]));
+    },
+
+    // Permanently removes conversations and everything recorded about them.
+    deleteSessions(ids) {
+      let n = 0;
+      store.tx(() => {
+        for (const id of ids) {
+          for (const tbl of SESSION_TABLES) q(`DELETE FROM ${tbl} WHERE session_id=?`).run(id);
+          n += q(`DELETE FROM sessions WHERE id=?`).run(id).changes;
+        }
+      });
+      return n;
     },
 
     // Retention: only conversations with a real expiry date (V360_RETENTION_DAYS) are removed.

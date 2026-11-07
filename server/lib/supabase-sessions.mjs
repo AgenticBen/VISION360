@@ -80,6 +80,12 @@ export function createSupabaseSessions(env, fetchImpl = globalThis.fetch) {
     async purge() {
       return req("POST", `/rpc/purge_expired_sessions`, {});
     },
+    async remove(ids) {
+      if (!ids.length) return 0;
+      const list = ids.map((id) => encodeURIComponent(id)).join(",");
+      const r = await req("DELETE", `/session_bundles?id=in.(${list})&select=id`, undefined, { Prefer: "return=representation" });
+      return (r || []).length;
+    },
     async findByReceipt(receipt) {
       const r = await req("GET", `/session_bundles?email_receipts=cs.${encodeURIComponent("{" + JSON.stringify(String(receipt)) + "}")}&select=id&limit=1`);
       return r && r.length ? r[0].id : null;
@@ -150,6 +156,12 @@ export function createDurableSessions({ store, sqliteRepo, remote, log = console
       }
     },
     async purge() { return remote.purge(); },
+    // Deletes from the database first, so another copy can't bring them back.
+    async remove(ids) {
+      const n = remote.remove ? await remote.remove(ids) : 0;
+      for (const id of ids) remoteVersion.delete(id);
+      return n;
+    },
     // Loads the conversation that sent this email into the cache.
     async pullByReceipt(receipt) {
       const id = remote.findByReceipt ? await remote.findByReceipt(receipt) : null;

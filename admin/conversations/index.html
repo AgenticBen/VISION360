@@ -22,20 +22,43 @@
   </div>
   <div class="page-actions"></div>
 </header>
-<section id="login" hidden class="card"><h2>Sign in</h2>
-  <form id="login-form"><label class="fl" for="u">Username</label><input class="inp" id="u" autocomplete="username" style="max-width:20rem">
-  <label class="fl" for="p">Password</label><input class="inp" id="p" type="password" autocomplete="current-password" style="max-width:20rem">
-  <p><button class="btn primary" type="submit">Sign in</button></p><p id="login-error" class="note" hidden></p></form></section>
-<button type="button" class="btn" id="logout" hidden>Sign out</button>
-<section id="list" hidden class="card" data-tour="conversation-list">
-  <div class="table-wrap"><table class="t"><thead><tr><th>Updated</th><th>Stage</th><th>Staff status</th><th>Needs attention</th><th>Email</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+<section id="list" class="card" data-tour="conversation-list">
+  <form class="filters" id="filters" data-tour="conversation-filter" aria-label="Filter conversations">
+    <div><label class="fl" for="f-flow">Workflow</label><select class="inp" id="f-flow" name="flow"><option value="all">All conversations</option></select></div>
+    <div><label class="fl" for="f-status">Staff status</label><select class="inp" id="f-status" name="status"><option value="all">Any</option><option value="pending">Pending</option><option value="reviewed">Reviewed</option><option value="needs_follow_up">Needs follow-up</option></select></div>
+    <div><label class="fl" for="f-stage">Stage</label><select class="inp" id="f-stage" name="stage"><option value="all">Any</option><option value="name">Giving name</option><option value="opening">Just started</option><option value="intake">Answering questions</option><option value="recap">Checking summary</option><option value="results">Has suggestions</option><option value="ended">Ended</option></select></div>
+    <div><label class="fl" for="f-attention">Needs attention</label><select class="inp" id="f-attention" name="attention"><option value="">Any</option><option value="yes">Yes</option><option value="no">No</option></select></div>
+    <div><label class="fl" for="f-from">From</label><input class="inp" type="date" id="f-from" name="from"></div>
+    <div><label class="fl" for="f-to">To</label><input class="inp" type="date" id="f-to" name="to"></div>
+    <div class="filters-actions"><button type="button" class="btn" id="f-clear">Clear filters</button></div>
+  </form>
+  <div class="bulk-bar">
+    <span id="count" class="hint" role="status"></span>
+    <button type="button" class="btn danger" id="del-selected" disabled>Delete selected</button>
+  </div>
+  <div class="table-wrap"><table class="t"><thead><tr><th class="ck"><input type="checkbox" id="sel-all" aria-label="Select all shown conversations"></th><th>Updated</th><th>Workflow</th><th>Stage</th><th>Staff status</th><th>Needs attention</th><th>Email</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+  <p><button type="button" class="btn" id="more" hidden>Load more</button></p>
 </section>
 <section id="detail" hidden class="card">
-  <p><button type="button" class="btn" id="back">← Back to the list</button></p>
+  <p class="detail-top"><button type="button" class="btn" id="back">← Back to the list</button> <button type="button" class="btn danger" id="del-one">Delete this conversation</button></p>
   <h2 id="detail-h" tabindex="-1">Conversation</h2>
   <div id="detail-body"></div>
 </section>
 </main>
+<dialog id="del-dialog" class="del-dialog" aria-labelledby="del-title">
+  <form method="dialog" id="del-form">
+    <h2 id="del-title">Delete conversations?</h2>
+    <p class="danger-text" id="del-warning"></p>
+    <p class="danger-text">This cannot be undone. To confirm, type <strong>DELETE</strong> in capital letters below, then press Delete permanently.</p>
+    <label class="fl" for="del-input">Type DELETE to confirm</label>
+    <input class="inp" id="del-input" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <p id="del-error" class="danger-text" role="alert" hidden></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="del-cancel">Cancel</button>
+      <button type="submit" class="btn armed" id="del-go" disabled>Delete permanently</button>
+    </div>
+  </form>
+</dialog>
 </div>
 <script src="/admin/shell.js"></script>
 <script src="/admin/conversations/conversations.js"></script>

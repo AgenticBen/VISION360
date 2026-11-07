@@ -522,8 +522,41 @@ export async function createApp(opts = {}) {
         await requireStaff(req);
         await pullRecent(RETENTION_DAYS ? RETENTION_DAYS + 30 : 36500);
         const open = new Map(store.allOpenReviews().map((r) => [r.session_id, r.n]));
-        const rows = store.listSessions().map((s) => ({ ...s, openReviews: open.get(s.id) || 0, actions: store.actionsForSession(s.id).map((a) => ({ type: a.type, status: a.status })) }));
-        return send(res, 200, { sessions: rows });
+        const all = store.listSessions().map((s) => ({ ...s, flow_title: s.flow_title || (flowMeta(corpus, s.flow_id) || {}).title || s.flow_id, openReviews: open.get(s.id) || 0, flowLive: flowRunnable(s.flow_id) }));
+        // Every workflow that has conversations, including deleted ones (by the title they had).
+        const flowsSeen = new Map([...corpus.flows.values()].map((F) => [F.id, { id: F.id, title: F.title, live: true }]));
+        for (const s of all) if (!flowsSeen.has(s.flow_id)) flowsSeen.set(s.flow_id, { id: s.flow_id, title: s.flow_title || s.flow_id, live: false });
+        const f = Object.fromEntries(url.searchParams);
+        const rows = all.filter((s) =>
+          (!f.flow || f.flow === "all" || s.flow_id === f.flow) &&
+          (!f.status || f.status === "all" || s.staff_status === f.status) &&
+          (!f.stage || f.stage === "all" || (f.stage === "ended" ? s.status === "ended" || s.phase === "closed" : s.phase === f.stage)) &&
+          (!f.attention || (f.attention === "yes" ? s.openReviews > 0 : s.openReviews === 0)) &&
+          (!f.from || s.created_at >= f.from) &&
+          (!f.to || s.created_at.slice(0, 10) <= f.to) &&
+          (!f.q || s.id.startsWith(String(f.q).trim().toLowerCase())));
+        const limit = Math.min(200, Math.max(1, Number(f.limit) || 50)), offset = Math.max(0, Number(f.offset) || 0);
+        const page = rows.slice(offset, offset + limit).map((s) => ({ ...s, actions: store.actionsForSession(s.id).map((a) => ({ type: a.type, status: a.status })) }));
+        return send(res, 200, { sessions: page, total: rows.length, totalAll: all.length, offset, limit, flows: [...flowsSeen.values()] });
+      }
+      // Permanently delete conversations. The admin types DELETE to confirm;
+      // the server checks it too.
+      if (p === "/api/admin/conversations/delete" && method === "POST") {
+        const u = await requireStaff(req);
+        requireSameSite(req);
+        if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
+        const body = await readJson(req, 64 * 1024);
+        if (body.confirm !== "DELETE") throw httpError(400, "Type DELETE to confirm.");
+        const ids = [...new Set(Array.isArray(body.ids) ? body.ids.map(String) : [])];
+        if (!ids.length) throw httpError(400, "Choose at least one conversation.");
+        if (ids.length > 200) throw httpError(400, "Delete at most 200 conversations at a time.");
+        if (ids.some((id) => !/^[0-9a-f-]{36}$/.test(id))) throw httpError(400, "Invalid conversation id.");
+        const remote = durable ? await durable.remove(ids) : 0;
+        const local = store.deleteSessions(ids);
+        for (const id of ids) dirty.delete(id);
+        store.audit("staff:" + u.username, null, "conversations_deleted", { count: Math.max(local, remote) });
+        await requests.logChange({ title: "Conversations deleted", summary: `${Math.max(local, remote)} conversation(s) were permanently deleted.`, kind: "content" }).catch(() => {});
+        return send(res, 200, { ok: true, deleted: Math.max(local, remote) });
       }
       m = p.match(/^\/api\/staff\/sessions\/([0-9a-f-]{36})(?:\/(status))?$/);
       if (m) {
@@ -546,6 +579,7 @@ export async function createApp(opts = {}) {
         const snap = dialogue.snapshot(s);
         return send(res, 200, {
           session: { id: s.id, created_at: s.created_at, updated_at: s.updated_at, status: s.status, staff_status: s.staff_status, revision: s.revision, channels: s.channels, corpus_version: s.corpus_version, expires_at: s.expires_at },
+          flow: { id: s.flow_id || "referral", title: s.flow_title || (flowMeta(corpus, s.flow_id || "referral") || {}).title || s.flow_id, version: s.flow_version || null, live: flowRunnable(s.flow_id || "referral") },
           snapshot: { ...snap, lastAssistant: undefined },
           recommendations: store.recommendations(s.id).map((r) => ({ id: r.id, revision: r.revision, corpusVersion: r.corpus_version, commit: r.result.commit || null, stale: !!r.stale, createdAt: r.created_at, matches: r.result.matches.map((x) => ({ rank: x.rank, id: x.id, name: x.name, points: x.points, reasons: x.reasons })), handoffs: r.result.handoffs.map((h) => h.headline), unresolved: r.result.unresolved })),
           actions: store.actionsForSession(s.id),

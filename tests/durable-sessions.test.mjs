@@ -26,6 +26,7 @@ function fakeRemote() {
       return true;
     },
     async purge() { return 0; },
+    async remove(ids) { let n = 0; for (const id of ids) if (rows.delete(id)) n++; return n; },
   };
 }
 
@@ -88,4 +89,29 @@ test("Supabase adapter: guarded update and new-row insert", async () => {
   assert.match(calls[0].url, /session_bundles\?id=eq\.1111.*&version=eq\.3/);
   assert.equal(calls[0].headers.apikey, "sb_secret_abc");
   assert.equal(calls[0].headers.Authorization, undefined);
+});
+
+test("deleting conversations removes them from the database, so another copy can't bring them back", async () => {
+  const remote = fakeRemote();
+  const a = await copy(remote), b = await copy(remote);
+  const ids = [];
+  for (let i = 0; i < 3; i++) { const r = await call(a, "POST", "/api/session", { noticeAccepted: true, mode: "text" }); ids.push(r.json.sessionId); }
+  let list = await call(b, "GET", "/api/staff/sessions");
+  assert.equal(list.json.total, 3);
+  let r = await call(a, "POST", "/api/admin/conversations/delete", { ids: ids.slice(0, 2), confirm: "delete" });
+  assert.equal(r.status, 400, "lower-case delete isn't enough");
+  r = await call(a, "POST", "/api/admin/conversations/delete", { ids: ids.slice(0, 2) });
+  assert.equal(r.status, 400, "the confirm word is required");
+  r = await call(a, "POST", "/api/admin/conversations/delete", { ids: ids.slice(0, 2), confirm: "DELETE" }, { origin: "https://evil.example" });
+  assert.equal(r.status, 403);
+  r = await call(a, "POST", "/api/admin/conversations/delete", { ids: ids.slice(0, 2), confirm: "DELETE" });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.deleted, 2);
+  assert.equal(remote.rows.size, 1);
+  assert.equal(a.store.getSession(ids[0]), null);
+  // Copy b still had them cached; the database no longer lists them, and a
+  // fresh copy never sees them.
+  const c = await copy(remote);
+  list = await call(c, "GET", "/api/staff/sessions");
+  assert.deepEqual(list.json.sessions.map((s) => s.id), [ids[2]]);
 });
