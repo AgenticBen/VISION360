@@ -43,8 +43,17 @@ export async function synthesize(env, fetchImpl, { text, rate }) {
     signal: AbortSignal.timeout(Number(env.V360_TTS_TIMEOUT_MS || 12000)),
   });
   if (!res.ok) {
-    const e = new Error("ElevenLabs " + res.status);
+    // ElevenLabs explains a refusal as { detail: { status, message } }; keep
+    // that (it never contains the key) so the reason shows in the logs.
+    let why = "";
+    try {
+      const body = await res.json();
+      const d = body && body.detail;
+      why = typeof d === "string" ? d : d ? [d.status, d.message].filter(Boolean).join(": ") : "";
+    } catch {}
+    const e = new Error("ElevenLabs " + res.status + (why ? " (" + String(why).slice(0, 300) + ")" : ""));
     e.status = res.status;
+    console.error("[tts] " + e.message);
     throw e;
   }
   return Buffer.from(await res.arrayBuffer());
