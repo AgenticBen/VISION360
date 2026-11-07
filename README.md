@@ -51,6 +51,19 @@ git push origin <branch>   # then open a PR into main
 
 After deployment, check that `/api/health` reports the deployed `commit` and that its data hashes match `data/corpus.lock.json`. Then reload the live site, search for the updated organization, inspect its expanded entry and affected views, and compare the displayed fields and contact links against the change record. A successful deployment alone does not complete verification.
 
+### Production settings (Vercel, Production environment)
+
+| Setting | What it does |
+|---|---|
+| `V360_SUPABASE_URL`, `V360_SUPABASE_SERVICE_KEY` | Conversations, emails, staff follow-ups, drafts, requests and the change log are kept in the Supabase project (migration in `supabase/migrations/`). Without them everything is temporary. The key is server-only; the browser never talks to Supabase. |
+| `V360_MCP_KEY` | The connector and publish key. Claude sends it as `?key=` in the connector URL (or an `x-v360-key` header); the workflow editor asks for it once when publishing. Set it **before** the GitHub token: with GitHub connected and no key, all workflow writes are refused. |
+| `V360_GITHUB_TOKEN` | Fine-grained token for this repo only (Contents and Pull requests: read and write). A publish opens a pull request from a `publish/*` branch; `.github/workflows/publish.yml` runs `npm run verify`, merges it, and checks the live site (`scripts/verify-live.mjs`). |
+| `V360_FLOW_EDITS=off` | Kill switch: stops every workflow and request edit. |
+| `V360_ADMIN_SIGNIN=on` | Requires staff sign-in for the admin side. Off until real participants (release gate G1). |
+| `CRON_SECRET` | Optional: only Vercel's scheduler may call `/api/cron/tick` (daily: due emails, retention purge). |
+
+Check a deployment with `node scripts/verify-live.mjs https://vision360.agenticarc.ai <commit>`: it waits for the commit, compares data hashes with the lock, and fails if storage isn't Supabase.
+
 ## Source and limitations
 
 The initial import comes from the original application that matched the September 4, 2026 production deployment. It includes application code, schema, validation scripts, geographic definition, and the already-public dataset. Private research files and original local history are not included. This repository's editable dataset starts from the published records.
