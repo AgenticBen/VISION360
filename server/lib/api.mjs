@@ -841,19 +841,32 @@ export async function createApp(opts = {}) {
         const ids = [...new Set(Array.isArray(body.ids) ? body.ids.map(String) : [])];
         if (!ids.length) throw httpError(400, "Choose at least one check.");
         if (ids.length > 200) throw httpError(400, "Delete at most 200 checks at a time.");
-        if (ids.some((id) => !/^[0-9a-f-]{36}$/.test(id))) throw httpError(400, "Invalid check id.");
+        if (ids.some((id) => !UUID.test(id))) throw httpError(400, "Invalid check id.");
         const n = await checks.remove(ids);
         store.audit("staff:" + u.username, null, "screen_checks_deleted", { count: n });
         await requests.logChange({ title: "Screen checks deleted", summary: `${n} screen settings check(s) were permanently deleted.`, kind: "content" }).catch(() => {});
         return send(res, 200, { ok: true, deleted: n });
       }
-      m = p.match(/^\/api\/admin\/checks\/([0-9a-f-]{36})(?:\/(review))?$/);
+      m = p.match(/^\/api\/admin\/checks\/([^/]+)(?:\/(review))?$/);
+      if (m && !UUID.test(m[1])) throw httpError(404, "Check not found");
       if (m) {
         const u = await requireStaff(req);
         const c = await checks.getCheck(m[1]);
         if (!c) throw httpError(404, "Check not found");
         if (!m[2] && method === "GET") {
-          const [steps, reviews, history] = await Promise.all([checks.steps(c.id), checks.reviews(c.id), checks.byCode(c.code)]);
+          const [steps, reviews, sameCode] = await Promise.all([checks.steps(c.id), checks.reviews(c.id), checks.byCode(c.code)]);
+          // This person's other checks: those joined to this one by retakes
+          // (previous_check_id), not just any check that shares the code.
+          const byId = new Map(sameCode.map((x) => [x.id, x]));
+          const linked = new Set([c.id]);
+          for (let grew = true; grew;) {
+            grew = false;
+            for (const x of sameCode) {
+              if (linked.has(x.id)) { if (x.previous_check_id && byId.has(x.previous_check_id) && !linked.has(x.previous_check_id)) { linked.add(x.previous_check_id); grew = true; } }
+              else if (x.previous_check_id && linked.has(x.previous_check_id)) { linked.add(x.id); grew = true; }
+            }
+          }
+          const history = sameCode.filter((x) => linked.has(x.id));
           const others = await Promise.all(history.filter((h) => h.id !== c.id).map(async (h) => ({ id: h.id, created_at: h.created_at, status: h.status, steps: (await checks.steps(h.id)).map((s) => ({ setting: s.setting, recommended_value: s.recommended_value, measured_limit: s.measured_limit, summary: check.describe(s.setting, s) })) })));
           const { token_hash, ...safe } = c;
           return send(res, 200, {

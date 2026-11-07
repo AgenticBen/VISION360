@@ -90,6 +90,10 @@ test("a retake shows the earlier check beside it", async () => {
   assert.equal(r.json.history.length, 1);
   assert.equal(r.json.history[0].id, first.id);
   assert.equal((await call(app, "GET", "/api/admin/checks?filter=retakes")).json.checks.length, 1);
+  const other = await takeCheck(app, { see: 20 });
+  const o = await call(app, "GET", `/api/admin/checks/${other.id}`);
+  assert.equal(o.json.history.length, 0, "a different person's checks never show as history");
+  assert.equal((await call(app, "GET", `/api/admin/checks/${"-".repeat(36)}`)).status, 404);
 });
 
 test("delete needs DELETE, same-site, and removes everything", async () => {
