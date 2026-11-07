@@ -17,7 +17,7 @@ import { createAdminStore } from "./supabase-store.mjs";
 import { createRequests } from "./requests.mjs";
 import { createFlowRepo } from "./flow-repo.mjs";
 import { createMcp } from "./mcp.mjs";
-import { supabaseConfigured, createSupabaseSessions, createDurableSessions } from "./supabase-sessions.mjs";
+import { supabaseConfigured, supabaseKeyProblem, createSupabaseSessions, createDurableSessions } from "./supabase-sessions.mjs";
 
 import { randomUUID } from "node:crypto";
 
@@ -231,6 +231,7 @@ export async function createApp(opts = {}) {
           policyVersion: POLICY_VERSION, emailTransport: ctx.actions.transportName(), retentionDays: RETENTION_DAYS,
           storage: env.V360_STORAGE || "local",
           stores: { content: gh.kind, adminData: gh.dataKind || gh.kind, sessions: store.durableKind || "local" },
+          ...(supabaseKeyProblem(env) ? { storeProblem: supabaseKeyProblem(env) } : {}),
           publishing: access.publishing,
           tts: { provider: ttsInfo(env).provider },
           aiUnderstanding: aiEnabled(env) ? { on: true, model: env.V360_AI_MODEL || DEFAULT_MODEL } : { on: false },

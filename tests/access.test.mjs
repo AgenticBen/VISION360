@@ -61,3 +61,14 @@ test("the connector key also works as ?key= in the connector URL", async () => {
   assert.equal(ok.status, 200);
   assert.ok(ok.json.result.tools.length > 10);
 });
+
+test("a publishable Supabase key is refused and reported, not used", async () => {
+  const { supabaseConfigured, supabaseKeyProblem } = await import("../server/lib/supabase-sessions.mjs");
+  const env = { V360_SUPABASE_URL: "https://x.supabase.co", V360_SUPABASE_SERVICE_KEY: "sb_publishable_abc" };
+  assert.equal(supabaseConfigured(env), false);
+  assert.match(supabaseKeyProblem(env), /secret key/);
+  const app = await makeApp(env);
+  const h = await call(app, "GET", "/api/health");
+  assert.equal(h.json.stores.sessions, "local");
+  assert.match(h.json.storeProblem, /publishable/);
+});

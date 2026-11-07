@@ -97,6 +97,6 @@ export function createSplitStore(mainStore, dataStore) {
 // The admin store the app uses: Supabase for admin-data when configured.
 export function createAdminStore(env = process.env, opts = {}) {
   const main = createGhStore(env, opts);
-  if (env.V360_SUPABASE_URL && env.V360_SUPABASE_SERVICE_KEY) return createSplitStore(main, createSupabaseDocStore(env, opts.fetch));
+  if (env.V360_SUPABASE_URL && env.V360_SUPABASE_SERVICE_KEY && !String(env.V360_SUPABASE_SERVICE_KEY).startsWith("sb_publishable_")) return createSplitStore(main, createSupabaseDocStore(env, opts.fetch));
   return main;
 }

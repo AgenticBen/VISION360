@@ -12,8 +12,17 @@
 // Talks to PostgREST with fetch and the server-only key. No client library.
 import { SessionConflict } from "./session-repo.mjs";
 
+// The publishable (public) key can't read these tables, so it never counts as
+// configured: the site falls back to temporary storage and health says why.
+export function supabaseKeyProblem(env) {
+  const key = String(env.V360_SUPABASE_SERVICE_KEY || "");
+  if (!env.V360_SUPABASE_URL || !key) return null;
+  if (key.startsWith("sb_publishable_")) return "V360_SUPABASE_SERVICE_KEY is the publishable key; use the secret key (sb_secret_…).";
+  return null;
+}
+
 export function supabaseConfigured(env) {
-  return !!(env.V360_SUPABASE_URL && env.V360_SUPABASE_SERVICE_KEY);
+  return !!(env.V360_SUPABASE_URL && env.V360_SUPABASE_SERVICE_KEY) && !supabaseKeyProblem(env);
 }
 
 export function createSupabaseSessions(env, fetchImpl = globalThis.fetch) {

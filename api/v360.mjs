@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   if (!appPromise) {
     appPromise = createApp({
       dbPath: process.env.V360_DB_PATH || "/tmp/v360-demo.sqlite",
-      env: { V360_OUTBOX_DIR: "/tmp/v360-outbox", V360_ADMIN_STORE_DIR: "/tmp/v360-admin-store", ...process.env, V360_SERVERLESS: "1", V360_STORAGE: process.env.V360_SUPABASE_URL && process.env.V360_SUPABASE_SERVICE_KEY ? "supabase" : process.env.V360_DB_PATH ? "configured" : "ephemeral" },
+      env: { V360_OUTBOX_DIR: "/tmp/v360-outbox", V360_ADMIN_STORE_DIR: "/tmp/v360-admin-store", ...process.env, V360_SERVERLESS: "1", V360_STORAGE: process.env.V360_SUPABASE_URL && process.env.V360_SUPABASE_SERVICE_KEY && !String(process.env.V360_SUPABASE_SERVICE_KEY).startsWith("sb_publishable_") ? "supabase" : process.env.V360_DB_PATH ? "configured" : "ephemeral" },
     });
   }
   const app = await appPromise;
