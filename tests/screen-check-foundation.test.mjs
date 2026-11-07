@@ -23,16 +23,23 @@ test("display settings: page defaults until someone chooses, then their choice e
   assert.deepEqual({ ...D.normalize(D.saved(chosen), { textSize: "100", theme: "standard" }) }, { textSize: "200", theme: "dark", cursor: "xl", cursorColor: "yellow", bold: "on" });
 });
 
-test("display settings: older saved choices carry over (assistant first, then directory)", () => {
+test("display settings: each page carries over only its own older saved choice, once", () => {
   const D = displayCore();
   const assistant = store({ "v360-demo-settings": JSON.stringify({ textSize: "125", theme: "dark", rate: "1" }) });
-  assert.deepEqual({ ...D.saved(assistant) }, { textSize: "125", theme: "dark" });
-  const directory = store({ "vrd-display-v1": JSON.stringify({ textsize: "150", contrast: "high" }) });
-  assert.deepEqual({ ...D.saved(directory) }, { textSize: "150", theme: "high" });
-  const both = store({ "v360-demo-settings": JSON.stringify({ textSize: "125" }), "vrd-display-v1": JSON.stringify({ textsize: "150" }) });
-  assert.equal(D.saved(both).textSize, "125");
+  assert.deepEqual({ ...D.saved(assistant, "assistant") }, { textSize: "125", theme: "dark" });
+  assert.equal(D.read(assistant, "assistant").migrated, true, "copied to the shared key on first load");
+  assert.equal(D.saved(assistant, "directory"), null, "the directory ignores the assistant's old key (it used to save defaults on every visit)");
+  const directory = store({ "vrd-display-v1": JSON.stringify({ textsize: "125", contrast: "normal" }) });
+  assert.deepEqual({ ...D.saved(directory, "directory") }, { textSize: "125", theme: "standard" });
+  // Someone who set the directory to 125% normal and once opened the assistant
+  // (which stored 150/high) keeps 125% normal on the directory.
+  const both = store({ "v360-demo-settings": JSON.stringify({ textSize: "150", theme: "high" }), "vrd-display-v1": JSON.stringify({ textsize: "125" }) });
+  assert.equal(D.saved(both, "directory").textSize, "125");
+  // Assistant settings without text size or colors (as the assistant now saves them) are not a choice.
+  assert.equal(D.saved(store({ "v360-demo-settings": JSON.stringify({ rate: "1", readAloud: true }) }), "assistant"), null);
   const shared = store({ "v360-display": JSON.stringify({ textSize: "100" }), "v360-demo-settings": JSON.stringify({ textSize: "200" }) });
-  assert.equal(D.saved(shared).textSize, "100", "the shared setting wins once it exists");
+  assert.equal(D.saved(shared, "assistant").textSize, "100", "the shared setting wins once it exists");
+  assert.equal(D.read(shared, "assistant").migrated, false);
 });
 
 test("display settings: bad values fall back, and every page gets the right attributes", () => {
