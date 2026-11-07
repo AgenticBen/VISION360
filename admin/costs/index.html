@@ -22,8 +22,18 @@
   </div>
   <div class="page-actions"></div>
 </header>
+<section class="card" data-tour="voice-switch" id="voice-card"><h2>Natural voice (ElevenLabs)</h2>
+  <p class="hint">The assistant can speak with a natural ElevenLabs voice instead of the listener's own browser voice. ElevenLabs charges per character spoken.</p>
+  <dl class="kv" id="voice-status"><dt>Status</dt><dd>Loading…</dd></dl>
+  <div class="switch-row">
+    <label class="switch"><input type="checkbox" id="voice-on" role="switch" disabled><span class="slider" aria-hidden="true"></span><span id="voice-label">Natural voice off</span></label>
+    <button type="button" class="btn sm" id="voice-sample" hidden>▶ Play sample</button>
+    <span id="voice-msg" role="status" class="hint"></span>
+  </div>
+  <p class="hint" id="voice-help"></p>
+</section>
 <section class="card" data-tour="cost-table"><div class="table-wrap"><table class="t" id="cost-table"><thead><tr><th>Service</th><th>What it's using</th><th>Usage</th><th class="n">Estimate</th></tr></thead><tbody></tbody></table></div>
-<p class="hint">Estimates only. Hosting (Vercel) is billed on the plan, not per conversation. Set <code>V360_COST_PER_AI_CALL_USD</code> in Vercel to price AI calls.</p></section>
+<p class="hint">Estimates only. Hosting (Vercel) is billed on the plan, not per conversation. Set <code>V360_COST_PER_AI_CALL_USD</code> in Vercel to price AI calls, and <code>V360_COST_PER_1K_TTS_CHARS</code> to price natural voice (your ElevenLabs plan's cost per 1,000 characters).</p></section>
 </main>
 </div>
 <script src="/admin/shell.js"></script>

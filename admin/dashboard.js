@@ -40,7 +40,7 @@
         el("td", null, [el("span", { class: "bar", style: "width:" + Math.round((u.byDay[d] / max) * 12) + "rem" })])
       ]));
     });
-    $("storage-note").textContent = o.storage === "ephemeral" ? "The demo server keeps conversations in temporary storage, so these counts reset whenever it restarts or a new version is published." : "Conversations are kept for " + o.retentionDays + " days.";
+    $("storage-note").textContent = o.storage === "ephemeral" ? "The demo server keeps conversations in temporary storage, so these counts reset whenever it restarts or a new version is published." : (o.retentionDays ? "Conversations are kept for " + o.retentionDays + " days." : "Conversations are kept until an admin deletes them.");
 
     var recent = $("recent"); recent.textContent = "";
     if (!log.length) recent.appendChild(el("li", { class: "muted", text: "No changes logged yet." }));

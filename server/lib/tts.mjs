@@ -1,19 +1,25 @@
 // Optional natural voice through ElevenLabs.
 //
 // ON when ELEVENLABS_API_KEY is set (server-side only — never sent to the
-// browser). The server only ever voices the assistant's own last reply for
+// browser) AND the admin has switched it on (Money › Estimated costs, kept in
+// settings/site.json as voice.elevenlabs). The server only ever voices the assistant's own last reply for
 // that session, so this can't be used to turn arbitrary text into speech.
 // If it fails, the page falls back to the device's built-in voice.
 
 export const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // ElevenLabs premade voice "Rachel"
 export const DEFAULT_TTS_MODEL = "eleven_flash_v2_5";    // low-latency model
 
-export function ttsEnabled(env) {
+export function ttsKeySet(env) {
   return !!env.ELEVENLABS_API_KEY;
 }
 
-export function ttsInfo(env) {
-  return ttsEnabled(env)
+// switchOn: the admin's natural-voice switch.
+export function ttsEnabled(env, switchOn) {
+  return ttsKeySet(env) && !!switchOn;
+}
+
+export function ttsInfo(env, switchOn) {
+  return ttsEnabled(env, switchOn)
     ? { provider: "elevenlabs", voiceId: env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID, model: env.ELEVENLABS_MODEL || DEFAULT_TTS_MODEL }
     : { provider: "browser" };
 }

@@ -129,7 +129,10 @@ CREATE TABLE IF NOT EXISTS audit_events (
 
 const SESSION_TABLES = ["answers", "answer_events", "recommendations", "authorizations", "actions", "staff_reviews", "turn_cache", "audit_events"];
 
-export const RETENTION_DAYS = Number(process.env.V360_RETENTION_DAYS || 7);
+// Conversations are kept until an admin deletes them (0 = keep). Set
+// V360_RETENTION_DAYS to a number of days to delete them automatically instead.
+export const RETENTION_DAYS = Math.max(0, Number(process.env.V360_RETENTION_DAYS || 0) || 0);
+export const KEEP_UNTIL_DELETED = "9999-12-31T00:00:00.000Z";
 
 export function nowIso() {
   return new Date().toISOString();
@@ -174,7 +177,7 @@ export function openStore(file) {
     createSession({ tokenHash, corpusVersion, state }) {
       const id = randomUUID();
       const t = nowIso();
-      const exp = new Date(Date.now() + RETENTION_DAYS * 864e5).toISOString();
+      const exp = RETENTION_DAYS ? new Date(Date.now() + RETENTION_DAYS * 864e5).toISOString() : KEEP_UNTIL_DELETED;
       q(`INSERT INTO sessions (id, token_hash, created_at, updated_at, expires_at, corpus_version, state_json) VALUES (?,?,?,?,?,?,?)`)
         .run(id, tokenHash, t, t, exp, corpusVersion, JSON.stringify(state || {}));
       return id;
@@ -333,6 +336,7 @@ export function openStore(file) {
         summariesConfirmed: one(`SELECT COUNT(DISTINCT session_id) n FROM audit_events WHERE event='recap_confirmed' AND at >= ?`, sinceIso),
         staffRequests: one(`SELECT COUNT(*) n FROM staff_reviews WHERE created_at >= ?`, sinceIso),
         aiCalls: one(`SELECT COUNT(*) n FROM audit_events WHERE event IN ('ai_interpret','ai_extract','ai_email') AND at >= ?`, sinceIso),
+        ttsChars: one(`SELECT COALESCE(SUM(json_extract(detail_json, '$.chars')), 0) n FROM audit_events WHERE event='tts' AND at >= ?`, sinceIso),
       };
     },
     adminEmails(sinceIso, limit = 500) {
@@ -415,7 +419,7 @@ export function openStore(file) {
       return new Map(q(`SELECT id, version FROM sessions`).all().map((r) => [r.id, r.version]));
     },
 
-    // Retention: synthetic demo content expires after RETENTION_DAYS.
+    // Retention: only conversations with a real expiry date (V360_RETENTION_DAYS) are removed.
     purgeExpired() {
       const t = nowIso();
       const ids = q(`SELECT id FROM sessions WHERE expires_at < ?`).all(t).map((r) => r.id);

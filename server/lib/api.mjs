@@ -12,7 +12,8 @@ import {
   sessionSecret, signSession, verifySession,
 } from "./auth.mjs";
 import { RETENTION_DAYS } from "./store.mjs";
-import { ttsEnabled, ttsInfo, synthesize } from "./tts.mjs";
+import { flowMeta } from "./corpus.mjs";
+import { ttsEnabled, ttsInfo, ttsKeySet, synthesize, DEFAULT_VOICE_ID, DEFAULT_TTS_MODEL } from "./tts.mjs";
 import { aiEnabled, DEFAULT_MODEL } from "./ai-understanding.mjs";
 import { createAdminStore } from "./supabase-store.mjs";
 import { createRequests } from "./requests.mjs";
@@ -41,6 +42,8 @@ export async function createApp(opts = {}) {
     store.createStaffUser(env.V360_STAFF_USER, env.V360_STAFF_PASSWORD_HASH);
   }
   const limiter = rateLimiter();
+  const flowRunnable = (id) => !!flowMeta(corpus, id);
+  ctx.flowRunnable = flowRunnable;
   // Admin storage: GitHub when V360_GITHUB_TOKEN is set, otherwise a local folder.
   const gh = opts.ghStore || createAdminStore(env, { dir: env.V360_ADMIN_STORE_DIR, repoRoot: opts.repoRoot });
   const requests = createRequests(gh);
@@ -52,7 +55,7 @@ export async function createApp(opts = {}) {
   const BIG_BODY = 600 * 1024;
   const access = accessRules(env, gh);
   ctx.access = access;
-  const mcp = createMcp({ flows, requests, corpus, overview: () => adminOverview(), canWrite: () => editsOn && access.writesAllowed });
+  const mcp = createMcp({ flows, requests, corpus, overview: async () => adminOverview(), canWrite: () => editsOn && access.writesAllowed });
   const aiFetch = opts.aiFetch || globalThis.fetch;
   const ttsFetch = opts.ttsFetch || globalThis.fetch;
   const ttsCount = new Map();
@@ -201,22 +204,34 @@ export async function createApp(opts = {}) {
   }
 
   // The admin dashboard's numbers (also served to the MCP get_dashboard tool).
-  function adminOverview() {
+  async function voiceSwitch() {
+    try { return (await settings.site()).voice.elevenlabs; } catch { return false; }
+  }
+
+  async function adminOverview() {
     const days = 30;
+    const site = await settings.site().catch(() => ({ mainFlow: "referral", voice: { elevenlabs: false } }));
     const since = new Date(Date.now() - days * 864e5).toISOString();
     const usage = store.adminUsage(since);
     const ai = aiEnabled(env);
     const perCall = Number(env.V360_COST_PER_AI_CALL_USD);
-    const tts = ttsInfo(env).provider;
+    const tts = ttsInfo(env, site.voice.elevenlabs).provider;
+    const perK = Number(env.V360_COST_PER_1K_TTS_CHARS);
     return {
           generatedAt: new Date().toISOString(), days, since,
           commit: env.VERCEL_GIT_COMMIT_SHA || "local",
           storage: env.V360_STORAGE || "local", retentionDays: RETENTION_DAYS,
+          mainFlow: site.mainFlow,
           signInRequired: !adminOpen,
           usage,
           costs: {
             ai: { on: ai, model: ai ? env.V360_AI_MODEL || DEFAULT_MODEL : null, calls: usage.aiCalls, perCallUsd: Number.isFinite(perCall) ? perCall : null, estimateUsd: !ai && !usage.aiCalls ? 0 : (Number.isFinite(perCall) ? +(usage.aiCalls * perCall).toFixed(4) : null) },
-            tts: { provider: tts, estimateUsd: tts === "browser" ? 0 : null },
+            tts: {
+              provider: tts, keySet: ttsKeySet(env), switchOn: site.voice.elevenlabs,
+              voiceId: env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID, model: env.ELEVENLABS_MODEL || DEFAULT_TTS_MODEL,
+              chars: usage.ttsChars, per1kUsd: Number.isFinite(perK) ? perK : null,
+              estimateUsd: !usage.ttsChars ? 0 : (Number.isFinite(perK) ? +(usage.ttsChars / 1000 * perK).toFixed(4) : null),
+            },
             email: { transport: ctx.actions.transportName(), estimateUsd: ctx.actions.transportName() === "outbox" ? 0 : null },
           },
           emails: store.adminEmails(since).map((e) => ({ ...e, to: maskEmail(e.to) })),
@@ -261,14 +276,14 @@ export async function createApp(opts = {}) {
           stores: { content: gh.kind, adminData: gh.dataKind || gh.kind, sessions: store.durableKind || "local" },
           ...(supabaseKeyProblem(env) ? { storeProblem: supabaseKeyProblem(env) } : {}),
           publishing: access.publishing,
-          tts: { provider: ttsInfo(env).provider },
+          tts: { provider: ttsInfo(env, await voiceSwitch()).provider },
           aiUnderstanding: aiEnabled(env) ? { on: true, model: env.V360_AI_MODEL || DEFAULT_MODEL } : { on: false },
         });
       }
 
       // Fixed sample sentence for the voice picker (never arbitrary text).
       if (p === "/api/tts-sample" && method === "GET") {
-        if (!ttsEnabled(env)) throw httpError(404, "Natural voice is not set up");
+        if (!ttsEnabled(env, await voiceSwitch())) throw httpError(404, "Natural voice is not set up");
         const rate = Number(url.searchParams.get("rate")) || 1;
         const key = String(rate);
         if (!sampleCache.has(key)) sampleCache.set(key, await synthesize(env, ttsFetch, { text: "Hi, I'm the Vision 360 assistant. Tell me a little about what's going on, and I'll help you find the right services.", rate }));
@@ -313,13 +328,15 @@ export async function createApp(opts = {}) {
           if (sub === "event") return send(res, 200, await turns.event(s, body));
           if (sub === "tts") {
             // Voice ONLY the assistant's own latest reply for this session.
-            if (!ttsEnabled(env)) throw httpError(404, "Natural voice is not set up");
+            if (!ttsEnabled(env, await voiceSwitch())) throw httpError(404, "Natural voice is not set up");
             const last = s.state.lastAssistant;
             if (!last || String(body.turnId || "") !== last.turnId) throw httpError(409, "That reply is no longer current");
             const n = (ttsCount.get(id) || 0) + 1;
             ttsCount.set(id, n);
             if (n > 300) throw httpError(429, "Voice limit reached for this session");
-            const audio = await synthesize(env, ttsFetch, { text: last.speech || last.text, rate: body.rate });
+            const text = last.speech || last.text;
+            const audio = await synthesize(env, ttsFetch, { text, rate: body.rate });
+            store.audit("system", id, "tts", { chars: Math.min(String(text).length, 2500) });
             res.writeHead(200, { "Content-Type": "audio/mpeg", "Cache-Control": "no-store", "Content-Length": audio.length });
             return res.end(audio);
           }
@@ -372,6 +389,29 @@ export async function createApp(opts = {}) {
         store.audit("admin", null, "password_changed", null);
         await requests.logChange({ title: "Admin password changed", summary: "The admin password was changed. Everyone else was signed out.", kind: "app" }).catch(() => {});
         return send(res, 200, { ok: true, changedAt: out.changedAt }, { "Set-Cookie": staffCookie(signSession(b.secret, ADMIN_USER), isSecure(req)) });
+      }
+      // ---------------- site settings (main workflow, voice switch) ----------
+      if (p === "/api/admin/settings" && (method === "GET" || method === "PUT")) {
+        const u = await requireStaff(req);
+        if (method === "GET") return send(res, 200, { settings: await settings.site(), voiceKeySet: ttsKeySet(env) });
+        requireSameSite(req);
+        if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
+        const body = await readJson(req);
+        const patch = {};
+        if (body.mainFlow !== undefined) {
+          const id = String(body.mainFlow);
+          if (!flowRunnable(id)) throw httpError(400, "Only a published workflow can be the main one.");
+          patch.mainFlow = id;
+        }
+        if (body.voice && body.voice.elevenlabs !== undefined) {
+          if (body.voice.elevenlabs && !ttsKeySet(env)) throw httpError(400, "Add ELEVENLABS_API_KEY in Vercel first, then switch natural voice on.");
+          patch.voice = { elevenlabs: !!body.voice.elevenlabs };
+        }
+        await settings.updateSite(patch);
+        store.audit("staff:" + u.username, null, "settings_changed", patch);
+        const what = patch.mainFlow ? `Main workflow is now "${patch.mainFlow}".` : `Natural voice (ElevenLabs) switched ${patch.voice && patch.voice.elevenlabs ? "on" : "off"}.`;
+        await requests.logChange({ title: patch.mainFlow ? "Main workflow changed" : "Voice setting changed", summary: what, kind: "app" }).catch(() => {});
+        return send(res, 200, { settings: await settings.site() });
       }
       // ---------------- staff -------------------------------------------
       if (p === "/api/staff/login" && method === "POST") {
@@ -476,11 +516,11 @@ export async function createApp(opts = {}) {
       if (p === "/api/admin/overview" && method === "GET") {
         await requireStaff(req);
         await pullRecent();
-        return send(res, 200, adminOverview());
+        return send(res, 200, await adminOverview());
       }
       if (p === "/api/staff/sessions" && method === "GET") {
         await requireStaff(req);
-        await pullRecent(RETENTION_DAYS + 30);
+        await pullRecent(RETENTION_DAYS ? RETENTION_DAYS + 30 : 36500);
         const open = new Map(store.allOpenReviews().map((r) => [r.session_id, r.n]));
         const rows = store.listSessions().map((s) => ({ ...s, openReviews: open.get(s.id) || 0, actions: store.actionsForSession(s.id).map((a) => ({ type: a.type, status: a.status })) }));
         return send(res, 200, { sessions: rows });

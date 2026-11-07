@@ -33,7 +33,7 @@
         ["MCP connector", tools ? ["ok", "Working — " + tools + " tools available"] : ["bad", "Not responding"]],
         ["Saving to GitHub", gh ? ["ok", "Connected to " + s.storage.repo + " — each publish is a pull request that merges itself once the checks pass"] : ["amber", "Not connected — publishing is off. Add V360_GITHUB_TOKEN in Vercel (after V360_MCP_KEY)."]],
         ["Publishing", s.publishing === "on" ? ["ok", "On"] : s.publishing === "local" ? ["amber", "This machine only"] : ["amber", "Off — " + (s.publishingNote || "")]],
-        ["Conversations", s.storage.sessions === "supabase" ? ["ok", "Supabase (kept for " + o.retentionDays + " days; open follow-ups are kept until closed)"] : ["amber", "This server only (resets on restart). Add V360_SUPABASE_URL and V360_SUPABASE_SERVICE_KEY in Vercel."]],
+        ["Conversations", s.storage.sessions === "supabase" ? ["ok", "Supabase (" + (o.retentionDays ? "kept for " + o.retentionDays + " days; open follow-ups are kept until closed" : "kept until an admin deletes them") + ")"] : ["amber", "This server only (resets on restart). Add V360_SUPABASE_URL and V360_SUPABASE_SERVICE_KEY in Vercel."]],
         ["Drafts, requests and change log", s.storage.data === "supabase" ? ["ok", "Supabase"] : s.storage.data === "github" ? ["ok", "GitHub (admin-data branch)"] : ["amber", "This server only (resets on restart)"]],
         ["Editing", s.editsOn ? ["ok", "On (set V360_FLOW_EDITS=off in Vercel to stop all edits)"] : ["bad", "Off (V360_FLOW_EDITS=off)"]],
         ["Admin sign-in", o.signInRequired ? ["ok", "Password required"] : ["amber", "Off on this computer (V360_ADMIN_SIGNIN=off)"]],

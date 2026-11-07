@@ -102,7 +102,12 @@ test("natural voice: off without a key; with a key, only the latest reply is voi
   assert.equal(h.json.tts.provider, "browser");
   const sent = [];
   const fakeEleven = async (url, init) => { sent.push({ url, body: JSON.parse(init.body), key: init.headers["xi-api-key"] }); return { ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer }; };
-  const app = await createApp({ store: openStore(":memory:"), env: { ELEVENLABS_API_KEY: "test-key" }, ttsFetch: fakeEleven });
+  const tmp = process.env.TMPDIR || "/tmp";
+  const app = await createApp({ store: openStore(":memory:"), env: { ELEVENLABS_API_KEY: "test-key", V360_ADMIN_SIGNIN: "off", V360_ADMIN_STORE_DIR: `${tmp}/v360-tts-${process.pid}-${Date.now()}` }, ttsFetch: fakeEleven });
+  h = await call(app, "GET", "/api/health");
+  assert.equal(h.json.tts.provider, "browser", "key alone isn't enough: the admin switch is off by default");
+  let sw = await call(app, "PUT", "/api/admin/settings", { voice: { elevenlabs: true } });
+  assert.equal(sw.status, 200);
   h = await call(app, "GET", "/api/health");
   assert.equal(h.json.tts.provider, "elevenlabs");
   assert.ok(!JSON.stringify(h.json).includes("test-key"), "key never exposed");

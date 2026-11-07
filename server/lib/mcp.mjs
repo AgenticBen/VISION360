@@ -226,7 +226,7 @@ export function createMcp({ flows, requests, corpus, overview, canWrite = () => 
     comment_on_request: ({ id, body }) => requests.comment(id, { author: "claude", body }),
     set_request_status: ({ id, status, summary, ref }) => requests.setStatus(id, { status, summary, ref }),
     log_change: ({ title, summary, kind, ref, page }) => requests.logChange({ title, summary, kind, ref, highlight: page ? { page } : null }),
-    get_dashboard: () => { const o = overview(); return { since: o.since, usage: o.usage, costs: o.costs, emails: o.emails.length, failedEmails: o.emails.filter((e) => e.status === "failed").length, settings: o.settings }; },
+    get_dashboard: async () => { const o = await overview(); return { since: o.since, usage: o.usage, costs: o.costs, emails: o.emails.length, failedEmails: o.emails.filter((e) => e.status === "failed").length, settings: o.settings }; },
   };
 
   async function one(msg) {

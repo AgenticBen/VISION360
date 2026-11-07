@@ -35,7 +35,7 @@ Optional settings in `.env.local` (never commit):
 | `RESEND_API_KEY`, `V360_EMAIL_FROM` | Send real email through Resend. Without them, emails go to the local test outbox and the UI says so. |
 | `V360_EMAIL_ALLOWLIST` | Comma-separated test inboxes or `@domain` entries. Required when a real provider is on. |
 | `V360_DB_PATH` | SQLite file location. |
-| `V360_RETENTION_DAYS` | Default 7. Expired sessions are purged hourly. |
+| `V360_RETENTION_DAYS` | Default 0: conversations are kept until an admin deletes them. A number of days turns on automatic deletion (daily cron on Vercel, hourly locally). |
 
 ## Voice
 

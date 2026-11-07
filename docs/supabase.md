@@ -12,7 +12,7 @@ Everything needed to move VISION360's changing data into a Supabase project is i
 
 ## Files
 
-- `supabase/migrations/20261107000100_vision360_core.sql` — the schema. Row Level Security is on for every table with **no policies**, so the public `anon` key can't read or write anything; only the server, with the service role key, can. History is append-only. `purge_expired_sessions()` enforces the 7-day retention. It has been applied twice to a local Postgres 17 (it's safe to re-run) and checked for history, append-only, RLS and purge.
+- `supabase/migrations/20261107000100_vision360_core.sql` — the schema. Row Level Security is on for every table with **no policies**, so the public `anon` key can't read or write anything; only the server, with the service role key, can. History is append-only. `purge_expired_sessions()` removes conversations past their expiry date; since 2026-11-07 conversations are kept until an admin deletes them (expiry 9999-12-31), unless `V360_RETENTION_DAYS` is set. It has been applied twice to a local Postgres 17 (it's safe to re-run) and checked for history, append-only, RLS and purge.
 - `server/lib/supabase-store.mjs` — the adapter (plain `fetch` to PostgREST, no new dependencies). `createAdminStore` uses it for drafts, requests and the change log when both settings below are set, and keeps published versions on GitHub.
 - `tests/supabase-store.test.mjs` — runs the adapter against a fake PostgREST.
 

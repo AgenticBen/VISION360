@@ -142,3 +142,34 @@ test("an env hash works when nothing is saved in settings", async () => {
   const ok = await call(app, "GET", "/api/admin/overview", undefined, { cookie: cookieOf(r) });
   assert.equal(ok.status, 200);
 });
+
+test("voice switch: can't turn on without a key; usage is counted; off again stops voice", async () => {
+  const app = await makeApp();
+  let r = await call(app, "PUT", "/api/admin/settings", { voice: { elevenlabs: true } });
+  assert.equal(r.status, 400);
+  r = await call(app, "GET", "/api/admin/overview");
+  assert.equal(r.json.costs.tts.keySet, false);
+  assert.equal(r.json.costs.tts.provider, "browser");
+});
+
+test("main workflow setting accepts only a published workflow and logs the change", async () => {
+  const app = await makeApp();
+  let r = await call(app, "PUT", "/api/admin/settings", { mainFlow: "nope" });
+  assert.equal(r.status, 400);
+  r = await call(app, "PUT", "/api/admin/settings", { mainFlow: "v360-interest" });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.settings.mainFlow, "v360-interest");
+  r = await call(app, "PUT", "/api/admin/settings", { mainFlow: "v360-interest" }, { origin: "https://evil.example" });
+  assert.equal(r.status, 403);
+  r = await call(app, "GET", "/api/changelog");
+  assert.ok(r.json.entries.some((e) => e.title === "Main workflow changed"));
+});
+
+test("conversations are kept until deleted: no expiry, and the purge leaves them", async () => {
+  const app = await makeApp();
+  const s = await call(app, "POST", "/api/session", { noticeAccepted: true, mode: "text" });
+  const row = app.store.getSession(s.json.sessionId);
+  assert.equal(row.expires_at, "9999-12-31T00:00:00.000Z");
+  assert.equal(app.store.purgeExpired(), 0);
+  assert.ok(app.store.getSession(s.json.sessionId));
+});
