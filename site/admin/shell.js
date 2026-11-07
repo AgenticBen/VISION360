@@ -39,9 +39,23 @@
     (kids || []).forEach(function (c) { if (c != null && c !== false) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
     return n;
   }
-  function api(method, path, body) {
-    return fetch(path, { method: method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined, credentials: "same-origin", cache: "no-store" })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; e.code = j.code; e.body = j; throw e; } return j; }); });
+  /* Publishing and reverting need the publish key (the Claude connector key).
+     It's asked for once and kept for this browser tab only. */
+  var KEY = "v360-publish-key";
+  function publishKey() { try { return sessionStorage.getItem(KEY) || ""; } catch (e) { return ""; } }
+  function api(method, path, body, retried) {
+    var headers = body ? { "Content-Type": "application/json" } : {};
+    var k = publishKey();
+    if (k && method !== "GET") headers["x-v360-key"] = k;
+    return fetch(path, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, credentials: "same-origin", cache: "no-store" })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.status === 401 && j.code === "publish_key" && !retried) {
+          var given = window.prompt((k ? "That key didn't work. " : "") + "Enter the publish key (the same key as the Claude connector):");
+          if (given) { try { sessionStorage.setItem(KEY, given.trim()); } catch (e) {} return api(method, path, body, true); }
+        }
+        if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; e.code = j.code; e.body = j; throw e; }
+        return j;
+      }); });
   }
   function when(iso) { return iso ? new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : ""; }
   function ago(iso) {

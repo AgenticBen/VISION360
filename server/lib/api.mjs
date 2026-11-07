@@ -42,7 +42,9 @@ export async function createApp(opts = {}) {
   const flows = createFlowRepo({ gh, corpus, requests });
   ctx.gh = gh; ctx.requests = requests; ctx.flows = flows;
   const BIG_BODY = 600 * 1024;
-  const mcp = createMcp({ flows, requests, corpus, overview: () => adminOverview(), canWrite: () => editsOn });
+  const access = accessRules(env, gh);
+  ctx.access = access;
+  const mcp = createMcp({ flows, requests, corpus, overview: () => adminOverview(), canWrite: () => editsOn && access.writesAllowed });
   const aiFetch = opts.aiFetch || globalThis.fetch;
   const ttsFetch = opts.ttsFetch || globalThis.fetch;
   const ttsCount = new Map();
@@ -94,6 +96,25 @@ export async function createApp(opts = {}) {
     try { ok = new URL(origin).host === host; } catch {}
     const extra = String(env.V360_ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
     if (!ok && !extra.includes(origin)) throw httpError(403, "Origin not allowed");
+  }
+
+  // Admin changes must come from this site's own pages: a missing Origin is
+  // refused too, so scripts can't write without going through the connector.
+  function requireSameSite(req) {
+    if (!req.headers.origin) throw httpError(403, "Changes here must come from the admin pages.");
+    checkOrigin(req);
+  }
+
+  // Anything that commits to the public repo (publish, revert) needs the key.
+  function requirePublishKey(req) {
+    if (!access.publishAllowed) throw httpError(503, access.note);
+    if (!access.keyRequired) return;
+    const given = req.headers["x-v360-key"] || "";
+    if (!given || !tokenMatches(given, tokenHash(env.V360_MCP_KEY))) {
+      const e = httpError(401, "Publishing needs the publish key (the same key as the Claude connector).");
+      e.code = "publish_key";
+      throw e;
+    }
   }
 
   function isSecure(req) {
@@ -159,7 +180,7 @@ export async function createApp(opts = {}) {
             corpusVersion: corpus.version, organizations: corpus.organizations.length, policyVersion: POLICY_VERSION,
             emailTransport: ctx.actions.transportName(), tts, aiUnderstanding: ai,
             storage: { ...(gh.kind === "github" ? { kind: "github", repo: gh.repo } : { kind: "local" }), data: gh.dataKind || gh.kind },
-            editsOn, mcpKeyRequired: !!env.V360_MCP_KEY,
+            editsOn, mcpKeyRequired: !!env.V360_MCP_KEY, publishing: access.publishing, publishingNote: access.note,
           },
     };
   }
@@ -187,6 +208,8 @@ export async function createApp(opts = {}) {
           ok: true, commit: env.VERCEL_GIT_COMMIT_SHA || "local", corpusVersion: corpus.version, hashes: corpus.hashes, organizations: corpus.organizations.length,
           policyVersion: POLICY_VERSION, emailTransport: ctx.actions.transportName(), retentionDays: RETENTION_DAYS,
           storage: env.V360_STORAGE || "local",
+          stores: { content: gh.kind, adminData: gh.dataKind || gh.kind, sessions: store.durableKind || "local" },
+          publishing: access.publishing,
           tts: { provider: ttsInfo(env).provider },
           aiUnderstanding: aiEnabled(env) ? { on: true, model: env.V360_AI_MODEL || DEFAULT_MODEL } : { on: false },
         });
@@ -279,6 +302,7 @@ export async function createApp(opts = {}) {
       if (p === "/api/requests" || p.startsWith("/api/requests/") || p === "/api/changelog") {
         requireStaff(req);
         if (method !== "GET") {
+          requireSameSite(req);
           if (!editsOn) throw httpError(403, "Editing is turned off on this site (V360_FLOW_EDITS=off).");
           if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
         }
@@ -318,10 +342,12 @@ export async function createApp(opts = {}) {
       if (p === "/api/flows" || p.startsWith("/api/flows/")) {
         requireStaff(req);
         if (method !== "GET") {
+          requireSameSite(req);
           if (!editsOn) throw httpError(403, "Editing is turned off on this site (V360_FLOW_EDITS=off).");
+          if (!access.writesAllowed) throw httpError(503, access.note);
           if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
         }
-        if (p === "/api/flows" && method === "GET") return send(res, 200, { flows: await flows.list(), storage: gh.kind, editsOn });
+        if (p === "/api/flows" && method === "GET") return send(res, 200, { flows: await flows.list(), storage: gh.kind, editsOn, publishing: access.publishing, keyRequired: access.keyRequired });
         const fm = p.match(/^\/api\/flows\/([a-z0-9-]{1,40})(?:\/(draft|check|publish|revert|versions)(?:\/([0-9a-z-]{7,40}))?)?$/);
         if (fm) {
           const [, id, action, arg] = fm;
@@ -332,6 +358,7 @@ export async function createApp(opts = {}) {
           if (action === "check" && method === "POST") { const b = await readJson(req, BIG_BODY); return send(res, 200, await flows.check(id, b.flow)); }
           if (action === "publish" || action === "revert") {
             if (method !== "POST") throw httpError(405, "Method not allowed");
+            requirePublishKey(req);
             if (!limiter(ip + ":publish", 6)) throw httpError(429, "Too many publishes — please wait a minute.");
             const b = await readJson(req);
             const out = action === "publish" ? await flows.publish(id, b) : await flows.revert(id, b);
@@ -356,6 +383,7 @@ export async function createApp(opts = {}) {
         const s = await repo.load(m[1]);
         if (!s) throw httpError(404, "Not found");
         if (m[2] === "status" && method === "POST") {
+          requireSameSite(req);
           const body = await readJson(req);
           const allowed = ["pending", "reviewed", "needs_follow_up"];
           if (!allowed.includes(body.staffStatus)) throw httpError(400, "Invalid status");
@@ -380,6 +408,7 @@ export async function createApp(opts = {}) {
       m = p.match(/^\/api\/staff\/actions\/([0-9a-f-]{36})\/retry$/);
       if (m && method === "POST") {
         const u = requireStaff(req);
+        requireSameSite(req);
         const ok = ctx.actions.retry(m[1]);
         store.audit("staff:" + u.username, null, "action_retry", { actionId: m[1], ok });
         if (ok) await processQueueSoon();
@@ -395,6 +424,23 @@ export async function createApp(opts = {}) {
   }
 
   return { handle, ctx, store, dialogue, corpus };
+}
+
+// Who may change what, decided once at start-up from the environment.
+//   - GitHub connected (published versions go to the public repo): publishing
+//     and every connector/editor write need V360_MCP_KEY. Without the key,
+//     writes are refused, so adding the token first can't open the repo.
+//   - Hosted without GitHub: publishing is off (it would only change one
+//     server copy); drafts and requests still save.
+//   - Local dev and tests: open, unless a key is set.
+export function accessRules(env, gh) {
+  const key = !!env.V360_MCP_KEY;
+  const github = gh.kind === "github";
+  const hosted = !!env.V360_SERVERLESS;
+  if (github && !key) return { publishing: "off", keyRequired: true, writesAllowed: false, publishAllowed: false, note: "Publishing is off: GitHub is connected but the connector key (V360_MCP_KEY) isn't set." };
+  if (github) return { publishing: "on", keyRequired: true, writesAllowed: true, publishAllowed: true, note: "Publishing opens a pull request that goes live once the checks pass." };
+  if (hosted) return { publishing: "off", keyRequired: key, writesAllowed: true, publishAllowed: false, note: "Publishing is off: GitHub isn't connected on this site, so a publish would only change one server copy." };
+  return { publishing: "local", keyRequired: key, writesAllowed: true, publishAllowed: true, note: "Published versions are kept on this machine only." };
 }
 
 function httpError(status, message) {

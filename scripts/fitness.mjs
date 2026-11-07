@@ -83,6 +83,31 @@ const CHECKS = [
       return problems;
     },
   },
+  {
+    id: "FC12",
+    title: "Every admin write checks the Origin, and publish/revert check the publish key",
+    run: () => {
+      const src = readFileSync(path.join("server", "lib", "api.mjs"), "utf8");
+      const problems = [];
+      const block = (start) => { const i = src.indexOf(start); return i < 0 ? "" : src.slice(i, i + 1800); };
+      for (const [label, start] of [["requests", 'p === "/api/requests" || p.startsWith'], ["workflows", 'p === "/api/flows" || p.startsWith'], ["staff status", 'm[2] === "status" && method === "POST"'], ["action retry", "staff\\/actions"]]) {
+        if (!/requireSameSite\(req\)/.test(block(start))) problems.push(`${label} writes don't call requireSameSite`);
+      }
+      if (!/requirePublishKey\(req\);[\s\S]{0,500}flows\.publish/.test(src)) problems.push("publish/revert don't call requirePublishKey before flows.publish");
+      return problems;
+    },
+  },
+  {
+    id: "FC14",
+    title: "With GitHub connected and no connector key, publishing and connector writes are off",
+    run: async () => {
+      const { accessRules } = await import("../server/lib/api.mjs");
+      const a = accessRules({}, { kind: "github" });
+      const problems = [];
+      if (a.writesAllowed || a.publishAllowed || a.publishing !== "off") problems.push("GitHub without V360_MCP_KEY still allows writes or publishing");
+      return problems;
+    },
+  },
 ];
 
 let failed = 0;

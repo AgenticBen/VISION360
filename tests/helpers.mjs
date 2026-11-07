@@ -16,7 +16,7 @@ export function call(app, method, url, body, headers = {}) {
   return new Promise((resolve) => {
     const data = body === undefined ? [] : [Buffer.from(JSON.stringify(body))];
     const req = Readable.from(data);
-    req.method = method; req.url = url; req.headers = { host: "localhost:8360", ...headers };
+    req.method = method; req.url = url; req.headers = { host: "localhost:8360", ...(method === "GET" ? {} : { origin: "http://localhost:8360" }), ...headers };
     req.socket = { remoteAddress: "test-" + Math.random() };
     const res = {
       status: 0, headers: {}, body: "",

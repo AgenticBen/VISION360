@@ -42,10 +42,11 @@ For partner corrections, retain the source correspondence and exact before/after
 
 This repository uses the existing Vercel project `lions-vision-referral` in `agenticbens-projects`. The output directory is `site`. Preserve `vercel.json` and `.vercelignore`; no build script is required on Vercel.
 
+Production deploys come from git only: push to a branch, open a pull request, and `main` goes live after the `verify` check passes and the PR merges. Don't run `vercel --prod` from a local folder; it would ship uncommitted files and health would report `local` instead of a commit.
+
 ```sh
-vercel link --project lions-vision-referral --scope agenticbens-projects
 npm run verify
-vercel --prod
+git push origin <branch>   # then open a PR into main
 ```
 
 After deployment, check that `/api/health` reports the deployed `commit` and that its data hashes match `data/corpus.lock.json`. Then reload the live site, search for the updated organization, inspect its expanded entry and affected views, and compare the displayed fields and contact links against the change record. A successful deployment alone does not complete verification.
