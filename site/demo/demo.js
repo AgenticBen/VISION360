@@ -1152,8 +1152,162 @@
     $("send").disabled = true;
     $("voice-controls").hidden = true;
     $("ended").hidden = false;
-    $("ended-h").focus();
+    if (app.sessionId) showFeedback(); else $("ended-h").focus();
   }
+
+  // ------------------------------------------------------------- feedback
+  // After the conversation: what it was like and what would make it better
+  // (spoken into the box or typed, and editable), then a rating out of 5.
+  // Either step can be skipped. Saved apart from the conversation.
+  var fb = { rec: null, listening: false, step: "text", dictated: false, edited: false, sentText: false, sentRating: false, silence: null, onEnd: null };
+  function sayFixed(text, done, hooks) {
+    hooks = hooks || {};
+    done = done || function () {};
+    var finished = false;
+    function end(ok) { if (finished) return; finished = true; done(ok); }
+    function device() {
+      if (!canSpeak || !settings.readAloud) return end(false);
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+      var u = new SpeechSynthesisUtterance(text);
+      var v = currentVoice();
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "en-US";
+      u.rate = Number(settings.rate) || 1;
+      u.onstart = function () { if (hooks.onstart) hooks.onstart(); };
+      u.onend = function () { end(true); };
+      u.onerror = function (e) { if (e.error === "not-allowed" && hooks.onblocked) hooks.onblocked(); end(false); };
+      try { window.speechSynthesis.speak(u); } catch (e) { end(false); }
+    }
+    if (!settings.readAloud) return end(false);
+    if (!useNatural()) return device();
+    stopNaturalAudio();
+    phraseAudio(text).then(function (r) { if (!r.ok) throw new Error("tts " + r.status); return r.blob(); }).then(function (blob) {
+      natural.url = URL.createObjectURL(blob);
+      var a = new Audio(natural.url);
+      natural.audio = a;
+      a.onended = function () { stopNaturalAudio(); end(true); };
+      return a.play().then(function () { if (hooks.onstart) hooks.onstart(); }, function (e) {
+        stopNaturalAudio();
+        if (e && e.name === "NotAllowedError") { if (hooks.onblocked) hooks.onblocked(); end(false); } else device();
+      });
+    }).catch(function () { device(); });
+  }
+  function fbShow(step) {
+    fb.step = step;
+    $("fb-step-text").hidden = step !== "text";
+    $("fb-step-rate").hidden = step !== "rate";
+    $("fb-done").hidden = step !== "done";
+  }
+  function fbError(msg) { var e = $("fb-error"); e.hidden = !msg; e.textContent = msg || ""; }
+  function fbMode() { return fb.dictated ? (fb.edited ? "spoken_edited" : "spoken") : "typed"; }
+  function showFeedback() {
+    $("ended-h").textContent = "Thank you";
+    $("feedback").hidden = false;
+    fbShow("text");
+    try { $("fb-h").focus(); } catch (e) {}
+    sayFixed(PH.feedback.ask, function () { if (app.mode === "voice" && canListen && fb.step === "text") fbListen(); });
+  }
+  // Listening: each finished phrase is added to the box, unless it's one of
+  // the spoken commands (send, skip, clear, or a rating on the rating step).
+  function fbListen() {
+    if (!canListen || fb.listening) return;
+    var r = new SR();
+    r.lang = "en-US"; r.interimResults = true; r.continuous = true; r.maxAlternatives = 1;
+    r.onresult = function (ev) {
+      var interim = "";
+      for (var i = ev.resultIndex; i < ev.results.length; i++) {
+        var t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) fbHeard(t); else interim += t;
+      }
+      var li = $("fb-listening");
+      li.hidden = false;
+      li.textContent = interim ? "Hearing: " + interim : "Listening… pause when you're done.";
+      clearTimeout(fb.silence);
+      fb.silence = setTimeout(function () { fbStopListening(); }, Math.max(2500, Number(settings.endSilence) || 2000));
+    };
+    r.onerror = function () {};
+    r.onend = function () {
+      fb.listening = false; fb.rec = null;
+      $("fb-talk").setAttribute("aria-pressed", "false"); $("fb-talk").textContent = "Talk";
+      $("fb-listening").hidden = true;
+      var then = fb.onEnd; fb.onEnd = null;
+      if (then) then();
+    };
+    try { r.start(); fb.rec = r; fb.listening = true; } catch (e) { return; }
+    $("fb-talk").setAttribute("aria-pressed", "true"); $("fb-talk").textContent = "Stop talking";
+    var li = $("fb-listening"); li.hidden = false; li.textContent = "Listening… pause when you're done.";
+  }
+  function fbStopListening(then) {
+    clearTimeout(fb.silence);
+    if (!fb.rec) { if (then) then(); return; }
+    fb.onEnd = then || (fb.step === "text" && $("fb-text").value.trim() ? function () { sayFixed(PH.feedback.heard, function () { if (fb.step === "text" && app.mode === "voice") fbListen(); }); } : null);
+    try { fb.rec.stop(); } catch (e) {}
+  }
+  function fbHeard(raw) {
+    var t = norm(raw);
+    if (!t) return;
+    if (fb.step === "rate") {
+      var n = PH.parseRating(raw);
+      if (n === "skip") return fbStopListening(fbRateSkip);
+      if (n) return fbStopListening(function () { fbRate(n); });
+      return fbStopListening(function () { sayFixed(PH.feedback.rateAgain, function () { if (fb.step === "rate") fbListen(); }); });
+    }
+    if (/^(send|send it|send that|submit|that's it send it|done send it)$/.test(t)) return fbStopListening(fbSend);
+    if (/^(skip|skip it|no thanks?|no thank you|i'd rather not|not now)$/.test(t)) return fbStopListening(fbSkip);
+    if (/^(clear|clear it|start over|delete that|erase that)$/.test(t)) { $("fb-text").value = ""; fb.dictated = false; fb.edited = false; return; }
+    var box = $("fb-text");
+    var said = raw.trim();
+    said = said.charAt(0).toUpperCase() + said.slice(1);
+    box.value = (box.value.trim() ? box.value.trim() + " " : "") + said;
+    fb.dictated = true;
+  }
+  function fbSend() {
+    var text = $("fb-text").value.trim();
+    fbError("");
+    if (!text) return fbToRating();
+    $("fb-send").disabled = true;
+    api("POST", "/api/session/" + app.sessionId + "/feedback", { text: text, mode: fbMode() }).then(function () {
+      fb.sentText = true;
+      fbToRating();
+    }).catch(function (e) {
+      fbError("Couldn't save your feedback (" + e.message + "). Please try again; your words are still in the box.");
+    }).then(function () { $("fb-send").disabled = false; });
+  }
+  function fbSkip() { fbToRating(); }
+  function fbToRating() {
+    fbShow("rate");
+    try { $("fb-rate-h").focus(); } catch (e) {}
+    sayFixed(fb.sentText ? PH.feedback.rate : PH.feedback.rateOnly, function () { if (app.mode === "voice" && canListen && fb.step === "rate") fbListen(); });
+  }
+  function fbRate(n) {
+    fbError("");
+    [].forEach.call(document.querySelectorAll(".rate-btn"), function (b) { b.setAttribute("aria-pressed", String(Number(b.getAttribute("data-rate")) === n)); });
+    api("POST", "/api/session/" + app.sessionId + "/feedback", { rating: n }).then(function () {
+      fb.sentRating = true;
+      fbDone();
+    }).catch(function (e) { fbError("Couldn't save your rating (" + e.message + "). Please try again."); });
+  }
+  function fbRateSkip() {
+    if (fb.sentText) return fbDone();
+    api("POST", "/api/session/" + app.sessionId + "/feedback/skip", {}).catch(function () {});
+    fbDone();
+  }
+  function fbDone() {
+    fbStopListening();
+    var text = fb.sentText || fb.sentRating ? PH.feedback.thanks : PH.feedback.skipped;
+    $("fb-done-text").textContent = text;
+    fbShow("done");
+    try { $("fb-done-text").focus(); } catch (e) {}
+    sayFixed(text);
+  }
+  $("fb-text").addEventListener("input", function () { if (fb.dictated) fb.edited = true; });
+  $("fb-talk").addEventListener("click", function () { if (fb.listening) fbStopListening(); else { stopSpeaking("feedback", true); fbListen(); } });
+  if (!canListen) $("fb-talk").hidden = true;
+  $("fb-send").addEventListener("click", function () { fbStopListening(fbSend); });
+  $("fb-skip").addEventListener("click", function () { fbStopListening(fbSkip); });
+  $("fb-rate-skip").addEventListener("click", function () { fbStopListening(fbRateSkip); });
+  [].forEach.call(document.querySelectorAll(".rate-btn"), function (b) {
+    b.addEventListener("click", function () { var n = Number(b.getAttribute("data-rate")); fbStopListening(function () { fbRate(n); }); });
+  });
 
   window.addEventListener("pagehide", function () { stopSpeaking("leave", true); stopListening(); });
 

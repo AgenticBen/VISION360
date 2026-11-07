@@ -15,6 +15,8 @@ import { RETENTION_DAYS } from "./store.mjs";
 import { flowMeta } from "./corpus.mjs";
 import { ttsEnabled, ttsInfo, ttsKeySet, synthesize, DEFAULT_VOICE_ID, DEFAULT_TTS_MODEL } from "./tts.mjs";
 import { voicePhrases } from "./phrases.mjs";
+import { createFeedbackStore, cleanFeedback } from "./feedback-store.mjs";
+import { feedbackMarkdown, feedbackItemMarkdown, TOOL_NAMES } from "./feedback-md.mjs";
 import { aiEnabled, DEFAULT_MODEL } from "./ai-understanding.mjs";
 import { createAdminStore } from "./supabase-store.mjs";
 import { createRequests } from "./requests.mjs";
@@ -46,6 +48,9 @@ export async function createApp(opts = {}) {
   }
   const limiter = rateLimiter();
   const flowRunnable = (id) => !!flowMeta(corpus, id);
+  // Feedback people leave after a conversation, kept apart from conversations.
+  const feedback = opts.feedback || createFeedbackStore({ env, store, fetch: opts.supabaseFetch || globalThis.fetch });
+  const feedbackTool = (flowId) => flowId === "vision-assessment" ? "assessment" : (flowMeta(corpus, flowId || "referral") || { routing: true }).routing !== false ? "assistant" : "form";
   ctx.flowRunnable = flowRunnable;
   // Admin storage: GitHub when V360_GITHUB_TOKEN is set, otherwise a local folder.
   const gh = opts.ghStore || createAdminStore(env, { dir: env.V360_ADMIN_STORE_DIR, repoRoot: opts.repoRoot });
@@ -75,6 +80,11 @@ export async function createApp(opts = {}) {
       },
     },
     conversations: async (f) => { await pullRecent(RETENTION_DAYS ? RETENTION_DAYS + 30 : 36500); return listConversations(f); },
+    feedback: async (f) => {
+      const day = (d, next) => (/^\d{4}-\d{2}-\d{2}$/.test(d || "") ? new Date(new Date(d + "T00:00:00Z").getTime() + (next ? 864e5 : 0)).toISOString() : null);
+      const { items, total } = await feedback.list({ tool: feedback.TOOLS.includes(f.tool) ? f.tool : null, rating: /^[1-5]$/.test(String(f.rating || "")) ? Number(f.rating) : null, from: day(f.from), to: day(f.to, true), q: f.q ? String(f.q).slice(0, 100) : null, limit: Math.min(Math.max(Number(f.limit) || 50, 1), 200) });
+      return { total, stats: await feedback.stats(30), items: items.map((x) => ({ id: x.id, created: x.created_at, tool: x.tool, workflow: x.flow_title, mode: x.mode, rating: x.rating, text: x.text, conversation: x.session_id })), markdown: feedbackMarkdown(items) };
+    },
   });
   const aiFetch = opts.aiFetch || globalThis.fetch;
   const ttsFetch = opts.ttsFetch || globalThis.fetch;
@@ -245,6 +255,7 @@ export async function createApp(opts = {}) {
           mainFlow: site.mainFlow,
           signInRequired: !adminOpen,
           usage,
+          feedback: await feedback.stats(days).catch(() => null),
           costs: {
             ai: { on: ai, model: ai ? env.V360_AI_MODEL || DEFAULT_MODEL : null, calls: usage.aiCalls, perCallUsd: Number.isFinite(perCall) ? perCall : null, estimateUsd: !ai && !usage.aiCalls ? 0 : (Number.isFinite(perCall) ? +(usage.aiCalls * perCall).toFixed(4) : null) },
             tts: {
@@ -414,6 +425,58 @@ export async function createApp(opts = {}) {
         const main = (await settings.site()).mainFlow;
         const origin = publicOrigin(req);
         return send(res, 200, { mainFlow: flowRunnable(main) ? main : "referral", flows: [...corpus.flows.values()].map((F) => ({ id: F.id, title: F.title, main: F.id === main, url: `${origin}/f/${F.id}` })) });
+      }
+
+      // Feedback at the end of a conversation: needs that conversation's own
+      // token, works after it has ended, and is stored apart from it.
+      let fm = p.match(/^\/api\/session\/([0-9a-f-]{36})\/feedback(\/skip)?$/);
+      if (fm && method === "POST") {
+        if (!limiter(ip + ":feedback", 20)) throw httpError(429, "Too many requests — please wait a moment.");
+        const s = await loadSession(req, fm[1]);
+        const base = { session_id: s.id, flow_id: s.flow_id || "referral", flow_title: s.flow_title || (flowMeta(corpus, s.flow_id || "referral") || {}).title || null, tool: feedbackTool(s.flow_id) };
+        if (fm[2]) {
+          const out = await feedback.upsert({ ...base, skipped: true });
+          store.audit("system", s.id, "feedback_skipped", null);
+          return send(res, 200, { ok: true, skipped: true, id: out && out.id });
+        }
+        const clean = cleanFeedback(await readJson(req, 32 * 1024));
+        const out = await feedback.upsert({ ...base, ...clean, skipped: false });
+        store.audit("system", s.id, "feedback", { chars: clean.text ? clean.text.length : 0, rating: clean.rating || null });
+        return send(res, 200, { ok: true, id: out && out.id });
+      }
+      if (p === "/api/admin/feedback" && method === "GET") {
+        await requireStaff(req);
+        const f = Object.fromEntries(url.searchParams);
+        const tool = feedback.TOOLS.includes(f.tool) ? f.tool : null;
+        const day = (d, next) => (/^\d{4}-\d{2}-\d{2}$/.test(d || "") ? new Date(new Date(d + "T00:00:00Z").getTime() + (next ? 864e5 : 0)).toISOString() : null);
+        const md = f.format === "md";
+        const query = { tool, from: day(f.from), to: day(f.to, true), rating: /^[1-5]$/.test(f.rating || "") ? Number(f.rating) : null, q: f.q ? String(f.q).slice(0, 100) : null,
+          limit: md ? 1000 : Math.min(Math.max(Number(f.limit) || 50, 1), 200), offset: md ? 0 : Math.max(Number(f.offset) || 0, 0) };
+        const { items, total } = await feedback.list(query);
+        await pullRecent(36500).catch(() => {});
+        const known = new Set(store.listSessions(100000).map((x) => x.id));
+        const rows = items.map((x) => ({ ...x, conversation_exists: known.has(x.session_id) }));
+        if (md) {
+          const filters = [tool && TOOL_NAMES[tool], query.rating && `rating ${query.rating}`, f.from && `from ${f.from}`, f.to && `to ${f.to}`, query.q && `“${query.q}”`].filter(Boolean).join(", ");
+          await flushDirty();
+          res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
+          return res.end(feedbackMarkdown(rows, { filters }));
+        }
+        return send(res, 200, { items: rows.map((x) => ({ ...x, markdown: feedbackItemMarkdown(x) })), total, stats: await feedback.stats(30) });
+      }
+      if (p === "/api/admin/feedback/delete" && method === "POST") {
+        const u = await requireStaff(req);
+        requireSameSite(req);
+        if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
+        const body = await readJson(req, 64 * 1024);
+        if (body.confirm !== "DELETE") throw httpError(400, "Type DELETE to confirm.");
+        const ids = [...new Set(Array.isArray(body.ids) ? body.ids.map(String) : [])];
+        if (!ids.length) throw httpError(400, "Choose at least one item.");
+        if (ids.length > 200) throw httpError(400, "Delete at most 200 items at a time.");
+        if (ids.some((id) => !/^[0-9a-f-]{36}$/.test(id))) throw httpError(400, "Invalid feedback id.");
+        const n = await feedback.remove(ids);
+        store.audit("staff:" + u.username, null, "feedback_deleted", { count: n });
+        return send(res, 200, { ok: true, deleted: n });
       }
 
       let m = p.match(/^\/api\/session\/([0-9a-f-]{36})(?:\/(turn|state|event|end|tts))?$/);

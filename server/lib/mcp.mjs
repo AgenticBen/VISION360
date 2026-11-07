@@ -81,6 +81,7 @@ export const TOOLS = [
   { name: "set_main_workflow", title: "Set the main workflow", description: "Choose which published workflow runs on the public home page (the main site). Takes effect within a minute; no publish needed.", inputSchema: S({ flow: FLOW }, ["flow"]), annotations: LIVE },
   { name: "get_share_links", title: "Get links and QR codes", description: "Each workflow's public link, QR code (SVG) and printable flyer, and which one is the main site. Pass flow for just one.", inputSchema: S({ flow: FLOW }), annotations: RO },
   { name: "list_conversations", title: "List conversations", description: "Conversations people had with the assistant, newest first, with their workflow, stage and staff status (no answers). Filters are optional.", inputSchema: S({ flow: FLOW, status: { type: "string", enum: ["pending", "reviewed", "needs_follow_up"] }, attention: { type: "string", enum: ["yes", "no"] }, from: str("YYYY-MM-DD"), to: str("YYYY-MM-DD"), limit: { type: "integer", description: "Up to 200 (default 50)" } }), annotations: RO },
+  { name: "list_feedback", title: "List feedback", description: "Feedback people left at the end of the Resource Assistant or the Vision Assessment (what it was like and what would make it better) and their 1–5 rating, newest first, with the same Markdown as the admin page's Copy as Markdown. Filters are optional.", inputSchema: S({ tool: { type: "string", enum: ["assistant", "assessment", "form"] }, rating: { type: "integer", description: "1 to 5" }, from: str("YYYY-MM-DD"), to: str("YYYY-MM-DD"), q: str("Words to search for in the feedback"), limit: { type: "integer", description: "Up to 200 (default 50)" } }), annotations: RO },
   { name: "get_dashboard", title: "Get the dashboard", description: "The admin dashboard's 30-day numbers: conversations, emails, staff requests and costs.", inputSchema: S({}), annotations: RO },
 ];
 export const TOOL_NAMES = TOOLS.map((t) => t.name);
@@ -90,7 +91,7 @@ const slug = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").re
 function uniq(base, taken) { let id = base, n = 2; while (taken(id)) id = `${base}_${n++}`; return id; }
 const leaves = (c, out = []) => { if (!c) return out; if (c.all || c.any) (c.all || c.any).forEach((x) => leaves(x, out)); else if (c.not) leaves(c.not, out); else if (c.q) out.push(c); return out; };
 
-export function createMcp({ flows, requests, corpus, overview, canWrite = () => true, site = null, conversations = null }) {
+export function createMcp({ flows, requests, corpus, overview, canWrite = () => true, site = null, conversations = null, feedback = null }) {
   async function working(flowId) {
     const w = await flows.get(flowId);
     return { flow: structuredClone(w.draft ? w.draft.flow : w.published), rev: w.draft ? w.draft.draftRevision : 0 };
@@ -291,6 +292,10 @@ export function createMcp({ flows, requests, corpus, overview, canWrite = () => 
       if (!conversations) throw bad("Conversations aren't available here.");
       const r = await conversations({ flow: f.flow, status: f.status, attention: f.attention, from: f.from, to: f.to, limit: f.limit || 50 });
       return { total: r.total, conversations: r.sessions.map((x) => ({ id: x.id, workflow: x.flow_title, workflowId: x.flow_id, stage: x.phase, staffStatus: x.staff_status, needsAttention: x.openReviews, created: x.created_at, updated: x.updated_at })) };
+    },
+    async list_feedback(f) {
+      if (!feedback) throw bad("Feedback isn't available here.");
+      return feedback({ tool: f.tool, rating: f.rating, from: f.from, to: f.to, q: f.q, limit: f.limit || 50 });
     },
     get_dashboard: async () => { const o = await overview(); return { since: o.since, usage: o.usage, costs: o.costs, emails: o.emails.length, failedEmails: o.emails.filter((e) => e.status === "failed").length, settings: o.settings }; },
   };

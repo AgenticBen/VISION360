@@ -6,6 +6,7 @@
   var ICONS = {
     dashboard: '<path d="M3 13h8V3H3zM13 21h8v-8h-8zM3 21h8v-6H3zM13 3v8h8V3z"/>',
     chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+    star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/>',
     mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
     flow: '<rect x="3" y="3" width="7" height="5" rx="1"/><rect x="14" y="16" width="7" height="5" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><path d="M6.5 8v5a2 2 0 0 0 2 2H14M10 5.5h4"/>',
     data: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
@@ -19,7 +20,7 @@
   };
   var NAV = [
     { title: "Overview", items: [["/admin/", "Dashboard", "dashboard"]] },
-    { title: "People", items: [["/admin/conversations/", "Conversations", "chat"], ["/admin/emails/", "Email tracker", "mail"]] },
+    { title: "People", items: [["/admin/conversations/", "Conversations", "chat"], ["/admin/emails/", "Email tracker", "mail"], ["/admin/feedback/", "Feedback", "star"]] },
     { title: "Build", items: [["/admin/workflows/", "Workflows", "flow"], ["/admin/data/", "Raw data", "data"]] },
     { title: "Money", items: [["/admin/costs/", "Estimated costs", "money"]] },
     { title: "Settings", items: [["/admin/requests/", "Requests", "target"], ["/admin/changelog/", "Change log", "log"], ["/admin/settings/", "Settings & connectors", "plug"]] }
@@ -160,6 +161,10 @@
     api("GET", "/api/requests").then(function (j) {
       var open = j.requests.filter(function (r) { return r.status === "open" || r.status === "in_progress" || r.status === "needs_ben"; }).length;
       setBadge("/admin/requests/", open);
+    }).catch(function () {});
+    api("GET", "/api/admin/feedback?limit=200").then(function (j) {
+      var seen = ""; try { seen = localStorage.getItem("v360-feedback-seen") || ""; } catch (e) {}
+      setBadge("/admin/feedback/", j.items.filter(function (f) { return f.created_at > seen; }).length, "sky");
     }).catch(function () {});
     api("GET", "/api/changelog").then(function (j) {
       var seen = ""; try { seen = localStorage.getItem("v360-changelog-seen") || ""; } catch (e) {}

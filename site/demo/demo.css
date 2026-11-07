@@ -242,3 +242,16 @@ html[data-textsize="200"] .seg { flex-wrap: wrap; }
 .card summary::before { content: ""; flex: none; width: 0.55em; height: 0.55em; margin: 0 0.1em 0.2em 0.15em; border-right: 3px solid currentColor; border-bottom: 3px solid currentColor; transform: rotate(45deg); }
 .card details[open] > summary::before { transform: rotate(-135deg); margin-bottom: -0.2em; }
 .card summary:hover, .card summary:focus-visible { text-decoration: underline; text-underline-offset: 0.2em; }
+
+/* Feedback card at the end of a conversation. */
+.feedback { margin: 1rem 0 1.2rem; border-color: var(--accent); }
+.feedback h3 { font-size: 1.25rem; }
+.fb-label { display: block; font-weight: 700; margin: 0.6rem 0 0.3rem; }
+.feedback textarea { display: block; width: 100%; min-height: 8rem; font: inherit; padding: 0.6rem 0.75rem; border: 2px solid var(--line); border-radius: 8px; background: var(--page); color: var(--ink); resize: vertical; }
+.fb-listening { color: var(--muted); font-style: italic; margin: 0.4rem 0 0; }
+.rate-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; margin: 0.6rem 0; }
+.rate-btn { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; min-height: 4.2rem; padding: 0.4rem 0.2rem; }
+.rate-n { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.rate-w { font-size: 0.8rem; font-weight: 600; text-align: center; line-height: 1.15; }
+#fb-done-text { font-weight: 700; font-size: 1.1rem; }
+@media (max-width: 480px) { .rate-w { display: none; } }

@@ -43,9 +43,35 @@
     lessAlready: "These are already the standard colors, dark text on white."
   };
 
+  // Feedback at the end of a conversation.
+  P.feedback = {
+    ask: "Before you go, would you tell us how this went, and what would make it better? You can talk, type, or say skip.",
+    heard: "Here's what I heard. You can change it, then press Send, or say send.",
+    rate: "Thank you. How helpful was this, from 1 to 5?",
+    rateOnly: "How helpful was this, from 1 to 5? You can say a number, or say skip.",
+    rateAgain: "Sorry, I didn't catch that. Say a number from 1 to 5, or say skip.",
+    thanks: "Thank you. Your feedback helps Lions Services make this better.",
+    skipped: "No problem. Thank you for using Vision 360."
+  };
+
+  // A spoken or typed rating: "4", "four", "five out of five", "a three".
+  // Returns 1-5, "skip", or null when it isn't clear.
+  P.parseRating = function (raw) {
+    var t = String(raw || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+    if (!t) return null;
+    if (/^(skip|no thanks?|no thank you|pass|rather not|i'd rather not|none)\b/.test(t)) return "skip";
+    var words = { one: 1, two: 2, three: 3, four: 4, five: 5, won: 1, to: null, too: null, for: 4, fore: 4 };
+    var found = [];
+    t.split(" ").forEach(function (w) { if (/^[1-5]$/.test(w)) found.push(Number(w)); else if (words[w]) found.push(words[w]); });
+    if (/\bout of\b/.test(t) && found.length >= 1) return found[0];
+    if (found.length === 1) return found[0];
+    return null;
+  };
+
   // Every line above, in every form the pages can say it.
   P.all = function () {
     var out = [P.listening, P.notReady];
+    Object.keys(P.feedback).forEach(function (k) { out.push(P.feedback[k]); });
     var says = [P.say.sizeMax, P.say.sizeMin, P.say.highAlready, P.say.toHigh, P.say.darkAlready, P.say.toDark, P.say.moreToDark, P.say.lessFromHigh, P.say.lessFromDark, P.say.lessAlready];
     P.SIZES.forEach(function (s) { says.push(P.say.sizeTo(s)); });
     says.forEach(function (x) { out.push(x); });

@@ -8,6 +8,7 @@ Everything needed to move VISION360's changing data into a Supabase project is i
 |---|---|---|
 | Published workflow versions | Commits on `main` (the editor's GitHub token) | Unchanged: git stays the version log, and Vercel redeploys from it |
 | Workflow drafts, change requests, change log | `admin-data` branch on GitHub, or this server only | `admin_documents` table (every write kept in `admin_document_history`) |
+| End-of-conversation feedback and ratings | this server only (local SQLite) | `feedback` table (one row per conversation; skips are rows with `skipped = true`; migration `20261108000500_feedback.sql`) |
 | Conversations, answers, suggestions, emails, staff follow-ups | SQLite in `/tmp` on Vercel (resets on restart) | Tables are ready (`sessions`, `answers`, …). The session repository adapter is the next step (horizon 2) |
 
 ## Files

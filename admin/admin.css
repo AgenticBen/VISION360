@@ -195,3 +195,16 @@ tr.selected td { background: var(--bad-wash); }
 .share-url { font-weight: 600; overflow-wrap: anywhere; }
 .share-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
 .flow-actions { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Feedback page */
+.fb-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 12px; }
+.fb-stats > div { display: flex; flex-direction: column; gap: 2px; }
+.fb-stat { font-size: 26px; font-weight: 800; }
+.fb-selall { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.fb-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.fb-item { display: flex; gap: 10px; padding: 12px 4px; border-bottom: 1px solid var(--line); }
+.fb-ck { padding-top: 3px; }
+.fb-main { flex: 1; min-width: 0; }
+.fb-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 6px; }
+.fb-text { margin: 0; padding: 6px 12px; border-left: 4px solid var(--sky, #25b4fa); background: var(--panel-2); white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 0 6px 6px 0; }
+.fb-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 8px 0 0; font-size: 14px; }

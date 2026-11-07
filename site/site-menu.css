@@ -39,7 +39,8 @@ html[data-contrast="high"] .brand-bar, html[data-theme="high"] .brand-bar, html[
    never so large (at 150–200% text) that the bar overflows the screen. */
 @media (max-width: 640px) {
   .sm { font-size: clamp(15px, 1rem, 19px); }
-  .sm-inner { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.3rem; padding: 0.4rem 0.6rem; }
+  .sm-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0.3rem; padding: 0.4rem 0.6rem; }
+  .sm-link { min-width: 0; overflow-wrap: break-word; }
   .sm-home { display: none; }
   .sm-link, .sm-toggle { width: 100%; justify-content: center; text-align: center; padding: 0.3rem 0.4rem; }
   .sm-group { position: static; }

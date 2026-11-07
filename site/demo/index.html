@@ -132,7 +132,39 @@
 
   <section id="ended" hidden aria-labelledby="ended-h">
     <h2 id="ended-h" tabindex="-1">Session ended</h2>
-    <p>The microphone is off and speech has stopped. Nothing else will happen in this session.</p>
+    <p id="ended-note">This conversation is finished.</p>
+
+    <!-- Feedback: what it was like and what would make it better, spoken or
+         typed (editable), then a rating. Either step can be skipped. Saved
+         apart from the conversation. -->
+    <section class="card feedback" id="feedback" aria-labelledby="fb-h" hidden>
+      <div id="fb-step-text">
+        <h3 id="fb-h" tabindex="-1">How did this go?</h3>
+        <p class="hint">Tell us about your experience and what would make it better. Please don't include personal or health details.</p>
+        <label class="fb-label" for="fb-text">Your feedback</label>
+        <textarea id="fb-text" rows="5" maxlength="4000"></textarea>
+        <p class="fb-listening" id="fb-listening" hidden></p>
+        <div class="action-row">
+          <button type="button" class="btn btn-secondary" id="fb-talk" aria-pressed="false">Talk</button>
+          <button type="button" class="btn btn-primary" id="fb-send">Send feedback</button>
+          <button type="button" class="btn btn-secondary" id="fb-skip">Skip</button>
+        </div>
+      </div>
+      <div id="fb-step-rate" hidden>
+        <h3 id="fb-rate-h" tabindex="-1">How helpful was this, from 1 to 5?</h3>
+        <div class="rate-row" role="group" aria-labelledby="fb-rate-h">
+          <button type="button" class="btn rate-btn" data-rate="1" aria-pressed="false" aria-label="1, not helpful"><span class="rate-n" aria-hidden="true">1</span><span class="rate-w" aria-hidden="true">Not helpful</span></button>
+          <button type="button" class="btn rate-btn" data-rate="2" aria-pressed="false" aria-label="2, a little"><span class="rate-n" aria-hidden="true">2</span><span class="rate-w" aria-hidden="true">A little</span></button>
+          <button type="button" class="btn rate-btn" data-rate="3" aria-pressed="false" aria-label="3, somewhat"><span class="rate-n" aria-hidden="true">3</span><span class="rate-w" aria-hidden="true">Somewhat</span></button>
+          <button type="button" class="btn rate-btn" data-rate="4" aria-pressed="false" aria-label="4, helpful"><span class="rate-n" aria-hidden="true">4</span><span class="rate-w" aria-hidden="true">Helpful</span></button>
+          <button type="button" class="btn rate-btn" data-rate="5" aria-pressed="false" aria-label="5, very helpful"><span class="rate-n" aria-hidden="true">5</span><span class="rate-w" aria-hidden="true">Very helpful</span></button>
+        </div>
+        <div class="action-row"><button type="button" class="btn btn-secondary" id="fb-rate-skip">Skip</button></div>
+      </div>
+      <div id="fb-done" hidden><p id="fb-done-text" tabindex="-1"></p></div>
+      <p class="action-status bad" id="fb-error" role="alert" hidden></p>
+    </section>
+
     <p><button type="button" class="btn btn-primary" id="restart">Start a new session</button></p>
   </section>
 </main>

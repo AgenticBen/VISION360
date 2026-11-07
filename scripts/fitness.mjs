@@ -82,7 +82,7 @@ const CHECKS = [
         "list_workflows", "get_workflow", "list_versions", "get_draft", "update_draft", "add_question", "update_question",
         "delete_question", "move_question", "set_follow_up", "set_option", "set_effect", "find_organizations", "check_draft",
         "publish_draft", "revert_to_version", "list_requests", "comment_on_request", "set_request_status", "log_change",
-        "create_workflow", "delete_workflow", "add_section", "update_section", "set_main_workflow", "get_share_links", "list_conversations",
+        "create_workflow", "delete_workflow", "add_section", "update_section", "set_main_workflow", "get_share_links", "list_conversations", "list_feedback",
         "get_dashboard",
       ];
       const { TOOL_NAMES } = await import("../server/lib/mcp.mjs");
