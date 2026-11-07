@@ -42,14 +42,27 @@
     Object.keys(DEFAULTS).forEach(function (k) { out[k] = s[k] !== undefined ? s[k] : DEFAULTS[k]; });
     if (RATES.indexOf(String(out.rate)) === -1) out.rate = Number(out.rate) < 1 ? "0.85" : "1";
     if (SILENCES.indexOf(String(out.endSilence)) === -1) out.endSilence = DEFAULTS.endSilence;
+    // Text size and colors are shared with every page (display-settings.js).
+    if (window.V360Display) { var d = window.V360Display.get(); out.textSize = d.textSize; out.theme = d.theme; }
     return out;
   }
   function saveSettings() {
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
-    document.documentElement.setAttribute("data-textsize", settings.textSize);
-    document.documentElement.setAttribute("data-theme", settings.theme);
+    // Voice, speed and the like stay on this page's own key; text size and
+    // colors go to the shared settings, which redraw the page.
+    var own = {};
+    Object.keys(settings).forEach(function (k) { if (k !== "textSize" && k !== "theme") own[k] = settings[k]; });
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(own)); } catch (e) {}
+    if (window.V360Display) {
+      var d = window.V360Display.get();
+      if (d.textSize !== settings.textSize || d.theme !== settings.theme) window.V360Display.set({ textSize: settings.textSize, theme: settings.theme });
+    } else {
+      document.documentElement.setAttribute("data-textsize", settings.textSize);
+      document.documentElement.setAttribute("data-theme", settings.theme);
+    }
     syncBar();
   }
+  // Changed on another page or tab: follow along.
+  if (window.V360Display) window.V360Display.onChange(function (d) { settings.textSize = d.textSize; settings.theme = d.theme; syncBar(); });
 
   // Display settings bar: always on screen under the heading, collapsible.
   var BAR_KEY = "v360-demo-bar";

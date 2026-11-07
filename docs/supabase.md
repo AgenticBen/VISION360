@@ -28,3 +28,7 @@ Everything needed to move VISION360's changing data into a Supabase project is i
 ## Next: conversations
 
 `server/lib/session-repo.mjs` already separates conversation storage behind `load` / `save`, with one save per turn guarded by `version`. The Supabase version is a Postgres function, `save_session(id, expected_version, ops jsonb)`, that applies the queued operations in one transaction and returns 409 when the version moved. A `createSupabaseSessionRepo` calls it, plus a Vercel cron for `purge_expired_sessions()` and the email queue. That is horizon 2 in the pilot plan.
+
+## Screen settings check (being built)
+
+`supabase/migrations/20261108000100_screen_checks.sql` adds three private tables for the at-home screen settings check: `screen_checks` (one per attempt), `screen_check_steps` (one per setting tested) and `screen_check_reviews` (staff decisions, kept apart so a client's result is never overwritten). Like the other tables they have row-level security on and no `anon` or `authenticated` access; only the server's `service_role` reads and writes them. Results are kept until staff delete them, and deleting a check deletes its steps and reviews. Nothing writes to these tables yet: the feature is off (Admin › Settings › Screen settings check) until later phases build it. Fitness check FC18 keeps the tables locked down and the feature off by default.

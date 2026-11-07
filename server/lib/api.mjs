@@ -413,7 +413,15 @@ export async function createApp(opts = {}) {
       if (p === "/api/site" && method === "GET") {
         const main = (await settings.site()).mainFlow;
         const origin = publicOrigin(req);
-        return send(res, 200, { mainFlow: flowRunnable(main) ? main : "referral", flows: [...corpus.flows.values()].map((F) => ({ id: F.id, title: F.title, main: F.id === main, url: `${origin}/f/${F.id}` })) });
+        const features = (await settings.site()).features;
+        return send(res, 200, { mainFlow: flowRunnable(main) ? main : "referral", features, flows: [...corpus.flows.values()].map((F) => ({ id: F.id, title: F.title, main: F.id === main, url: `${origin}/f/${F.id}` })) });
+      }
+
+      // Screen Settings Check: switched off unless an admin turns it on in
+      // Settings, and nothing behind it is built yet (later phases).
+      if (p === "/api/check" || p.startsWith("/api/check/")) {
+        if (!(await settings.site()).features.screenCheck) throw httpError(404, "Not available.");
+        throw httpError(404, "Not available yet.");
       }
 
       let m = p.match(/^\/api\/session\/([0-9a-f-]{36})(?:\/(turn|state|event|end|tts))?$/);
@@ -521,10 +529,15 @@ export async function createApp(opts = {}) {
           if (body.voice.elevenlabs && !ttsKeySet(env)) throw httpError(400, "Add ELEVENLABS_API_KEY in Vercel first, then switch natural voice on.");
           patch.voice = { elevenlabs: !!body.voice.elevenlabs };
         }
+        if (body.features && body.features.screenCheck !== undefined) patch.features = { screenCheck: body.features.screenCheck === true };
+        if (!Object.keys(patch).length) throw httpError(400, "Nothing to change.");
         await settings.updateSite(patch);
         store.audit("staff:" + u.username, null, "settings_changed", patch);
-        const what = patch.mainFlow ? `Main workflow is now "${patch.mainFlow}".` : `Natural voice (ElevenLabs) switched ${patch.voice && patch.voice.elevenlabs ? "on" : "off"}.`;
-        await requests.logChange({ title: patch.mainFlow ? "Main workflow changed" : "Voice setting changed", summary: what, kind: "app" }).catch(() => {});
+        const what = patch.mainFlow ? `Main workflow is now "${patch.mainFlow}".`
+          : patch.voice ? `Natural voice (ElevenLabs) switched ${patch.voice.elevenlabs ? "on" : "off"}.`
+          : `Screen settings check switched ${patch.features.screenCheck ? "on" : "off"}.`;
+        const title = patch.mainFlow ? "Main workflow changed" : patch.voice ? "Voice setting changed" : "Feature switch changed";
+        await requests.logChange({ title, summary: what, kind: "app" }).catch(() => {});
         return send(res, 200, { settings: await settings.site() });
       }
       // ---------------- staff -------------------------------------------

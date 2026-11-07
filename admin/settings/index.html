@@ -31,6 +31,13 @@
     <p><label class="hint"><input type="checkbox" id="pw-show"> Show passwords</label></p>
     <p><button class="btn primary" type="submit" id="pw-save">Change password</button> <span id="pw-msg" role="status" class="hint"></span></p>
   </form></section>
+<section class="card" id="features-card"><h2>Screen settings check</h2>
+  <p class="hint">A new at-home check of text size, contrast, speech speed and pointer. It is still being built, so leave it off. When it's off, nothing about it shows on the public site.</p>
+  <div class="switch-row">
+    <label class="switch"><input type="checkbox" id="screen-check-on" role="switch" disabled><span class="slider" aria-hidden="true"></span><span id="screen-check-label">Off</span></label>
+  </div>
+  <p id="screen-check-msg" role="status" class="hint"></p>
+</section>
 <h2 class="section-title">Connect Claude &amp; ChatGPT</h2>
 <section class="card" data-tour="mcp-url"><h2>Connector URL</h2>
   <div class="copy-row"><code id="mcp-url">…</code><button type="button" class="btn" id="copy-url">Copy</button></div>

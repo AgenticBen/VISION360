@@ -185,6 +185,37 @@ const CHECKS = [
       return problems;
     },
   },
+  {
+    id: "FC18",
+    title: "Screen-check results stay private: locked-down tables, off by default, never named by the browser, one display-settings layer",
+    run: () => {
+      const problems = [];
+      const walk = (d, out = []) => { for (const n of readdirSync(d)) { const p = path.join(d, n); if (statSync(p).isDirectory()) walk(p, out); else out.push(p); } return out; };
+      const migs = walk(path.join("supabase", "migrations")).filter((f) => f.endsWith(".sql")).map((f) => readFileSync(f, "utf8")).join("\n");
+      const TABLES = ["screen_checks", "screen_check_steps", "screen_check_reviews"];
+      for (const t of TABLES) {
+        if (!new RegExp(`create table if not exists public\\.${t}\\b`).test(migs)) problems.push(`no migration creates ${t}`);
+      }
+      const lock = migs.match(/foreach t in array array\[([^\]]*screen_checks[^\]]*)\][\s\S]{0,300}enable row level security[\s\S]{0,200}revoke all[\s\S]{0,40}from anon, authenticated/);
+      if (!lock) problems.push("the screen-check tables must have row-level security on and no anon/authenticated access");
+      else for (const t of TABLES) if (!lock[1].includes(`'${t}'`)) problems.push(`${t} isn't in the lock-down list`);
+      if (/grant[^;]*screen_check[^;]*to\s+(anon|authenticated)/i.test(migs)) problems.push("a screen-check table is granted to anon or authenticated");
+      const settings = readFileSync(path.join("server", "lib", "site-settings.mjs"), "utf8");
+      if (!/features: Object\.freeze\(\{ screenCheck: false \}\)/.test(settings)) problems.push("the screen check must be off by default (SITE_DEFAULTS.features.screenCheck = false)");
+      for (const f of walk("site")) {
+        if (!/\.(js|html|json|css)$/.test(f)) continue;
+        if (/screen_check(s|_steps|_reviews)\b/.test(readFileSync(f, "utf8"))) problems.push(`${f} names a screen-check table; results never reach the browser directly`);
+      }
+      // One display-settings layer: no page keeps its own text size or colors.
+      for (const f of walk("site").filter((x) => /\.(js|html)$/.test(x) && !x.endsWith("display-settings.js"))) {
+        if (/localStorage\.(get|set)Item\(\s*["']vrd-display-v1/.test(readFileSync(f, "utf8"))) problems.push(`${f} still reads or writes the old directory display settings; use display-settings.js`);
+      }
+      for (const f of ["site/index.html", "site/directory/index.html", "site/guide.html", "site/demo/index.html"]) {
+        if (!/<script src="\/display-settings\.js"[^>]*data-legacy="(assistant|directory)"/.test(readFileSync(f, "utf8"))) problems.push(`${f} doesn't load the shared display settings (with data-legacy)`);
+      }
+      return problems;
+    },
+  },
 ];
 
 let failed = 0;
