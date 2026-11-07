@@ -6,7 +6,7 @@ A controlled demonstration, not a production service. Use fictional people and t
 
 - `/demo` — talk or type to get grounded referrals from this directory.
 - `/staff` — staff queue: confirmed answers, unknowns, suggestions with reasons, email status, requests.
-- `/admin` — the admin app (`site/admin/shell.js` builds the sidebar): Dashboard, Conversations (the staff queue; `/staff` redirects here), Email tracker, Workflows and the visual editor, Raw data, Estimated costs, Requests, Change log, and Connect Claude & ChatGPT.
+- `/admin` — the admin app, behind the admin password (`admin/shell.js` builds the sidebar; the pages are served by the function, not as static files): Dashboard, Conversations (the staff queue; `/staff` redirects here), Email tracker, Workflows and the visual editor, Raw data, Estimated costs, Requests, Change log, and Connect Claude & ChatGPT.
 - **Workflows** (`site/data/flows/index.json`): `referral` is `site/data/assessment.json`, used live by the assistant and the directory quiz; `v360-interest` is the V360 TECH interest form, not used live yet. The editor (`/admin/workflows/edit/?flow=…`) saves drafts to the `admin-data` branch; **Publish** makes one commit on `main` with the workflow, `data/corpus.lock.json` and the regenerated golden expectations, and Vercel redeploys. Checks (`server/lib/flow-check.mjs`) must pass first; the impact preview re-runs the golden people. Revert re-commits an old version. Without `V360_GITHUB_TOKEN` everything is kept on the server only (`server/lib/gh-store.mjs`, local adapter).
 - **Requests and change log** (`server/lib/requests.mjs`): the round request button files "Change content" / "Change the app" requests tagged with the page; Claude works them over MCP. Done needs a summary and writes the change log; a team comment reopens.
 - **MCP** (`POST /api/mcp`, `server/lib/mcp.mjs`): Streamable HTTP, JSON responses, no sign-in (optional `V360_MCP_KEY` header). Tools: workflows (read, edit draft, check, publish, revert), requests, change log, dashboard. Fitness check FC7 pins the tool list.
@@ -39,7 +39,7 @@ Optional settings in `.env.local` (never commit):
 
 ## Voice
 
-Voice uses the browser's own Web Speech API: speech recognition for captions and `speechSynthesis` for reading responses aloud. No vendor account or key is needed. Limits:
+Voice uses the browser's own Web Speech API: speech recognition for captions and `speechSynthesis` for reading responses aloud. No vendor account or key is needed. Optionally, replies can be read with an ElevenLabs natural voice (`server/lib/tts.mjs`): it needs `ELEVENLABS_API_KEY` on the server **and** the switch on Admin › Money › Estimated costs. The server only ever voices the assistant's own latest reply, and the page falls back to the browser voice if ElevenLabs fails. Limits:
 
 - Works in recent Chrome, Edge and Safari. Firefox has no speech recognition, so it falls back to typing.
 - Chrome and Edge send audio to their maker's speech service for recognition; Safari uses Apple's. The start page says this before the microphone is requested.

@@ -56,7 +56,24 @@ export async function createApp(opts = {}) {
   const BIG_BODY = 600 * 1024;
   const access = accessRules(env, gh);
   ctx.access = access;
-  const mcp = createMcp({ flows, requests, corpus, overview: async () => adminOverview(), canWrite: () => editsOn && access.writesAllowed });
+  const linkOrigin = () => (env.V360_PUBLIC_ORIGIN ? String(env.V360_PUBLIC_ORIGIN).replace(/\/+$/, "") : env.V360_SERVERLESS ? "https://vision360.agenticarc.ai" : "http://localhost:" + (env.PORT || 8360));
+  const mcp = createMcp({
+    flows, requests, corpus, overview: async () => adminOverview(), canWrite: () => editsOn && access.writesAllowed,
+    site: {
+      main: async () => (await settings.site()).mainFlow,
+      async setMain(id) {
+        if (!flowRunnable(id)) { const e = httpError(400, `Only a published workflow can be the main one. Published: ${[...corpus.flows.keys()].join(", ")}.`); throw e; }
+        await settings.updateSite({ mainFlow: id });
+        await requests.logChange({ title: "Main workflow changed", summary: `Main workflow is now "${id}" (set by Claude).`, kind: "app" }).catch(() => {});
+        return { mainFlow: id };
+      },
+      links(id) {
+        const o = linkOrigin();
+        return { live: flowRunnable(id), url: `${o}/f/${id}`, qr_svg: `${o}/api/qr/${id}.svg`, flyer: `${o}/admin/workflows/flyer/?flow=${id}`, admin: `${o}/admin/workflows/?flow=${id}` };
+      },
+    },
+    conversations: async (f) => { await pullRecent(RETENTION_DAYS ? RETENTION_DAYS + 30 : 36500); return listConversations(f); },
+  });
   const aiFetch = opts.aiFetch || globalThis.fetch;
   const ttsFetch = opts.ttsFetch || globalThis.fetch;
   const ttsCount = new Map();
@@ -266,6 +283,26 @@ export async function createApp(opts = {}) {
     return (isSecure(req) ? "https://" : "http://") + host;
   }
   ctx.publicOrigin = publicOrigin;
+
+  // Conversations for the admin list (and the connector), newest first, with filters.
+  function listConversations(f = {}) {
+    const open = new Map(store.allOpenReviews().map((r) => [r.session_id, r.n]));
+    const all = store.listSessions().map((s) => ({ ...s, flow_title: s.flow_title || (flowMeta(corpus, s.flow_id) || {}).title || s.flow_id, openReviews: open.get(s.id) || 0, flowLive: flowRunnable(s.flow_id) }));
+    // Every workflow that has conversations, including deleted ones (by the title they had).
+    const flowsSeen = new Map([...corpus.flows.values()].map((F) => [F.id, { id: F.id, title: F.title, live: true }]));
+    for (const s of all) if (!flowsSeen.has(s.flow_id)) flowsSeen.set(s.flow_id, { id: s.flow_id, title: s.flow_title || s.flow_id, live: false });
+    const rows = all.filter((s) =>
+      (!f.flow || f.flow === "all" || s.flow_id === f.flow) &&
+      (!f.status || f.status === "all" || s.staff_status === f.status) &&
+      (!f.stage || f.stage === "all" || (f.stage === "ended" ? s.status === "ended" || s.phase === "closed" : s.phase === f.stage)) &&
+      (!f.attention || (f.attention === "yes" ? s.openReviews > 0 : s.openReviews === 0)) &&
+      (!f.from || s.created_at >= f.from) &&
+      (!f.to || s.created_at.slice(0, 10) <= f.to) &&
+      (!f.q || s.id.startsWith(String(f.q).trim().toLowerCase())));
+    const limit = Math.min(200, Math.max(1, Number(f.limit) || 50)), offset = Math.max(0, Number(f.offset) || 0);
+    const page = rows.slice(offset, offset + limit).map((s) => ({ ...s, actions: store.actionsForSession(s.id).map((a) => ({ type: a.type, status: a.status })) }));
+    return { sessions: page, total: rows.length, totalAll: all.length, offset, limit, flows: [...flowsSeen.values()] };
+  }
 
   function turnResponse(session, turn) {
     return { turn, state: dialogue.snapshot(session) };
@@ -583,23 +620,7 @@ export async function createApp(opts = {}) {
       if (p === "/api/staff/sessions" && method === "GET") {
         await requireStaff(req);
         await pullRecent(RETENTION_DAYS ? RETENTION_DAYS + 30 : 36500);
-        const open = new Map(store.allOpenReviews().map((r) => [r.session_id, r.n]));
-        const all = store.listSessions().map((s) => ({ ...s, flow_title: s.flow_title || (flowMeta(corpus, s.flow_id) || {}).title || s.flow_id, openReviews: open.get(s.id) || 0, flowLive: flowRunnable(s.flow_id) }));
-        // Every workflow that has conversations, including deleted ones (by the title they had).
-        const flowsSeen = new Map([...corpus.flows.values()].map((F) => [F.id, { id: F.id, title: F.title, live: true }]));
-        for (const s of all) if (!flowsSeen.has(s.flow_id)) flowsSeen.set(s.flow_id, { id: s.flow_id, title: s.flow_title || s.flow_id, live: false });
-        const f = Object.fromEntries(url.searchParams);
-        const rows = all.filter((s) =>
-          (!f.flow || f.flow === "all" || s.flow_id === f.flow) &&
-          (!f.status || f.status === "all" || s.staff_status === f.status) &&
-          (!f.stage || f.stage === "all" || (f.stage === "ended" ? s.status === "ended" || s.phase === "closed" : s.phase === f.stage)) &&
-          (!f.attention || (f.attention === "yes" ? s.openReviews > 0 : s.openReviews === 0)) &&
-          (!f.from || s.created_at >= f.from) &&
-          (!f.to || s.created_at.slice(0, 10) <= f.to) &&
-          (!f.q || s.id.startsWith(String(f.q).trim().toLowerCase())));
-        const limit = Math.min(200, Math.max(1, Number(f.limit) || 50)), offset = Math.max(0, Number(f.offset) || 0);
-        const page = rows.slice(offset, offset + limit).map((s) => ({ ...s, actions: store.actionsForSession(s.id).map((a) => ({ type: a.type, status: a.status })) }));
-        return send(res, 200, { sessions: page, total: rows.length, totalAll: all.length, offset, limit, flows: [...flowsSeen.values()] });
+        return send(res, 200, listConversations(Object.fromEntries(url.searchParams)));
       }
       // Permanently delete conversations. The admin types DELETE to confirm;
       // the server checks it too.

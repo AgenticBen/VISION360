@@ -82,3 +82,51 @@ test("kill switch and connector key", async () => {
   r = await rpc(keyed, "tools/list", {}, 1, { "x-v360-key": "secret-123" });
   assert.equal(r.status, 200);
 });
+
+test("build a new workflow over MCP: create, sections, questions, check, publish, links, main, conversations, delete", async () => {
+  const app = await makeApp();
+  let t = await tool(app, "create_workflow", { id: "spring-workshop", title: "Spring workshop sign-up", description: "RSVPs for the April workshop" });
+  assert.equal(t.isError, false, JSON.stringify(t));
+  assert.equal(t.data.status, "draft");
+  t = await tool(app, "add_section", { flow: "spring-workshop", title: "Your visit", intro_voice: "Now a couple of questions about your visit." });
+  const sec = t.data.section;
+  t = await tool(app, "add_question", { flow: "spring-workshop", section: sec, type: "date", prompt_screen: "Which day would you like to come?", required: true });
+  assert.equal(t.data.checks.ok, true, JSON.stringify(t.data.checks.errors));
+  t = await tool(app, "add_question", { flow: "spring-workshop", section: sec, type: "single", prompt_screen: "Morning or afternoon?", options: ["Morning", "Afternoon"] });
+  t = await tool(app, "update_section", { flow: "spring-workshop", id: sec, title: "Your visit day" });
+  assert.equal(t.isError, false);
+  t = await tool(app, "update_section", { flow: "spring-workshop", id: sec, remove: true });
+  assert.equal(t.isError, true, "a section with questions can't be removed");
+  t = await tool(app, "check_draft", { flow: "spring-workshop" });
+  assert.equal(t.data.checks.ok, true);
+  t = await tool(app, "get_share_links", { flow: "spring-workshop" });
+  assert.equal(t.data.workflows[0].live, false);
+  t = await tool(app, "publish_draft", { flow: "spring-workshop", note: "First version" });
+  assert.equal(t.isError, false, JSON.stringify(t));
+  assert.equal(t.data.version, 1);
+  t = await tool(app, "list_workflows", {});
+  assert.equal(t.data.find((f) => f.id === "spring-workshop").status, "published");
+  // Links for the live workflows, and the main site.
+  t = await tool(app, "get_share_links", {});
+  assert.equal(t.data.mainFlow, "referral");
+  const interest = t.data.workflows.find((f) => f.id === "v360-interest");
+  assert.equal(interest.url, "http://localhost:8360/f/v360-interest");
+  assert.equal(interest.qr_svg, "http://localhost:8360/api/qr/v360-interest.svg");
+  assert.match(interest.flyer, /\/admin\/workflows\/flyer\/\?flow=v360-interest$/);
+  t = await tool(app, "set_main_workflow", { flow: "nope" });
+  assert.equal(t.isError, true);
+  t = await tool(app, "set_main_workflow", { flow: "v360-interest" });
+  assert.equal(t.data.mainFlow, "v360-interest");
+  // Conversations: none have started on the new workflow yet.
+  await call(app, "POST", "/api/session", { noticeAccepted: true, mode: "text", flow: "v360-interest" });
+  t = await tool(app, "list_conversations", { flow: "v360-interest" });
+  assert.equal(t.data.total, 1);
+  assert.equal(t.data.conversations[0].workflow, "V360 TECH interest form");
+  // Delete needs the word, and the main workflow is protected.
+  t = await tool(app, "delete_workflow", { flow: "v360-interest", confirm: "DELETE" });
+  assert.equal(t.isError, true);
+  t = await tool(app, "delete_workflow", { flow: "spring-workshop", confirm: "yes" });
+  assert.equal(t.isError, true);
+  t = await tool(app, "delete_workflow", { flow: "spring-workshop", confirm: "DELETE", reason: "test" });
+  assert.equal(t.isError, false, JSON.stringify(t));
+});

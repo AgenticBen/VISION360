@@ -12,7 +12,13 @@ const AUTHOR = "Claude (MCP)";
 
 export const INSTRUCTIONS = `VISION360 is Lions Services' vision-loss referral tool: a public directory, a voice and chat assistant, and an admin side.
 
-Workflows are the question flows. "referral" is live: the assistant and the directory's Find services ask it, and its answers move organizations up or down the suggestions. "v360-interest" is the V360 TECH interest form, not used live yet.
+Workflows are the question flows the voice and chat assistant runs. "referral" ranks services: the directory's Find services uses it, and its answers move organizations up or down the suggestions. Every other workflow is form-style (for example "v360-interest", the V360 TECH interest form): the assistant asks its questions one at a time and sends the answers to the Lions Services team. One workflow is the MAIN one on the public home page (get_share_links shows which; set_main_workflow changes it). Every published workflow also has its own public page at /f/<id>, a QR code and a printable flyer (get_share_links).
+
+How to build a new workflow (a new page people can use):
+1. create_workflow with an id (it becomes the link /f/<id>) and a title. It starts as a draft with one name question; pass copy_from to start from an existing form.
+2. add_section for each part of the form, then add_question into those sections. Free-text answer types: text, long_text, email, phone, address, date, consent (exactly one answer: the agreement). Choice types: single, multi, yes_no.
+3. check_draft, then publish_draft. The first publish adds it to the site; its link and QR code work once the site redeploys (about 3–5 minutes).
+4. get_share_links returns the public link, the QR code and the flyer to give to Ben.
 
 How to change a workflow:
 1. get_workflow to read it (you get the draft if there is one, otherwise the live version).
@@ -24,7 +30,7 @@ Rules: effects that raise or lower an organization must cite a verified referral
 Requests: Ben files "content" and "app" requests from the request button. Work oldest first: set_request_status in_progress, do the change, verify it, then set_request_status done with a summary of at most two sentences (it goes in the change log). Content requests can usually be done with the workflow tools. App requests need code changes: if you can't make them here, set needs_ben with a comment saying what a coding session should do. Never touch cancelled requests.`;
 
 const S = (props, required = []) => ({ type: "object", properties: props, required, additionalProperties: false });
-const FLOW = { type: "string", description: "Workflow id: referral or v360-interest" };
+const FLOW = { type: "string", description: "Workflow id (list_workflows shows them), e.g. referral or v360-interest" };
 const str = (description) => ({ type: "string", description });
 const RO = { readOnlyHint: true, openWorldHint: false };
 const EDIT = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
@@ -68,6 +74,13 @@ export const TOOLS = [
   { name: "comment_on_request", title: "Reply on a request", description: "Add a reply to a request's thread.", inputSchema: S({ id: str("Request id"), body: str("Your reply") }, ["id", "body"]), annotations: EDIT },
   { name: "set_request_status", title: "Set a request's status", description: "Mark a request in_progress, needs_ben (handing it back with a comment) or done (with a summary of at most 400 characters, which goes in the change log).", inputSchema: S({ id: str("Request id"), status: { type: "string", enum: ["open", "in_progress", "needs_ben", "done"] }, summary: str("Required for done: two sentences at most"), ref: str("Optional commit or version reference") }, ["id", "status"]), annotations: EDIT },
   { name: "log_change", title: "Add to the change log", description: "Record a change in the change log (workflow publishes and finished requests are logged automatically).", inputSchema: S({ title: str("Short title"), summary: str("One or two sentences"), kind: { type: "string", enum: ["workflow", "app", "content"] }, ref: str("Optional commit"), page: str("Optional page path to highlight, e.g. /admin/") }, ["title"]), annotations: EDIT },
+  { name: "create_workflow", title: "Create a workflow", description: "Create a new form-style workflow as a draft. Its id becomes its public link (/f/<id>) once published. Starts with one name question, or a copy of another form (copy_from).", inputSchema: S({ id: str("Link name: 3–40 lowercase letters, numbers and dashes, e.g. spring-workshop"), title: str("Title people see"), description: str("Optional short description for the admin"), copy_from: str("Optional id of a form-style workflow to copy") }, ["id", "title"]), annotations: EDIT },
+  { name: "delete_workflow", title: "Delete a workflow", description: "Delete a workflow. A published one is retired by a pull request (its link and QR stop working; saved conversations are kept); a never-published draft is removed. The main workflow and referral can't be deleted. Requires confirm: \"DELETE\" and should only be done when Ben asked for it.", inputSchema: S({ flow: FLOW, confirm: { type: "string", enum: ["DELETE"] }, reason: str("Why (goes in the change log)") }, ["flow", "confirm"]), annotations: LIVE },
+  { name: "add_section", title: "Add a section", description: "Add a section (a page of questions) to the draft. Add questions to it with add_question.", inputSchema: S({ flow: FLOW, title: str("Section title"), id: str("Optional id (lowercase_with_underscores)"), after: str("Optional section id to insert after; default end"), intro_voice: str("Optional sentence the assistant says before the section"), optional: { type: "boolean", description: "Let people skip the whole section" } }, ["flow", "title"]), annotations: EDIT },
+  { name: "update_section", title: "Change or remove a section", description: "Rename a section, change its spoken introduction or whether it can be skipped, move it, or remove it (only when it has no questions).", inputSchema: S({ flow: FLOW, id: str("Section id"), title: str("New title"), intro_voice: str("Spoken introduction (empty to remove)"), optional: { type: "boolean" }, after: str("Move after this section id ('start' for first)"), remove: { type: "boolean" } }, ["flow", "id"]), annotations: EDIT },
+  { name: "set_main_workflow", title: "Set the main workflow", description: "Choose which published workflow runs on the public home page (the main site). Takes effect within a minute; no publish needed.", inputSchema: S({ flow: FLOW }, ["flow"]), annotations: LIVE },
+  { name: "get_share_links", title: "Get links and QR codes", description: "Each workflow's public link, QR code (SVG) and printable flyer, and which one is the main site. Pass flow for just one.", inputSchema: S({ flow: FLOW }), annotations: RO },
+  { name: "list_conversations", title: "List conversations", description: "Conversations people had with the assistant, newest first, with their workflow, stage and staff status (no answers). Filters are optional.", inputSchema: S({ flow: FLOW, status: { type: "string", enum: ["pending", "reviewed", "needs_follow_up"] }, attention: { type: "string", enum: ["yes", "no"] }, from: str("YYYY-MM-DD"), to: str("YYYY-MM-DD"), limit: { type: "integer", description: "Up to 200 (default 50)" } }), annotations: RO },
   { name: "get_dashboard", title: "Get the dashboard", description: "The admin dashboard's 30-day numbers: conversations, emails, staff requests and costs.", inputSchema: S({}), annotations: RO },
 ];
 export const TOOL_NAMES = TOOLS.map((t) => t.name);
@@ -77,7 +90,7 @@ const slug = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").re
 function uniq(base, taken) { let id = base, n = 2; while (taken(id)) id = `${base}_${n++}`; return id; }
 const leaves = (c, out = []) => { if (!c) return out; if (c.all || c.any) (c.all || c.any).forEach((x) => leaves(x, out)); else if (c.not) leaves(c.not, out); else if (c.q) out.push(c); return out; };
 
-export function createMcp({ flows, requests, corpus, overview, canWrite = () => true }) {
+export function createMcp({ flows, requests, corpus, overview, canWrite = () => true, site = null, conversations = null }) {
   async function working(flowId) {
     const w = await flows.get(flowId);
     return { flow: structuredClone(w.draft ? w.draft.flow : w.published), rev: w.draft ? w.draft.draftRevision : 0 };
@@ -226,6 +239,59 @@ export function createMcp({ flows, requests, corpus, overview, canWrite = () => 
     comment_on_request: ({ id, body }) => requests.comment(id, { author: "claude", body }),
     set_request_status: ({ id, status, summary, ref }) => requests.setStatus(id, { status, summary, ref }),
     log_change: ({ title, summary, kind, ref, page }) => requests.logChange({ title, summary, kind, ref, highlight: page ? { page } : null }),
+    async create_workflow({ id, title, description, copy_from }) {
+      const r = await flows.create({ id, title, description, copyFrom: copy_from || null, author: AUTHOR });
+      return { ...r, checks: summary(r.checks), next: "Add sections and questions, check_draft, then publish_draft. The link works after the first publish and redeploy." };
+    },
+    async delete_workflow({ flow, confirm, reason }) {
+      if (confirm !== "DELETE") throw bad('Pass confirm: "DELETE" to delete a workflow.');
+      const r = await flows.remove(flow, { name: AUTHOR + (reason ? ` (${String(reason).slice(0, 120)})` : ""), mainFlow: site ? await site.main() : "referral" });
+      return { state: r.state, pullRequest: r.prUrl || null };
+    },
+    add_section: (a) => editDraft(a.flow, ({ flow }) => {
+      const id = uniq(a.id ? slug(a.id) : slug(a.title).slice(0, 30), (x) => flow.blocks.some((b) => b.id === x));
+      const block = { id, title: String(a.title).slice(0, 120), questions: [] };
+      if (a.intro_voice) block.intro_voice = String(a.intro_voice).slice(0, 400);
+      if (a.optional) block.skippable_as_block = true;
+      let at = flow.blocks.length;
+      if (a.after) { const i = flow.blocks.findIndex((b) => b.id === a.after); if (i === -1) throw bad(`No section "${a.after}".`); at = i + 1; }
+      flow.blocks.splice(at, 0, block);
+      return { section: id, note: "Empty sections fail the checks until they have a question: add one with add_question." };
+    }),
+    update_section: (a) => editDraft(a.flow, ({ flow, block }) => {
+      const b = block(a.id);
+      if (a.remove) {
+        if (b.questions.length) throw bad(`Section "${b.id}" still has questions (${b.questions.join(", ")}). Move or delete them first.`);
+        flow.blocks = flow.blocks.filter((x) => x !== b);
+        return { removed: b.id };
+      }
+      if (a.title) b.title = String(a.title).slice(0, 120);
+      if (a.intro_voice !== undefined) { if (a.intro_voice) b.intro_voice = String(a.intro_voice).slice(0, 400); else delete b.intro_voice; }
+      if (a.optional !== undefined) { if (a.optional) b.skippable_as_block = true; else delete b.skippable_as_block; }
+      if (a.after) {
+        flow.blocks = flow.blocks.filter((x) => x !== b);
+        const i = a.after === "start" ? -1 : flow.blocks.findIndex((x) => x.id === a.after);
+        if (a.after !== "start" && i === -1) throw bad(`No section "${a.after}".`);
+        flow.blocks.splice(i + 1, 0, b);
+      }
+      return { section: b.id };
+    }),
+    async set_main_workflow({ flow }) {
+      if (!site) throw bad("Site settings aren't available here.");
+      return site.setMain(flow);
+    },
+    async get_share_links({ flow }) {
+      if (!site) throw bad("Site settings aren't available here.");
+      const main = await site.main();
+      const list = (await flows.list()).filter((f) => !flow || f.id === flow);
+      if (flow && !list.length) throw bad(`No workflow called ${flow}.`);
+      return { mainFlow: main, workflows: list.map((f) => { const l = site.links(f.id); return { id: f.id, title: f.title, main: f.id === main, status: f.status, ...(l.live ? l : { live: false, note: f.status === "draft" ? "Not published yet: publish_draft first." : "Published; the link works once the site has redeployed (a few minutes)." }) }; }) };
+    },
+    async list_conversations(f) {
+      if (!conversations) throw bad("Conversations aren't available here.");
+      const r = await conversations({ flow: f.flow, status: f.status, attention: f.attention, from: f.from, to: f.to, limit: f.limit || 50 });
+      return { total: r.total, conversations: r.sessions.map((x) => ({ id: x.id, workflow: x.flow_title, workflowId: x.flow_id, stage: x.phase, staffStatus: x.staff_status, needsAttention: x.openReviews, created: x.created_at, updated: x.updated_at })) };
+    },
     get_dashboard: async () => { const o = await overview(); return { since: o.since, usage: o.usage, costs: o.costs, emails: o.emails.length, failedEmails: o.emails.filter((e) => e.status === "failed").length, settings: o.settings }; },
   };
 

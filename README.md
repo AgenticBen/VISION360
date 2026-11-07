@@ -25,7 +25,7 @@ The persistent feedback button opens an accessible dialog. Feedback is handed to
 
 ## Voice and chat demo
 
-A demonstration of talking or typing to get referrals lives at `/demo`. The admin app at `/admin` has a sidebar with a dashboard, conversations (the staff queue), an email tracker, a visual workflow editor, raw data, estimated costs, change requests, a change log and MCP connection settings. Admin sign-in is off for now (`V360_ADMIN_SIGNIN=on` requires a staff password; `V360_FLOW_EDITS=off` stops all edits). Published workflow versions are commits on `main` made by the editor through `V360_GITHUB_TOKEN`, so **pull before working locally**. Claude or ChatGPT connect at `/api/mcp`. Supabase is prepared but off: see `docs/supabase.md`. Every public page shares the top menu in `site/site-menu.js`. It reads this dataset and the existing assessment engine without changing them. See `docs/voice-chat-demo.md`.
+A demonstration of talking or typing to get referrals lives at `/demo`. The admin app at `/admin` has a sidebar with a dashboard, conversations (the staff queue), an email tracker, a visual workflow editor, raw data, estimated costs, change requests, a change log and MCP connection settings. The admin pages live in `admin/` (not `site/`) and are served by the function only after the admin password is entered; the password's scrypt hash and the cookie-signing key are kept in private settings (Supabase `admin_documents`, `settings/auth.json`) and can be changed in Settings. `V360_FLOW_EDITS=off` stops all edits. One workflow is the **main site** (Workflows › Make main site); every published workflow also runs at `/f/<id>`, with a QR code (`/api/qr/<id>.svg`) and a printable flyer. Conversations are kept until an admin deletes them (type DELETE). Published workflow versions are commits on `main` made by the editor through `V360_GITHUB_TOKEN`, so **pull before working locally**. Claude or ChatGPT connect at `/api/mcp`. Supabase is prepared but off: see `docs/supabase.md`. Every public page shares the top menu in `site/site-menu.js`. It reads this dataset and the existing assessment engine without changing them. See `docs/voice-chat-demo.md`.
 
 ```sh
 npm run demo        # http://localhost:8360/demo
@@ -59,7 +59,9 @@ After deployment, check that `/api/health` reports the deployed `commit` and tha
 | `V360_MCP_KEY` | The connector and publish key. Claude sends it as `?key=` in the connector URL (or an `x-v360-key` header); the workflow editor asks for it once when publishing. Set it **before** the GitHub token: with GitHub connected and no key, all workflow writes are refused. |
 | `V360_GITHUB_TOKEN` | Fine-grained token for this repo only (Contents and Pull requests: read and write). A publish opens a pull request from a `publish/*` branch; `.github/workflows/publish.yml` runs `npm run verify`, merges it, and checks the live site (`scripts/verify-live.mjs`). |
 | `V360_FLOW_EDITS=off` | Kill switch: stops every workflow and request edit. |
-| `V360_ADMIN_SIGNIN=on` | Requires staff sign-in for the admin side. Off until real participants (release gate G1). |
+| `V360_ADMIN_SIGNIN=off` | Local machines only: opens the admin without a password (tests, demos). Ignored on the hosted site, where the admin password is always required. |
+| `ELEVENLABS_API_KEY` | Natural voice. Also needs the switch on Money › Estimated costs. Optional: `ELEVENLABS_VOICE_ID`, `V360_COST_PER_1K_TTS_CHARS`. |
+| `V360_RETENTION_DAYS` | Optional. Unset: conversations are kept until an admin deletes them. A number turns on automatic deletion after that many days. |
 | `CRON_SECRET` | Optional: only Vercel's scheduler may call `/api/cron/tick` (daily: due emails, retention purge). |
 
 The publish path (pull request → `verify` → auto-merge → deploy → verify-live) was checked end to end on 2026-11-07 with a `publish/selftest-20261107` pull request.

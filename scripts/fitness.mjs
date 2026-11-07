@@ -81,7 +81,9 @@ const CHECKS = [
       const APPROVED = [
         "list_workflows", "get_workflow", "list_versions", "get_draft", "update_draft", "add_question", "update_question",
         "delete_question", "move_question", "set_follow_up", "set_option", "set_effect", "find_organizations", "check_draft",
-        "publish_draft", "revert_to_version", "list_requests", "comment_on_request", "set_request_status", "log_change", "get_dashboard",
+        "publish_draft", "revert_to_version", "list_requests", "comment_on_request", "set_request_status", "log_change",
+        "create_workflow", "delete_workflow", "add_section", "update_section", "set_main_workflow", "get_share_links", "list_conversations",
+        "get_dashboard",
       ];
       const { TOOL_NAMES } = await import("../server/lib/mcp.mjs");
       const problems = [];
@@ -127,7 +129,7 @@ const CHECKS = [
       const src = readFileSync(path.join("server", "lib", "api.mjs"), "utf8");
       const problems = [];
       const block = (start) => { const i = src.indexOf(start); return i < 0 ? "" : src.slice(i, i + 1800); };
-      for (const [label, start] of [["requests", 'p === "/api/requests" || p.startsWith'], ["workflows", 'p === "/api/flows" || p.startsWith'], ["staff status", 'm[2] === "status" && method === "POST"'], ["action retry", "staff\\/actions"]]) {
+      for (const [label, start] of [["requests", 'p === "/api/requests" || p.startsWith'], ["workflows", 'p === "/api/flows" || p.startsWith'], ["staff status", 'm[2] === "status" && method === "POST"'], ["action retry", "staff\\/actions"], ["site settings", 'p === "/api/admin/settings"'], ["delete conversations", 'p === "/api/admin/conversations/delete"'], ["password change", 'p === "/api/admin/password"'], ["sign-in", 'p === "/api/admin/login"']]) {
         if (!/requireSameSite\(req\)/.test(block(start))) problems.push(`${label} writes don't call requireSameSite`);
       }
       if (!/requirePublishKey\(req\);[\s\S]{0,500}flows\.publish/.test(src)) problems.push("publish/revert don't call requirePublishKey before flows.publish");
@@ -163,6 +165,23 @@ const CHECKS = [
           if (!new RegExp(`data-tour(=|["']?:\\s*|["'],\\s*)["']${t}["']`).test(all)) problems.push(`target "${t}": no data-tour="${t}"`);
         }
       }
+      return problems;
+    },
+  },
+  {
+    id: "FC17",
+    title: "Admin pages are served only by the server (none under site/), and every conversation runs its own workflow",
+    run: () => {
+      const problems = [];
+      const walk = (d, out = []) => { for (const n of readdirSync(d)) { const p = path.join(d, n); if (statSync(p).isDirectory()) walk(p, out); else out.push(p); } return out; };
+      for (const f of walk("site")) if (f.startsWith(path.join("site", "admin") + path.sep)) problems.push(`${f} is a public static file; admin pages belong in admin/`);
+      const vercel = JSON.parse(readFileSync("vercel.json", "utf8"));
+      if (!(vercel.rewrites || []).some((r) => r.source === "/admin/:path*" && r.destination.startsWith("/api/v360"))) problems.push("vercel.json doesn't route /admin/* through the function");
+      const dialogue = readFileSync(path.join("server", "lib", "dialogue.mjs"), "utf8");
+      if (/const \{ corpus \} = ctx/.test(dialogue)) problems.push("dialogue.mjs reads one fixed corpus; each conversation must use C(session)");
+      const api = readFileSync(path.join("server", "lib", "api.mjs"), "utf8");
+      if (!/flowForStart\(body\.flow\)[\s\S]{0,300}turns\.start/.test(api)) problems.push("POST /api/session must check the workflow (flowForStart) before starting");
+      if (!/confirm !== "DELETE"/.test(api)) problems.push("deleting conversations must require the word DELETE on the server");
       return problems;
     },
   },
