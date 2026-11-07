@@ -681,7 +681,8 @@
     (results.handoffs || []).forEach(function (h) {
       var c = el("section", { class: "card gap" }, [el("h3", { text: h.headline }), el("p", { text: h.body })]);
       h.referTo.forEach(function (r) {
-        c.appendChild(el("p", null, [el("a", { href: r.url, text: r.name }), r.contacts.general_phone ? " — " : "", r.contacts.general_phone ? telLink(r.contacts.general_phone) : null]));
+        c.appendChild(el("p", null, [el("a", { href: r.url, text: r.name })]));
+        if (r.contacts.general_phone) c.appendChild(el("p", { class: "handoff-phone" }, [telLink(r.contacts.general_phone)]));
       });
       if (h.missingRecordNote) c.appendChild(el("p", { class: "hint", text: h.missingRecordNote }));
       wrap.appendChild(c);
@@ -689,10 +690,48 @@
     return wrap;
   }
 
+  // A phone field can hold several numbers ("980-296-6820; toll-free
+  // 1-800-422-1895; fax …"). Each goes on its own line, and every number
+  // except a fax is a tap-to-call link.
+  var PHONE_RE = /(?:\+?1[-. ])?\(?\d{3}\)?[-. ]\d{3}[-. ]\d{4}/g;
+  // Splits one part into lines so each phone number starts its own line:
+  // at a sentence break ("…1300. North Charlotte clinic: …"), or at "/",
+  // "or" or "," between two numbers. A label like "(toll-free)" stays with
+  // the number before it.
+  function phoneLines(part) {
+    var nums = [], m;
+    PHONE_RE.lastIndex = 0;
+    while ((m = PHONE_RE.exec(part))) nums.push({ start: m.index, end: m.index + m[0].length });
+    var lines = [], from = 0;
+    for (var i = 1; i < nums.length; i++) {
+      var gapStart = nums[i - 1].end, gap = part.slice(gapStart, nums[i].start);
+      var dot = gap.search(/\.\s+/);
+      if (dot !== -1) { lines.push(part.slice(from, gapStart + dot + 1)); from = gapStart + dot + 1; continue; }
+      var sep = /\s*(?:\/|\bor\b|,)\s*/i.exec(gap);
+      if (sep) { lines.push(part.slice(from, gapStart + sep.index)); from = gapStart + sep.index + sep[0].length; }
+    }
+    lines.push(part.slice(from));
+    return lines.map(function (l) { return l.trim(); }).filter(Boolean);
+  }
   function telLink(phone) {
-    var first = String(phone).split(/[;,]/)[0].trim();
-    var digits = first.replace(/[^0-9]/g, "");
-    return digits.length >= 10 ? el("a", { href: "tel:" + digits, text: phone }) : document.createTextNode(phone);
+    var box = el("span", { class: "phone-list" });
+    String(phone).split(/\s*;\s*/).filter(Boolean).forEach(function (piece) {
+      phoneLines(piece).forEach(function (part) {
+        var line = el("span", { class: "phone-line" });
+        var fax = /\bfax\b/i.test(part);
+        var last = 0, m;
+        PHONE_RE.lastIndex = 0;
+        while ((m = PHONE_RE.exec(part))) {
+          if (m.index > last) line.appendChild(document.createTextNode(part.slice(last, m.index)));
+          var digits = m[0].replace(/[^0-9]/g, "");
+          line.appendChild(fax ? document.createTextNode(m[0]) : el("a", { href: "tel:+" + (digits.length === 10 ? "1" + digits : digits), text: m[0] }));
+          last = m.index + m[0].length;
+        }
+        if (last < part.length) line.appendChild(document.createTextNode(part.slice(last)));
+        box.appendChild(line);
+      });
+    });
+    return box;
   }
 
   function linkOrText(url, label) {
@@ -711,7 +750,7 @@
     var dl = el("dl");
     function row(k, v) { if (v) { dl.appendChild(el("dt", { text: k })); dl.appendChild(el("dd", null, [typeof v === "string" ? document.createTextNode(v) : v])); } }
     if (m.accessPath[0]) row("First step", m.accessPath[0].action + (m.accessPath[0].detail ? " — " + m.accessPath[0].detail : ""));
-    if (m.contacts.general_phone) row("Phone", telLink(m.contacts.general_phone));
+    if (m.contacts.general_phone) { var phones = telLink(m.contacts.general_phone); row(phones.children.length > 1 ? "Phone numbers" : "Phone", phones); }
     if (m.contacts.general_email) row("Email", el("a", { href: "mailto:" + m.contacts.general_email, text: m.contacts.general_email }));
     if (m.contacts.website) row("Website", linkOrText(m.contacts.website));
     if (m.contacts.intake_form_url) row("Referral form", linkOrText(m.contacts.intake_form_url));

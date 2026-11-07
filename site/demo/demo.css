@@ -229,3 +229,16 @@ html[data-textsize="200"] .seg { flex-wrap: wrap; }
   #start .ask { font-size: 1.25rem; margin-top: 0.4rem; }
   #start .ask-sub { font-size: 1rem; }
 }
+
+/* Results: one phone number per line. */
+.phone-list { display: flex; flex-direction: column; gap: 0.25rem; }
+.phone-line { display: block; }
+.handoff-phone { margin-top: -0.3rem; }
+
+/* Every dropdown in a card shows an arrow (down when closed, up when open)
+   and underlines on hover, so it reads as something to open. */
+.card summary { gap: 0.6rem; }
+.card summary::-webkit-details-marker { display: none; }
+.card summary::before { content: ""; flex: none; width: 0.55em; height: 0.55em; margin: 0 0.1em 0.2em 0.15em; border-right: 3px solid currentColor; border-bottom: 3px solid currentColor; transform: rotate(45deg); }
+.card details[open] > summary::before { transform: rotate(-135deg); margin-bottom: -0.2em; }
+.card summary:hover, .card summary:focus-visible { text-decoration: underline; text-underline-offset: 0.2em; }
