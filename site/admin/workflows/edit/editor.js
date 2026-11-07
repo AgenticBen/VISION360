@@ -102,6 +102,7 @@
       status,
       el("span", { class: "grow" }),
       el("button", { type: "button", class: "btn sm", text: "Versions", onclick: function () { root.classList.toggle("no-rail"); root.classList.toggle("show-rail"); } }),
+      el("button", { type: "button", class: "btn sm", id: "insp-btn", "aria-pressed": "true", title: "Show or hide the details panel on the right", text: "Details", onclick: toggleInsp }),
       el("button", { type: "button", class: "btn sm", title: "Undo (Ctrl+Z)", text: "↶ Undo", onclick: undo }),
       nameIn,
       el("button", { type: "button", class: "btn sm", id: "discard", text: "Discard draft" }),
@@ -125,10 +126,14 @@
       el("div", { class: "grp" }, [el("button", { type: "button", text: "+ Question", onclick: addQuestion }), el("button", { type: "button", text: "+ Section", onclick: addSection })])
     ]));
     canvas.appendChild(el("div", { class: "ed-legend" }, ["Order", el("i"), "Follow-up", el("i", { class: "sky" }), "Next section", el("i", { class: "dash" })]));
-    insp = el("aside", { class: "ed-insp", "data-tour": "inspector" });
+    insp = el("aside", { class: "ed-insp", "data-tour": "inspector", id: "ed-insp" });
+    canvas.appendChild(el("button", { type: "button", class: "ed-insp-handle", id: "insp-handle", "aria-controls": "ed-insp", onclick: toggleInsp }));
     root.appendChild(top);
     root.appendChild(el("div", { class: "ed-body" }, [rail, canvas, insp]));
     wireCanvas();
+    var hidden = false;
+    try { hidden = localStorage.getItem("v360-editor-insp") === "closed"; } catch (e) {}
+    setInsp(!hidden);
     document.addEventListener("keydown", function (e) {
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); undo(); }
     });
@@ -476,6 +481,16 @@
   }
 
   /* ---------------------------------------------------------- inspector */
+  /* The details panel on the right can be collapsed and reopened; the choice
+     is remembered on this device. */
+  function setInsp(open) {
+    root.classList.toggle("no-insp", !open);
+    var b = document.getElementById("insp-btn"), h = document.getElementById("insp-handle");
+    if (b) b.setAttribute("aria-pressed", String(open));
+    if (h) { h.textContent = open ? "›" : "‹"; h.title = open ? "Hide the details panel" : "Show the details panel"; h.setAttribute("aria-expanded", String(open)); }
+    try { localStorage.setItem("v360-editor-insp", open ? "open" : "closed"); } catch (e) {}
+  }
+  function toggleInsp() { setInsp(root.classList.contains("no-insp")); }
   function field(label, input, hint) { return el("div", null, [el("label", { class: "fl", text: label }), input, hint ? el("p", { class: "hint", style: "margin:3px 0 0", text: hint }) : null]); }
   function textIn(value, onchange, opts) {
     var i = el(opts && opts.area ? "textarea" : "input", { class: "inp", value: opts && opts.area ? null : (value || ""), placeholder: (opts && opts.ph) || "" });
