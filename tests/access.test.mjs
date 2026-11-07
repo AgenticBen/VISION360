@@ -55,8 +55,9 @@ test("with a key set, publish needs the x-v360-key header", async () => {
 test("the connector key also works as ?key= in the connector URL", async () => {
   const app = await makeApp({ V360_MCP_KEY: "secret-key" });
   const body = { jsonrpc: "2.0", id: 1, method: "tools/list" };
-  assert.equal((await call(app, "POST", "/api/mcp", body)).status, 401);
-  assert.equal((await call(app, "POST", "/api/mcp?key=wrong", body)).status, 401);
+  // 403 (not 401) so Claude doesn't look for a sign-in flow and show "Reconnect".
+  assert.equal((await call(app, "POST", "/api/mcp", body)).status, 403);
+  assert.equal((await call(app, "POST", "/api/mcp?key=wrong", body)).status, 403);
   const ok = await call(app, "POST", "/api/mcp?key=secret-key", body);
   assert.equal(ok.status, 200);
   assert.ok(ok.json.result.tools.length > 10);

@@ -78,9 +78,22 @@ test("kill switch and connector key", async () => {
   assert.equal(t.isError, false, "reading still works");
   const keyed = await makeApp({ V360_MCP_KEY: "secret-123" });
   let r = await rpc(keyed, "tools/list", {});
-  assert.equal(r.status, 401);
+  // 403, not 401: a 401 makes Claude look for a sign-in flow this connector
+  // doesn't have and leaves the connector stuck on "Reconnect".
+  assert.equal(r.status, 403);
+  r = await rpc(keyed, "tools/list", {}, 1, { "x-v360-key": "wrong" });
+  assert.equal(r.status, 403);
   r = await rpc(keyed, "tools/list", {}, 1, { "x-v360-key": "secret-123" });
   assert.equal(r.status, 200);
+  r = await rpc(keyed, "tools/list", {}, 1, { authorization: "Bearer secret-123" });
+  assert.equal(r.status, 200);
+});
+
+test("a stray Authorization header does not hide a correct ?key= in the connector URL", async () => {
+  const keyed = await makeApp({ V360_MCP_KEY: "secret-123" });
+  const r = await call(keyed, "POST", "/api/mcp?key=secret-123", { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }, { authorization: "Bearer some-other-token" });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.ok(r.json.result.tools.length > 0);
 });
 
 test("build a new workflow over MCP: create, sections, questions, check, publish, links, main, conversations, delete", async () => {

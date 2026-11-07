@@ -574,8 +574,23 @@ export async function createApp(opts = {}) {
         if (env.V360_MCP_KEY) {
           // Header for clients that can send one (Claude Code); ?key= in the
           // connector URL for Claude.ai and ChatGPT custom connectors.
-          const given = req.headers["x-v360-key"] || String(req.headers.authorization || "").replace(/^Bearer\s+/i, "") || url.searchParams.get("key") || "";
-          if (!given || !tokenMatches(given, tokenHash(env.V360_MCP_KEY))) throw httpError(401, "This connector needs its key.");
+          // Accept the key from ANY of these places: a client may add its own
+          // Authorization header, which must not hide a correct ?key=.
+          const sources = {
+            header: req.headers["x-v360-key"] || "",
+            bearer: String(req.headers.authorization || "").replace(/^Bearer\s+/i, ""),
+            query: url.searchParams.get("key") || "",
+          };
+          const want = tokenHash(env.V360_MCP_KEY);
+          const ok = Object.values(sources).some((v) => v && tokenMatches(v, want));
+          if (!ok) {
+            // Never log the values; only which places had something, so a
+            // refused request can be traced to the client that sent it.
+            try { console.log("mcp refused", JSON.stringify({ present: Object.keys(sources).filter((k) => sources[k]), agent: String(req.headers["user-agent"] || "").slice(0, 80), session: !!req.headers["mcp-session-id"] })); } catch (e) {}
+            // 403, not 401: this connector has no sign-in flow, and a 401 makes
+            // Claude look for one, fail, and leave the connector on "Reconnect".
+            throw httpError(403, "This connector's key is missing or wrong. Check the key at the end of the connector URL (?key=...) in your Claude connector settings.");
+          }
         }
         if (!limiter(ip + ":mcp", 120)) throw httpError(429, "Too many requests — please wait a moment.");
         const out = await mcp.handle(await readJson(req, BIG_BODY));
