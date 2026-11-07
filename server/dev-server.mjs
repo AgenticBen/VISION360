@@ -27,6 +27,8 @@ const server = http.createServer(async (req, res) => {
   let rel = decodeURIComponent(url.pathname);
   // /f/<workflow> opens the assistant for that workflow (Vercel does the same).
   if (/^\/f\/[a-z0-9-]{1,40}\/?$/.test(rel)) rel = "/demo/index.html";
+  // /home moved to / (Vercel redirects the same way).
+  if (/^\/home\/?$/.test(rel)) { res.writeHead(302, { Location: "/" }); return res.end(); }
   // /assessment opens the assistant for the Vision Assessment (Vercel does the same).
   if (/^\/assessment\/?$/.test(rel)) rel = "/demo/index.html";
   if (rel.endsWith("/")) rel += "index.html";

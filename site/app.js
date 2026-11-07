@@ -6,10 +6,10 @@
 (function () {
   "use strict";
 
-  var DATA_URL = "data/organizations.json";
-  var GEO_URL  = "data/geography.json";
-  var PATHS_URL = "data/pathways.json";
-  var ASSESS_URL = "data/assessment.json";
+  var DATA_URL = "/data/organizations.json";
+  var GEO_URL  = "/data/geography.json";
+  var PATHS_URL = "/data/pathways.json";
+  var ASSESS_URL = "/data/assessment.json";
 
   /* ---------------------------------------------------------------------
      Labels

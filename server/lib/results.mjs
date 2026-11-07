@@ -98,7 +98,7 @@ export function buildResults(corpus, engineState, answers) {
     matches,
     handoffs,
     unresolved,
-    directoryUrl: "https://vision360.agenticarc.ai/",
+    directoryUrl: "https://vision360.agenticarc.ai/directory/",
   };
 }
 

@@ -118,7 +118,7 @@ function deepFreeze(o) {
 }
 
 export function canonicalUrl(orgId) {
-  return `${PUBLIC_SITE}/#org-${encodeURIComponent(orgId)}`;
+  return `${PUBLIC_SITE}/directory/#org-${encodeURIComponent(orgId)}`;
 }
 
 export const ROOT_DIR = ROOT;

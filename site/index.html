@@ -1,212 +1,133 @@
 <!DOCTYPE html>
-<html lang="en" data-textsize="100" data-contrast="normal">
+<html lang="en" data-textsize="150" data-theme="high">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
-<meta name="googlebot" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta name="description" content="Working referral directory of organizations serving people who are blind, low vision, or losing their sight in the greater Charlotte, NC area.">
-<title>Vision loss services — greater Charlotte, NC</title>
+<meta name="description" content="Vision 360 from Lions Services: a voice-first way for people with vision loss in the Charlotte area to check how their vision affects daily life and find services that can help.">
+<title>Vision 360 — Lions Services</title>
 <link rel="icon" type="image/png" href="/brand/favicon.png">
 <link rel="stylesheet" href="/brand/brand.css">
-<link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="whats-new.css">
-<link rel="stylesheet" href="site-menu.css">
+<link rel="stylesheet" href="/demo/demo.css">
+<link rel="stylesheet" href="/home/home.css">
+<link rel="stylesheet" href="/site-menu.css">
+<script>
+  /* Same display settings as the assistant pages, applied before first paint.
+     New visitors start in large print with high contrast. */
+  try {
+    var s = JSON.parse(localStorage.getItem("v360-demo-settings") || "{}");
+    if (s.textSize) document.documentElement.setAttribute("data-textsize", s.textSize);
+    if (s.theme) document.documentElement.setAttribute("data-theme", s.theme);
+  } catch (e) {}
+</script>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to the main content</a>
 
-<a class="skip-link" href="#q">Skip to search</a>
-<a class="skip-link" href="#views">Skip to the three views</a>
-<a class="skip-link" href="#results">Skip to the organization list</a>
-<a class="skip-link" href="#filters">Skip to filters</a>
-
-<header class="site-header">
-  <div class="wrap header-inner">
-    <div class="header-titles">
-      <h1>Vision loss services — greater Charlotte, NC</h1>
-      <p class="maintainer">
-        Compiled and maintained by <b>Lions Services, Inc.</b>
-        <span class="tagline">Helping the Blind Help Themselves since 1935.</span>
-      </p>
-      <p class="lede">
-        A working referral directory. Every record is rendered from
-        <code>data/organizations.json</code>. Fields that read
-        <span class="gap-inline"><span class="gap-mark" aria-hidden="true">!</span>Not published — verification call required</span>
-        are gaps we have not closed yet, shown on purpose so you know what to ask.
-      </p>
-    </div>
-
-    <div class="display-controls">
-      <fieldset class="textsize">
-        <legend>Text size</legend>
-        <div class="segmented" id="textsize-group">
-          <button type="button" class="seg-btn" data-size="100" aria-pressed="true">100%</button>
-          <button type="button" class="seg-btn" data-size="125" aria-pressed="false">125%</button>
-          <button type="button" class="seg-btn" data-size="150" aria-pressed="false">150%</button>
+<!-- ===================== Display settings ===================== -->
+<section class="dbar" id="display-bar" aria-labelledby="dbar-h">
+  <div class="wrap">
+    <h2 class="dbar-h" id="dbar-h">
+      <button type="button" class="dbar-toggle" id="dbar-toggle" aria-expanded="true" aria-controls="dbar-body">
+        <span>Display settings</span>
+        <span class="dbar-summary" id="dbar-summary"></span>
+        <span class="dbar-action" id="dbar-action">Hide</span>
+      </button>
+    </h2>
+    <div class="dbar-body" id="dbar-body">
+      <div class="dbar-group" role="group" aria-labelledby="dbar-size-l">
+        <span class="dbar-label" id="dbar-size-l">Text size</span>
+        <div class="seg">
+          <button type="button" class="seg-btn" data-set="textSize" data-value="100" aria-pressed="false">100%</button>
+          <button type="button" class="seg-btn" data-set="textSize" data-value="125" aria-pressed="false">125%</button>
+          <button type="button" class="seg-btn" data-set="textSize" data-value="150" aria-pressed="false">150%</button>
+          <button type="button" class="seg-btn" data-set="textSize" data-value="200" aria-pressed="false">200%</button>
         </div>
-      </fieldset>
-      <button type="button" id="contrast-toggle" class="btn btn-quiet" aria-pressed="false">
-        <span class="ct-icon" aria-hidden="true">◐</span> High contrast
-      </button>
-    </div>
-  </div>
-</header>
-
-<main id="main">
-
-  <div class="wrap">
-    <form id="site-search" class="site-search" role="search" aria-label="Search the organization directory">
-      <label for="q">Search organizations and services</label>
-      <div class="search-controls">
-        <input type="search" id="q" name="q" autocomplete="off" spellcheck="false"
-               aria-describedby="q-hint" placeholder="Try an organization, service or county">
-        <button type="submit" class="btn">Search directory</button>
-        <button type="button" id="clear-search" class="btn btn-quiet">Clear search</button>
       </div>
-      <p class="hint" id="q-hint">Search names, services, locations, eligibility, contacts and referral steps. Results open in Directory; your Find services answers stay in place.</p>
-      <p class="hint" id="search-summary">Loading organizations…</p>
-    </form>
-  </div>
-
-  <!-- ======================= VIEWS ======================= -->
-  <div class="wrap">
-    <!-- A real tablist, not aria-pressed toggles: these are three views OF one
-         dataset, and a screen reader should hear "2 of 3, selected" rather than
-         three unrelated buttons. Arrow-key handling lives in app.js and supports
-         standard arrow-key navigation. -->
-    <div class="tabs" id="views" role="tablist" aria-label="Views of this directory">
-      <button type="button" class="tab" role="tab" id="tab-directory"
-              aria-controls="panel-directory" aria-selected="true" tabindex="0">
-        <span class="tab-icon" aria-hidden="true">▤</span> Directory
-      </button>
-      <button type="button" class="tab" role="tab" id="tab-pathways"
-              aria-controls="panel-pathways" aria-selected="false" tabindex="-1">
-        <span class="tab-icon" aria-hidden="true">◈</span> Pathways
-      </button>
-      <button type="button" class="tab" role="tab" id="tab-quiz"
-              aria-controls="panel-quiz" aria-selected="false" tabindex="-1">
-        <span class="tab-icon" aria-hidden="true">◇</span> Find services
-      </button>
-    </div>
-  </div>
-
-  <!-- Panels are labelled by their tab button and carry NO heading of their own,
-       so the one-h1 / no-skipped-levels structure is untouched. -->
-  <div id="panel-directory" role="tabpanel" aria-labelledby="tab-directory" tabindex="-1">
-  <div class="wrap layout">
-
-  <!-- ======================= FILTER RAIL ======================= -->
-  <form class="filters" id="filters" aria-labelledby="filters-heading" tabindex="-1">
-    <div class="filters-head">
-      <h2 id="filters-heading">Filters</h2>
-      <button type="button" class="btn btn-quiet btn-sm" id="clear-all">Clear all</button>
-    </div>
-
-    <fieldset class="field">
-      <legend>Category</legend>
-      <div class="checks" id="f-categories"></div>
-    </fieldset>
-
-    <fieldset class="field">
-      <legend>Service area</legend>
-      <p class="hint">Geography sorts, it never excludes. With nothing ticked, every record is shown.</p>
-      <div class="checks" id="f-areas"></div>
-    </fieldset>
-
-    <fieldset class="field">
-      <legend>Record strength</legend>
-      <div class="checks" id="f-confidence"></div>
-    </fieldset>
-
-    <fieldset class="field">
-      <legend>Quick filters</legend>
-      <div class="checks" id="f-toggles"></div>
-    </fieldset>
-  </form>
-
-  <!-- ======================= RESULTS ======================= -->
-  <section id="results" aria-labelledby="results-heading" tabindex="-1">
-    <div class="results-head">
-      <h2 id="results-heading">Organizations</h2>
-      <div class="results-tools">
-        <label class="inline-label" for="sort">Sort</label>
-        <select id="sort">
-          <option value="meck">Mecklenburg first</option>
-          <option value="name">Name (A–Z)</option>
-          <option value="confidence">Weakest records first</option>
-          <option value="questions">Most open questions first</option>
-          <option value="area">Closest service area first</option>
-        </select>
-        <button type="button" class="btn btn-quiet btn-sm" id="collapse-all">Collapse all open</button>
+      <div class="dbar-group" role="group" aria-labelledby="dbar-colors-l">
+        <span class="dbar-label" id="dbar-colors-l">Colors</span>
+        <div class="seg">
+          <button type="button" class="seg-btn" data-set="theme" data-value="standard" aria-pressed="false">Standard</button>
+          <button type="button" class="seg-btn" data-set="theme" data-value="dark" aria-pressed="false">Dark</button>
+          <button type="button" class="seg-btn" data-set="theme" data-value="high" aria-pressed="false">High contrast</button>
+        </div>
       </div>
     </div>
+  </div>
+</section>
 
-    <p class="status" id="result-status" role="status" aria-live="polite" aria-atomic="true">Loading the directory…</p>
-    <p class="announce visually-hidden" id="announce" role="status" aria-live="polite" aria-atomic="true"></p>
+<main id="main" class="wrap home">
 
-    <!-- role="group" not a bare div: aria-label is discarded on role="generic". -->
-    <div id="active-chips" class="chips" role="group" aria-label="Active filters"></div>
+  <section class="hero" aria-labelledby="home-h">
+    <p class="kicker">Lions Services · Vision 360</p>
+    <h1 id="home-h">Your connection to vision services</h1>
+    <p class="lead">Vision 360 helps people in the Charlotte area who are blind, have low vision, or are losing their sight, and the family and professionals who support them. Talk or type, one question at a time, and find the right next step.</p>
 
-    <div id="error-region"></div>
-
-    <!-- role="list" is load-bearing: list-style:none strips list semantics in
-         Safari/VoiceOver, and the umbrella/programme nesting is carried by it. -->
-    <ol class="org-list" id="org-list" role="list"></ol>
+    <div class="big-choices">
+      <a class="big-choice" href="/assessment/">
+        <span class="big-choice-title">Vision Assessment</span>
+        <span class="big-choice-text">A five-minute check of how your vision affects everyday things, like reading, faces and getting around. It isn't a medical exam.</span>
+        <span class="big-choice-go" aria-hidden="true">Start the assessment →</span>
+      </a>
+      <a class="big-choice" href="/demo/">
+        <span class="big-choice-title">Resource Assistant</span>
+        <span class="big-choice-text">Answer a few questions by talking or typing, and get suggestions for services and programs near you, with the reason for each one.</span>
+        <span class="big-choice-go" aria-hidden="true">Find resources →</span>
+      </a>
+    </div>
+    <p class="demo-note"><strong>Demo version.</strong> Please use made-up details for now.</p>
   </section>
-  </div>
-  </div>
 
-  <!-- ======================= PATHWAYS ======================= -->
-  <div id="panel-pathways" role="tabpanel" aria-labelledby="tab-pathways" tabindex="-1" hidden>
-    <div class="wrap panel-body">
-      <div id="pathways-root"></div>
-    </div>
-  </div>
+  <section class="band" aria-labelledby="how-h">
+    <h2 id="how-h">How to use it</h2>
+    <ol class="steps">
+      <li><strong>Pick a tool.</strong> The Vision Assessment looks at how vision affects daily life. The Resource Assistant finds services that can help.</li>
+      <li><strong>Talk or type.</strong> Press Talk and speak, or press Type and write. On a computer you can just press the Space bar to start talking.</li>
+      <li><strong>Answer one question at a time.</strong> Say "skip", "I don't know" or "repeat" whenever you like. Nothing is sent or suggested until you've checked your answers.</li>
+      <li><strong>Make it comfortable.</strong> Say "bigger text", "smaller text" or "less contrast" at any time, or use Display settings at the top of the page.</li>
+    </ol>
+  </section>
 
-  <!-- ======================= FIND SERVICES ======================= -->
-  <div id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz" tabindex="-1" hidden>
-    <div class="wrap panel-body">
-      <div id="quiz-root"></div>
-    </div>
-  </div>
+  <section class="band" aria-labelledby="why-h">
+    <h2 id="why-h">Why Vision 360 exists</h2>
+    <p>Finding help after vision loss can mean many phone calls to agencies, clinics and programs, each with its own rules. Vision 360 brings those services together in one place, in a form anyone can use by voice or by keyboard, so people can find the right next step sooner and with more confidence.</p>
+    <p>It's built by Lions Services, which has served people who are blind or have low vision in Charlotte since 1935. A real person at Lions Services can always follow up.</p>
+  </section>
+
+  <nav class="band quick-nav" aria-labelledby="go-h">
+    <h2 id="go-h">Go to any page</h2>
+    <ul class="go-grid">
+      <li><a class="go" href="/assessment/"><span class="go-title">Vision Assessment</span><span class="go-text">Check how vision affects everyday things</span></a></li>
+      <li><a class="go" href="/demo/"><span class="go-title">Resource Assistant</span><span class="go-text">Talk or type to find services</span></a></li>
+      <li><a class="go" href="/directory/"><span class="go-title">Org Directory</span><span class="go-text">Every organization, with search and filters</span></a></li>
+      <li><a class="go" href="/directory/#tab-quiz"><span class="go-title">Find services</span><span class="go-text">A short on-screen questionnaire</span></a></li>
+      <li><a class="go" href="/directory/#tab-pathways"><span class="go-title">Pathways</span><span class="go-text">Common routes through services</span></a></li>
+      <li><a class="go" href="/guide.html"><span class="go-title">How to use Vision 360</span><span class="go-text">A step-by-step guide to every page</span></a></li>
+      <li><a class="go" href="/guide.html#privacy"><span class="go-title">Privacy</span><span class="go-text">What's saved and why</span></a></li>
+    </ul>
+  </nav>
+
+  <footer class="home-foot">
+    <p><strong>Lions Services, Inc.</strong> · 4600 N. Tryon St., Charlotte, NC 28213</p>
+    <p><a href="tel:+17049211527">704-921-1527</a> · <a href="mailto:info@lionsservices.org">info@lionsservices.org</a> · <a href="https://lionsservices.org">lionsservices.org</a></p>
+  </footer>
 </main>
 
-<div class="feedback-dock">
-  <button type="button" id="feedback-open" class="btn" aria-haspopup="dialog">Help improve this site</button>
-</div>
-<dialog id="feedback-dialog" aria-labelledby="feedback-title" aria-describedby="feedback-help">
-  <div class="feedback-header">
-    <h2 id="feedback-title">Help improve this site</h2>
-    <button type="button" id="feedback-close" class="btn btn-quiet">Close</button>
-  </div>
-  <p id="feedback-help">Tell us what was difficult and what would make the site easier to use. Feedback is reviewed before any listing is changed.</p>
-  <form id="feedback-form">
-    <label for="feedback-message">What should we improve?</label>
-    <textarea id="feedback-message" name="message" rows="5" maxlength="1500" required
-              aria-describedby="feedback-privacy" placeholder="I was trying to… It would help if…"></textarea>
-    <p class="hint" id="feedback-privacy">Please leave out personal medical information and other private details. Your search and Find services answers are not included.</p>
-    <p class="hint">This opens your email app with your feedback addressed to <a href="mailto:ben@agenticarc.ai">ben@agenticarc.ai</a>. You will still need to press Send there.</p>
-    <div class="feedback-actions">
-      <button type="submit" class="btn">Open email to send</button>
-      <button type="button" id="feedback-copy" class="btn btn-quiet">Copy feedback instead</button>
-    </div>
-    <p id="feedback-status" role="status" aria-live="polite"></p>
-  </form>
-</dialog>
-
-<footer class="site-footer wrap">
-  <p>
-    Unlisted working document for record verification. Not a public directory and not the
-    journey map. Data corrections belong in <code>data/organizations.json</code>, never in this page.
-  </p>
-</footer>
-
-<!-- The engine loads first and only attaches globalThis.VisionAssessment. It is
-     a separate file so the same logic can run under node for the voice agent. -->
-<script src="quiz-engine.js"></script>
-<script src="app.js"></script>
-<script src="whats-new.js" data-page="directory" defer></script>
+<div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<script>
+  /* Old directory links (/#org-…, /#tab-…, shared before the directory moved
+     to /directory/) still open the right place. */
+  (function () {
+    function go() {
+      var h = location.hash;
+      if (/^#(org-|tab-)/.test(h) || /[?&](q|county|cat)=/.test(location.search)) location.replace("/directory/" + location.search + h);
+    }
+    go();
+    window.addEventListener("hashchange", go);
+  })();
+</script>
+<script src="/home/home.js"></script>
 <script src="/site-menu.js"></script>
 <script src="/request-button.js" defer></script>
 </body>

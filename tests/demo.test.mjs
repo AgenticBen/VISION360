@@ -107,7 +107,7 @@ test("every displayed fact is grounded in a directory record", async () => {
       assert.equal(m.contacts.general_phone, o.contacts.general_phone || null);
       assert.equal(m.contacts.website, o.contacts.website || null);
       assert.equal(m.accessPath.length, (o.access_path || []).length, "full access path preserved");
-      assert.equal(m.url, "https://vision360.agenticarc.ai/#org-" + m.id);
+      assert.equal(m.url, "https://vision360.agenticarc.ai/directory/#org-" + m.id);
     }
   }
 });

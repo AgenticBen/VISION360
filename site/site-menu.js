@@ -11,11 +11,11 @@
   ];
   var MENUS = [
     { id: "more", label: "More", icon: true, items: [
-      ["/home/", "Home", "What Vision 360 is and how to use it"],
-      ["/", "Org Directory", "Every organization, with search and filters"],
+      ["/", "Home", "What Vision 360 is and how to use it"],
+      ["/directory/", "Org Directory", "Every organization, with search and filters"],
       ["/admin/", "Admin", "Staff sign-in"],
-      ["/#tab-quiz", "Find services", "Answer a few questions for suggestions"],
-      ["/#tab-pathways", "Pathways", "Common routes through services"],
+      ["/directory/#tab-quiz", "Find services", "Answer a few questions for suggestions"],
+      ["/directory/#tab-pathways", "Pathways", "Common routes through services"],
       ["/guide.html", "How to use VISION360", "Step-by-step guide to every page"],
       ["/guide.html#privacy", "About and privacy", "What this demo saves and why"]
     ] }
@@ -34,18 +34,18 @@
     var here = location.hash;
     if (u.hash) return u.hash === here || (u.hash === "#overview" && !here);
     /* The directory page also hosts Find services and Pathways (#tab-...). */
-    if (norm(u.pathname) === "/") return !here || here === "#tab-directory" || here.indexOf("#tab-") !== 0;
+    if (norm(u.pathname) === "/directory") return !here || here === "#tab-directory" || here.indexOf("#tab-") !== 0;
     return true;
   }
 
   var groups = [];
   var nav = el("nav", { "class": "sm", id: "site-menu", "aria-label": "Site menu" });
   var here = norm(location.pathname);
-  var onDemo = here.indexOf("/demo") === 0 || here.indexOf("/assessment") === 0 || here.indexOf("/f/") === 0 || here.indexOf("/home") === 0;
+  var onDemo = here.indexOf("/demo") === 0 || here.indexOf("/assessment") === 0 || here.indexOf("/f/") === 0 || here === "/" || here === "/index.html";
   /* Top corner: the official Lions Services | VISION 360 lockup on a white
      tile on the assistant pages (which have no logo strip); the eye and the
      name everywhere else. */
-  var inner = el("div", { "class": "sm-inner" }, [el("a", { "class": "sm-home" + (onDemo ? " sm-home-logo" : ""), href: "/home/" }, onDemo ? [
+  var inner = el("div", { "class": "sm-inner" }, [el("a", { "class": "sm-home" + (onDemo ? " sm-home-logo" : ""), href: "/" }, onDemo ? [
     el("span", { "class": "sm-logo" }, [el("img", { src: "/brand/lions-services-vision-360.png", alt: "Lions Services | Vision 360", width: "720", height: "113" })])
   ] : [
     el("span", { "class": "sm-eye", "aria-hidden": "true" }, [el("img", { src: "/brand/eye.png", alt: "" })]),
@@ -54,7 +54,7 @@
   /* Official logo strip above the menu: CONNECT wordmark on the assistant, the
      Lions Services | VISION 360 lockup everywhere else. */
   var logoBar = el("div", { "class": "brand-bar" }, [el("div", { "class": "brand-bar-inner" }, [
-    el("a", { href: onDemo ? "/demo/" : "/" }, [onDemo
+    el("a", { href: "/" }, [onDemo
       ? el("img", { "class": "brand-bar-connect", src: "/brand/vision-360-connect.png", alt: "Vision 360 CONNECT", width: "720", height: "199" })
       : el("img", { src: "/brand/lions-services-vision-360.png", alt: "Lions Services | Vision 360", width: "720", height: "113" })])
   ])]);
@@ -62,7 +62,7 @@
 
   TABS.forEach(function (t) {
     var a = el("a", { "class": "sm-link", href: t[0] }, [document.createTextNode(t[1])]);
-    if (norm(t[0]) === here || (t[0] === "/" && here === "/index.html")) a.setAttribute("aria-current", "page");
+    if (norm(t[0]) === here) a.setAttribute("aria-current", "page");
     inner.appendChild(a);
   });
 

@@ -78,8 +78,8 @@
       "destination": "/demo/index.html"
     },
     {
-      "source": "/home",
-      "destination": "/home/index.html"
+      "source": "/directory",
+      "destination": "/directory/index.html"
     },
     {
       "source": "/f/:flow",
@@ -133,6 +133,16 @@
     {
       "source": "/staff/",
       "destination": "/admin/conversations/",
+      "permanent": false
+    },
+    {
+      "source": "/home",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/home/",
+      "destination": "/",
       "permanent": false
     }
   ],
