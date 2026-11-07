@@ -114,6 +114,30 @@
       "destination": "/api/v360?__path=/admin/:path*"
     },
     {
+      "source": "/.well-known/oauth-protected-resource",
+      "destination": "/api/v360?__path=/.well-known/oauth-protected-resource"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource/:path*",
+      "destination": "/api/v360?__path=/.well-known/oauth-protected-resource/:path*"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server",
+      "destination": "/api/v360?__path=/.well-known/oauth-authorization-server"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server/:path*",
+      "destination": "/api/v360?__path=/.well-known/oauth-authorization-server/:path*"
+    },
+    {
+      "source": "/.well-known/openid-configuration",
+      "destination": "/api/v360?__path=/.well-known/openid-configuration"
+    },
+    {
+      "source": "/oauth/:path*",
+      "destination": "/api/v360?__path=/oauth/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/v360?__path=/api/:path*"
     }

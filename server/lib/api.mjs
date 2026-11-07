@@ -20,6 +20,7 @@ import { createAdminStore } from "./supabase-store.mjs";
 import { createRequests } from "./requests.mjs";
 import { createFlowRepo } from "./flow-repo.mjs";
 import { createMcp } from "./mcp.mjs";
+import { createOAuth } from "./oauth.mjs";
 import { verifyWebhook, deliveryEvent } from "./email-webhook.mjs";
 import { supabaseConfigured, supabaseKeyProblem, createSupabaseSessions, createDurableSessions } from "./supabase-sessions.mjs";
 import { createSiteSettings } from "./site-settings.mjs";
@@ -315,12 +316,24 @@ export async function createApp(opts = {}) {
     try { await ctx.actions.drain(5); } catch (e) { console.error("worker error", e.message); }
   }
 
+  // OAuth sign-in for the connector (see oauth.mjs): approve with the admin password.
+  const oauth = createOAuth({
+    getSecret: async () => (await settings.auth()).secret,
+    checkPassword: async (pw) => { const a = await settings.auth(); return !!a.passwordHash && verifyPassword(pw, a.passwordHash); },
+    isSignedIn: async (req) => !!(await staffUser(req)),
+    origin: publicOrigin,
+    limiter,
+  });
+
   async function handle(req, res) {
     const url = new URL(req.url, "http://localhost");
     const p = url.pathname.replace(/\/+$/, "");
     const method = req.method;
     try {
       const ip = String(req.headers["x-forwarded-for"] || (req.socket && req.socket.remoteAddress) || "local").split(",")[0].trim();
+      // OAuth endpoints first: apps call /oauth/token and /oauth/register from
+      // their own servers or other origins, so they skip the same-site check.
+      if (await oauth.handle(req, res, url, ip)) return;
       // Admin pages and their files: only for someone signed in.
       if (p === "/admin" || p.startsWith("/admin/")) {
         if (!limiter(ip + ":pages", 600)) throw httpError(429, "Too many requests — please wait a moment.");
@@ -571,7 +584,10 @@ export async function createApp(opts = {}) {
       if (p === "/api/mcp") {
         if (method === "DELETE") { res.writeHead(200, { "Cache-Control": "no-store" }); return res.end(); }
         if (method !== "POST") return send(res, 405, { error: "This MCP endpoint takes POST (Streamable HTTP, JSON responses)." }, { Allow: "POST, DELETE" });
-        if (env.V360_MCP_KEY) {
+        // An OAuth access token from "Connect" in Claude (see oauth.mjs) is enough.
+        const bearerToken = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+        const viaOAuth = bearerToken ? await oauth.verifyAccess(bearerToken, req) : null;
+        if (env.V360_MCP_KEY && !viaOAuth) {
           // Header for clients that can send one (Claude Code); ?key= in the
           // connector URL for Claude.ai and ChatGPT custom connectors.
           // Accept the key from ANY of these places: a client may add its own
@@ -587,8 +603,11 @@ export async function createApp(opts = {}) {
             // Never log the values; only which places had something, so a
             // refused request can be traced to the client that sent it.
             try { console.log("mcp refused", JSON.stringify({ present: Object.keys(sources).filter((k) => sources[k]), agent: String(req.headers["user-agent"] || "").slice(0, 80), session: !!req.headers["mcp-session-id"] })); } catch (e) {}
-            // 403, not 401: this connector has no sign-in flow, and a 401 makes
-            // Claude look for one, fail, and leave the connector on "Reconnect".
+            // With OAuth set up (an admin password exists), answer 401 and say
+            // where to sign in, so Claude's Connect / Reconnect works. Without
+            // it, 403: a bare 401 would send Claude looking for a sign-in that
+            // doesn't exist and leave the connector stuck on "Reconnect".
+            if (await oauth.available()) return send(res, 401, { error: "Sign in to connect: use Connect in your app, or add ?key= to the connector URL." }, { "WWW-Authenticate": oauth.challenge(req) });
             throw httpError(403, "This connector's key is missing or wrong. Check the key at the end of the connector URL (?key=...) in your Claude connector settings.");
           }
         }
