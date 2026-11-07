@@ -2,7 +2,8 @@ name: publish
 
 # Workflow versions published from the admin editor or the Claude connector
 # arrive as pull requests from publish/* branches. This runs the same checks
-# as `npm run verify`, merges the PR when they pass, then waits until the live
+# as `npm run verify`, queues GitHub auto-merge (main requires the `verify`
+# check), waits for the merge, then waits until the live
 # site reports the merged commit (verify-live). If the checks fail, the PR
 # stays open and the admin change log shows "Not published".
 
@@ -28,13 +29,22 @@ jobs:
         with:
           node-version: 24
       - run: npm run verify
-      - name: Merge the publish
+      - name: Merge the publish (once the required verify check passes)
         id: merge
         env:
           GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch --repo "${{ github.repository }}"
-          sha=$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --json mergeCommit -q .mergeCommit.oid)
+          gh pr merge "$PR" --squash --auto --repo "$REPO"
+          for i in $(seq 1 60); do
+            state=$(gh pr view "$PR" --repo "$REPO" --json state -q .state)
+            if [ "$state" = "MERGED" ]; then break; fi
+            if [ "$state" = "CLOSED" ]; then echo "PR was closed"; exit 1; fi
+            sleep 15
+          done
+          sha=$(gh pr view "$PR" --repo "$REPO" --json mergeCommit -q .mergeCommit.oid)
+          [ -n "$sha" ] || { echo "Not merged within 15 minutes"; exit 1; }
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - name: Close the PR if the checks failed
         if: failure() && steps.merge.outcome != 'success'
