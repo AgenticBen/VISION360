@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" data-textsize="150" data-theme="high">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Vision 360 from Lions Services: a voice-first way for people with vision loss in the Charlotte area to check how their vision affects daily life and find services that can help.">
+<title>Vision 360 — Lions Services</title>
+<link rel="icon" type="image/png" href="/brand/favicon.png">
+<link rel="stylesheet" href="/brand/brand.css">
+<link rel="stylesheet" href="/demo/demo.css">
+<link rel="stylesheet" href="/home/home.css">
+<link rel="stylesheet" href="/site-menu.css">
+<script>
+  /* Same display settings as the assistant pages, applied before first paint.
+     New visitors start in large print with high contrast. */
+  try {
+    var s = JSON.parse(localStorage.getItem("v360-demo-settings") || "{}");
+    if (s.textSize) document.documentElement.setAttribute("data-textsize", s.textSize);
+    if (s.theme) document.documentElement.setAttribute("data-theme", s.theme);
+  } catch (e) {}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to the main content</a>
+
+<!-- ===================== Display settings ===================== -->
+<section class="dbar" id="display-bar" aria-labelledby="dbar-h">
+  <div class="wrap">
+    <h2 class="dbar-h" id="dbar-h">
+      <button type="button" class="dbar-toggle" id="dbar-toggle" aria-expanded="true" aria-controls="dbar-body">
+        <span>Display settings</span>
+        <span class="dbar-summary" id="dbar-summary"></span>
+        <span class="dbar-action" id="dbar-action">Hide</span>
+      </button>
+    </h2>
+    <div class="dbar-body" id="dbar-body">
+      <div class="dbar-group" role="group" aria-labelledby="dbar-size-l">
+        <span class="dbar-label" id="dbar-size-l">Text size</span>
+        <div class="seg">
+          <button type="button" class="seg-btn" data-set="textSize" data-value="100" aria-pressed="false">100%</button>
+          <button type="button" class="seg-btn" data-set="textSize" data-value="125" aria-pressed="false">125%</button>
+          <button type="button" class="seg-btn" data-set="textSize" data-value="150" aria-pressed="false">150%</button>
+          <button type="button" class="seg-btn" data-set="textSize" data-value="200" aria-pressed="false">200%</button>
+        </div>
+      </div>
+      <div class="dbar-group" role="group" aria-labelledby="dbar-colors-l">
+        <span class="dbar-label" id="dbar-colors-l">Colors</span>
+        <div class="seg">
+          <button type="button" class="seg-btn" data-set="theme" data-value="standard" aria-pressed="false">Standard</button>
+          <button type="button" class="seg-btn" data-set="theme" data-value="dark" aria-pressed="false">Dark</button>
+          <button type="button" class="seg-btn" data-set="theme" data-value="high" aria-pressed="false">High contrast</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main id="main" class="wrap home">
+
+  <section class="hero" aria-labelledby="home-h">
+    <p class="kicker">Lions Services · Vision 360</p>
+    <h1 id="home-h">Your connection to vision services</h1>
+    <p class="lead">Vision 360 helps people in the Charlotte area who are blind, have low vision, or are losing their sight, and the family and professionals who support them. Talk or type, one question at a time, and find the right next step.</p>
+
+    <div class="big-choices">
+      <a class="big-choice" href="/assessment/">
+        <span class="big-choice-title">Vision Assessment</span>
+        <span class="big-choice-text">A five-minute check of how your vision affects everyday things, like reading, faces and getting around. It isn't a medical exam.</span>
+        <span class="big-choice-go" aria-hidden="true">Start the assessment →</span>
+      </a>
+      <a class="big-choice" href="/demo/">
+        <span class="big-choice-title">Resource Assistant</span>
+        <span class="big-choice-text">Answer a few questions by talking or typing, and get suggestions for services and programs near you, with the reason for each one.</span>
+        <span class="big-choice-go" aria-hidden="true">Find resources →</span>
+      </a>
+    </div>
+    <p class="demo-note"><strong>Demo version.</strong> Please use made-up details for now.</p>
+  </section>
+
+  <section class="band" aria-labelledby="how-h">
+    <h2 id="how-h">How to use it</h2>
+    <ol class="steps">
+      <li><strong>Pick a tool.</strong> The Vision Assessment looks at how vision affects daily life. The Resource Assistant finds services that can help.</li>
+      <li><strong>Talk or type.</strong> Press Talk and speak, or press Type and write. On a computer you can just press the Space bar to start talking.</li>
+      <li><strong>Answer one question at a time.</strong> Say "skip", "I don't know" or "repeat" whenever you like. Nothing is sent or suggested until you've checked your answers.</li>
+      <li><strong>Make it comfortable.</strong> Say "bigger text", "smaller text" or "less contrast" at any time, or use Display settings at the top of the page.</li>
+    </ol>
+  </section>
+
+  <section class="band" aria-labelledby="why-h">
+    <h2 id="why-h">Why Vision 360 exists</h2>
+    <p>Finding help after vision loss can mean many phone calls to agencies, clinics and programs, each with its own rules. Vision 360 brings those services together in one place, in a form anyone can use by voice or by keyboard, so people can find the right next step sooner and with more confidence.</p>
+    <p>It's built by Lions Services, which has served people who are blind or have low vision in Charlotte since 1935. A real person at Lions Services can always follow up.</p>
+  </section>
+
+  <nav class="band quick-nav" aria-labelledby="go-h">
+    <h2 id="go-h">Go to any page</h2>
+    <ul class="go-grid">
+      <li><a class="go" href="/assessment/"><span class="go-title">Vision Assessment</span><span class="go-text">Check how vision affects everyday things</span></a></li>
+      <li><a class="go" href="/demo/"><span class="go-title">Resource Assistant</span><span class="go-text">Talk or type to find services</span></a></li>
+      <li><a class="go" href="/"><span class="go-title">Org Directory</span><span class="go-text">Every organization, with search and filters</span></a></li>
+      <li><a class="go" href="/#tab-quiz"><span class="go-title">Find services</span><span class="go-text">A short on-screen questionnaire</span></a></li>
+      <li><a class="go" href="/#tab-pathways"><span class="go-title">Pathways</span><span class="go-text">Common routes through services</span></a></li>
+      <li><a class="go" href="/guide.html"><span class="go-title">How to use Vision 360</span><span class="go-text">A step-by-step guide to every page</span></a></li>
+      <li><a class="go" href="/guide.html#privacy"><span class="go-title">Privacy</span><span class="go-text">What's saved and why</span></a></li>
+    </ul>
+  </nav>
+
+  <footer class="home-foot">
+    <p><strong>Lions Services, Inc.</strong> · 4600 N. Tryon St., Charlotte, NC 28213</p>
+    <p><a href="tel:+17049211527">704-921-1527</a> · <a href="mailto:info@lionsservices.org">info@lionsservices.org</a> · <a href="https://lionsservices.org">lionsservices.org</a></p>
+  </footer>
+</main>
+
+<div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<script src="/home/home.js"></script>
+<script src="/site-menu.js"></script>
+<script src="/request-button.js" defer></script>
+</body>
+</html>

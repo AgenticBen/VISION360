@@ -11,6 +11,7 @@
   ];
   var MENUS = [
     { id: "more", label: "More", icon: true, items: [
+      ["/home/", "Home", "What Vision 360 is and how to use it"],
       ["/", "Org Directory", "Every organization, with search and filters"],
       ["/admin/", "Admin", "Staff sign-in"],
       ["/#tab-quiz", "Find services", "Answer a few questions for suggestions"],
@@ -40,11 +41,11 @@
   var groups = [];
   var nav = el("nav", { "class": "sm", id: "site-menu", "aria-label": "Site menu" });
   var here = norm(location.pathname);
-  var onDemo = here.indexOf("/demo") === 0 || here.indexOf("/assessment") === 0 || here.indexOf("/f/") === 0;
+  var onDemo = here.indexOf("/demo") === 0 || here.indexOf("/assessment") === 0 || here.indexOf("/f/") === 0 || here.indexOf("/home") === 0;
   /* Top corner: the official Lions Services | VISION 360 lockup on a white
      tile on the assistant pages (which have no logo strip); the eye and the
      name everywhere else. */
-  var inner = el("div", { "class": "sm-inner" }, [el("a", { "class": "sm-home" + (onDemo ? " sm-home-logo" : ""), href: "/demo/" }, onDemo ? [
+  var inner = el("div", { "class": "sm-inner" }, [el("a", { "class": "sm-home" + (onDemo ? " sm-home-logo" : ""), href: "/home/" }, onDemo ? [
     el("span", { "class": "sm-logo" }, [el("img", { src: "/brand/lions-services-vision-360.png", alt: "Lions Services | Vision 360", width: "720", height: "113" })])
   ] : [
     el("span", { "class": "sm-eye", "aria-hidden": "true" }, [el("img", { src: "/brand/eye.png", alt: "" })]),

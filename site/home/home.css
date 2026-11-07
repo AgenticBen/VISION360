@@ -1,0 +1,44 @@
+/* Home page. Uses the colour tokens from /demo/demo.css, so it follows the
+   same text size, dark and high-contrast settings as the assistant pages. */
+.home { padding-bottom: 2rem; }
+.home h1 { font-size: 2rem; line-height: 1.2; margin: 0.2rem 0 0.6rem; color: var(--accent); }
+.home h2 { font-size: 1.35rem; margin: 0 0 0.6rem; }
+.kicker { margin: 0.8rem 0 0; font-weight: 700; letter-spacing: 0.04em; color: var(--muted); font-size: 0.95rem; }
+.lead { font-size: 1.1rem; max-width: 46rem; margin: 0 0 1.4rem; }
+
+/* The two big choices. */
+.big-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); gap: 1rem; }
+.big-choice { display: flex; flex-direction: column; gap: 0.5rem; padding: 1.2rem 1.3rem; min-height: 12rem; border: 3px solid var(--accent); border-radius: 14px; background: var(--surface); color: var(--ink); text-decoration: none; }
+.big-choice:hover { background: var(--accent-wash); }
+.big-choice:hover .big-choice-go { text-decoration: underline; }
+.big-choice-title { font-family: var(--font-heading, inherit); font-weight: 800; font-size: 1.6rem; line-height: 1.2; color: var(--accent); }
+.big-choice-text { flex: 1; }
+.big-choice-go { align-self: flex-start; font-weight: 700; padding: 0.45rem 1rem; border-radius: 8px; background: var(--btn-bg, var(--accent)); color: var(--accent-ink); }
+.demo-note { margin: 0.9rem 0 0; color: var(--warn-ink); font-size: 0.95rem; }
+
+/* Sections below the fold. */
+.band { margin-top: 2rem; padding-top: 1.4rem; border-top: 1px solid var(--line-soft); }
+.band p { max-width: 46rem; }
+.steps { margin: 0; padding-left: 1.4rem; max-width: 46rem; }
+.steps li { margin: 0.5rem 0; padding-left: 0.2rem; }
+
+/* Every page, as decently sized buttons. */
+.go-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr)); gap: 0.7rem; }
+.go { display: flex; flex-direction: column; gap: 0.15rem; min-height: 4.5rem; padding: 0.7rem 1rem; border: 2px solid var(--line); border-radius: 10px; background: var(--page); color: var(--ink); text-decoration: none; }
+.go:hover { background: var(--accent-wash); border-color: var(--accent); }
+.go:hover .go-title { text-decoration: underline; }
+.go-title { font-weight: 700; color: var(--accent); }
+.go-text { font-size: 0.92rem; color: var(--muted); }
+
+.home-foot { margin-top: 2.4rem; padding-top: 1rem; border-top: 1px solid var(--line-soft); font-size: 0.95rem; }
+.home-foot p { margin: 0.2rem 0; }
+
+@media (max-width: 640px) {
+  .home h1 { font-size: 1.5rem; }
+  .lead { font-size: 1rem; }
+  .big-choice { min-height: 0; padding: 1rem; }
+  .big-choice-title { font-size: 1.35rem; }
+}
+@media (forced-colors: active) {
+  .big-choice, .go { border: 2px solid CanvasText; }
+}

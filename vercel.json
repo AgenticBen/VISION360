@@ -78,6 +78,10 @@
       "destination": "/demo/index.html"
     },
     {
+      "source": "/home",
+      "destination": "/home/index.html"
+    },
+    {
       "source": "/f/:flow",
       "destination": "/demo/index.html"
     },
