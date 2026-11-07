@@ -62,6 +62,8 @@ After deployment, check that `/api/health` reports the deployed `commit` and tha
 | `V360_ADMIN_SIGNIN=on` | Requires staff sign-in for the admin side. Off until real participants (release gate G1). |
 | `CRON_SECRET` | Optional: only Vercel's scheduler may call `/api/cron/tick` (daily: due emails, retention purge). |
 
+The publish path (pull request → `verify` → auto-merge → deploy → verify-live) was checked end to end on 2026-11-07 with a `publish/selftest-20261107` pull request.
+
 Check a deployment with `node scripts/verify-live.mjs https://vision360.agenticarc.ai <commit>`: it waits for the commit, compares data hashes with the lock, and fails if storage isn't Supabase.
 
 ## Source and limitations
