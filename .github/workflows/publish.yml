@@ -24,8 +24,8 @@ jobs:
     if: startsWith(github.head_ref, 'publish/')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - run: npm run verify
@@ -46,6 +46,7 @@ jobs:
           sha=$(gh pr view "$PR" --repo "$REPO" --json mergeCommit -q .mergeCommit.oid)
           [ -n "$sha" ] || { echo "Not merged within 15 minutes"; exit 1; }
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          gh api -X DELETE "repos/$REPO/git/refs/heads/${{ github.head_ref }}" || true
       - name: Close the PR if the checks failed
         if: failure() && steps.merge.outcome != 'success'
         env:
