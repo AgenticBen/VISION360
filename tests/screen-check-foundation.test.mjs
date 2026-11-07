@@ -17,10 +17,10 @@ const store = (map) => (k) => (k in map ? map[k] : null);
 test("display settings: page defaults until someone chooses, then their choice everywhere", () => {
   const D = displayCore();
   assert.equal(D.saved(store({})), null, "nothing chosen yet");
-  assert.deepEqual({ ...D.normalize(null, { textSize: "150", theme: "high" }) }, { textSize: "150", theme: "high", cursor: "default", cursorColor: "black" });
-  assert.deepEqual({ ...D.normalize(null, { textSize: "100", theme: "standard" }) }, { textSize: "100", theme: "standard", cursor: "default", cursorColor: "black" });
-  const chosen = store({ "v360-display": JSON.stringify({ textSize: "200", theme: "dark", cursor: "xl", cursorColor: "yellow" }) });
-  assert.deepEqual({ ...D.normalize(D.saved(chosen), { textSize: "100", theme: "standard" }) }, { textSize: "200", theme: "dark", cursor: "xl", cursorColor: "yellow" });
+  assert.deepEqual({ ...D.normalize(null, { textSize: "150", theme: "high" }) }, { textSize: "150", theme: "high", cursor: "default", cursorColor: "black", bold: "off" });
+  assert.deepEqual({ ...D.normalize(null, { textSize: "100", theme: "standard" }) }, { textSize: "100", theme: "standard", cursor: "default", cursorColor: "black", bold: "off" });
+  const chosen = store({ "v360-display": JSON.stringify({ textSize: "200", theme: "dark", cursor: "xl", cursorColor: "yellow", bold: "on" }) });
+  assert.deepEqual({ ...D.normalize(D.saved(chosen), { textSize: "100", theme: "standard" }) }, { textSize: "200", theme: "dark", cursor: "xl", cursorColor: "yellow", bold: "on" });
 });
 
 test("display settings: each page carries over only its own older saved choice, once", () => {
@@ -44,8 +44,8 @@ test("display settings: each page carries over only its own older saved choice, 
 
 test("display settings: bad values fall back, and every page gets the right attributes", () => {
   const D = displayCore();
-  const s = D.normalize({ textSize: "999", theme: "neon", cursor: "giant", cursorColor: "pink" }, { textSize: "150", theme: "high" });
-  assert.deepEqual({ ...s }, { textSize: "150", theme: "high", cursor: "default", cursorColor: "black" });
+  const s = D.normalize({ textSize: "999", theme: "neon", cursor: "giant", cursorColor: "pink", bold: "very" }, { textSize: "150", theme: "high" });
+  assert.deepEqual({ ...s }, { textSize: "150", theme: "high", cursor: "default", cursorColor: "black", bold: "off" });
   assert.equal(D.attributes({ ...s, theme: "high" })["data-contrast"], "high");
   assert.equal(D.attributes({ ...s, theme: "dark" })["data-contrast"], "normal", "the directory shows dark as normal contrast");
   assert.equal(D.attributes(s)["data-cursor"], "default");

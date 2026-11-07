@@ -39,9 +39,9 @@ html[data-contrast="high"] .brand-bar, html[data-theme="high"] .brand-bar, html[
    never so large (at 150–200% text) that the bar overflows the screen. */
 @media (max-width: 640px) {
   .sm { font-size: clamp(15px, 1rem, 19px); }
-  .sm-inner { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.3rem; padding: 0.4rem 0.6rem; }
+  .sm-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0.3rem; padding: 0.4rem 0.6rem; }
   .sm-home { display: none; }
-  .sm-link, .sm-toggle { width: 100%; justify-content: center; text-align: center; padding: 0.3rem 0.4rem; }
+  .sm-link, .sm-toggle { width: 100%; min-width: 0; justify-content: center; text-align: center; padding: 0.3rem 0.4rem; white-space: normal; }
   .sm-group { position: static; }
 }
 /* Assistant pages: the lockup in the top corner, on white as the brand rules require. */
@@ -50,6 +50,9 @@ html[data-contrast="high"] .brand-bar, html[data-theme="high"] .brand-bar, html[
 .sm-home-logo:hover { text-decoration: none; }
 .sm-home-logo:hover .sm-logo { box-shadow: 0 0 0 3px currentColor; }
 @media (max-width: 640px) {
-  .sm-home.sm-home-logo { display: flex; grid-column: 1 / -1; padding: 0.1rem 0; }
+  .sm-home.sm-home-logo { display: flex; grid-column: 1 / -1; padding: 0.1rem 0; width: auto; min-width: 0; }
+  /* The ☰ button shows just its icon on phones (still read as "More"). */
+  .sm-burger .sm-more-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sm-burger { padding-left: 0.6rem; padding-right: 0.6rem; }
   .sm-logo img { height: 28px; }
 }

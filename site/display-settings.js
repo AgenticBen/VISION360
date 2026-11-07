@@ -24,6 +24,7 @@
      data-contrast  normal | high            (directory, guide: dark shows as normal)
      data-cursor    default | large | xl     (a bigger pointer, on computers)
      data-cursor-color  black | white | yellow
+     data-bold      off | on                  (heavier text, from the screen check)
 */
 (function (root) {
   "use strict";
@@ -36,6 +37,7 @@
   D.CURSORS = ["default", "large", "xl"];
   D.CURSOR_COLORS = ["black", "white", "yellow"];
   D.CURSOR_PX = { large: 64, xl: 128 };
+  D.BOLDS = ["off", "on"];
 
   function pick(v, list, dflt) { v = v == null ? "" : String(v); return list.indexOf(v) !== -1 ? v : dflt; }
 
@@ -46,7 +48,8 @@
       textSize: pick(raw.textSize, D.SIZES, pick(defaults.textSize, D.SIZES, "100")),
       theme: pick(raw.theme, D.THEMES, pick(defaults.theme, D.THEMES, "standard")),
       cursor: pick(raw.cursor, D.CURSORS, "default"),
-      cursorColor: pick(raw.cursorColor, D.CURSOR_COLORS, "black")
+      cursorColor: pick(raw.cursorColor, D.CURSOR_COLORS, "black"),
+      bold: pick(raw.bold, D.BOLDS, "off")
     };
   };
 
@@ -78,7 +81,8 @@
       "data-theme": s.theme,
       "data-contrast": s.theme === "high" ? "high" : "normal",
       "data-cursor": s.cursor,
-      "data-cursor-color": s.cursorColor
+      "data-cursor-color": s.cursorColor,
+      "data-bold": s.bold
     };
   };
 
@@ -97,6 +101,8 @@
         css += "html[data-cursor='" + size + "'][data-cursor-color='" + color + "'], html[data-cursor='" + size + "'][data-cursor-color='" + color + "'] * { cursor: " + url + " !important; }\n";
       });
     });
+    // Heavier text everywhere (headings are already bold).
+    css += "html[data-bold='on'] body, html[data-bold='on'] body :is(p, li, a, span, label, button, input, select, textarea, td, th, dd, dt, summary, legend) { font-weight: 700 !important; }\n";
     return css;
   };
 

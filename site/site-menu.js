@@ -41,7 +41,7 @@
   var groups = [];
   var nav = el("nav", { "class": "sm", id: "site-menu", "aria-label": "Site menu" });
   var here = norm(location.pathname);
-  var onDemo = here.indexOf("/demo") === 0 || here.indexOf("/assessment") === 0 || here.indexOf("/f/") === 0 || here === "/" || here === "/index.html";
+  var onDemo = here.indexOf("/demo") === 0 || here.indexOf("/assessment") === 0 || here.indexOf("/screen-check") === 0 || here.indexOf("/f/") === 0 || here === "/" || here === "/index.html";
   /* Top corner: the official Lions Services | VISION 360 lockup on a white
      tile on the assistant pages (which have no logo strip); the eye and the
      name everywhere else. */
@@ -69,7 +69,7 @@
   MENUS.forEach(function (m) {
     var panelId = "sm-panel-" + m.id;
     var toggle = el("button", { type: "button", "class": "sm-toggle" + (m.icon ? " sm-burger" : ""), "aria-expanded": "false", "aria-controls": panelId }, m.icon ? [
-      el("span", { "class": "sm-bars", "aria-hidden": "true" }, [el("span"), el("span"), el("span")]), document.createTextNode(m.label)
+      el("span", { "class": "sm-bars", "aria-hidden": "true" }, [el("span"), el("span"), el("span")]), el("span", { "class": "sm-more-label", text: m.label })
     ] : [
       document.createTextNode(m.label), el("span", { "class": "sm-caret", "aria-hidden": "true", text: "▾" })
     ]);
