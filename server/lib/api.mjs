@@ -200,13 +200,14 @@ export async function createApp(opts = {}) {
   }
 
   // ---------------------------------------------------- screen settings check
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const checkCtx = (c) => ({ words: CHECK_CONTENT.words, soundsLike: CHECK_CONTENT.sounds_like || {}, seed: c.id, device: c.device || {} });
   function cleanDevice(d) {
     d = d || {};
     const type = ["phone", "tablet", "computer"].includes(d.type) ? d.type : "computer";
     const os = ["ios", "android", "mac", "windows", "chromeos", "other"].includes(d.os) ? d.os : "other";
     const num = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(20000, Math.round(Number(v)))) : null);
-    return { type, os, touchOnly: type !== "computer" || !!d.touchOnly, screenW: num(d.screenW), screenH: num(d.screenH), dpr: Number.isFinite(Number(d.dpr)) ? Math.min(8, Math.max(0.5, Number(d.dpr))) : null };
+    return { type, os, touchOnly: type !== "computer" || !!d.touchOnly, skipPointer: !!d.skipPointer, screenW: num(d.screenW), screenH: num(d.screenH), dpr: Number.isFinite(Number(d.dpr)) ? Math.min(8, Math.max(0.5, Number(d.dpr))) : null };
   }
   async function loadCheck(req, id) {
     const c = await checks.getCheck(id);
@@ -238,7 +239,7 @@ export async function createApp(opts = {}) {
       // Started from the Vision Assessment's button: link it, but only with
       // that conversation's own token.
       if (body.from && body.from.sessionId) {
-        const s = /^[0-9a-f-]{36}$/.test(String(body.from.sessionId)) ? await repo.load(String(body.from.sessionId)) : null;
+        const s = UUID.test(String(body.from.sessionId)) ? await repo.load(String(body.from.sessionId)) : null;
         if (s && tokenMatches(String(body.from.token || ""), s.token_hash)) assessment_session_id = s.id;
       }
       if (body.code) {
@@ -248,14 +249,19 @@ export async function createApp(opts = {}) {
         if (!prev) throw httpError(404, "We couldn't find that code. Check the three parts (a word, a number and a word), or start a new check.");
         previous_check_id = prev.id; code = prev.code;
       }
+      // A new person gets a code nobody else has.
+      if (!code) {
+        for (let i = 0; i < 25 && !code; i++) { const c0 = check.newCode(); if (!(await checks.latestByCode(c0))) code = c0; }
+        if (!code) throw httpError(503, "Couldn't start a new check right now. Please try again.");
+      }
       const token = newToken();
-      const c = await checks.createCheck({ id: randomUUID(), code: code || check.newCode(), token_hash: tokenHash(token), device, assessment_session_id, previous_check_id });
+      const c = await checks.createCheck({ id: randomUUID(), code, token_hash: tokenHash(token), device, assessment_session_id, previous_check_id });
       store.audit("system", null, "screen_check_started", { retake: !!previous_check_id, linked: !!assessment_session_id });
       const plan = check.plan(device);
       return send(res, 200, { id: c.id, token, code: c.code, retake: !!previous_check_id, linked: !!assessment_session_id, plan, device });
     }
-    const m = p.match(/^\/api\/check\/([0-9a-f-]{36})(?:\/(step|trial|details|finish))?$/);
-    if (!m) throw httpError(404, "Not found");
+    const m = p.match(/^\/api\/check\/([^/]+)(?:\/(step|trial|details|finish))?$/);
+    if (!m || !UUID.test(m[1])) throw httpError(404, "Not found");
     const c = await loadCheck(req, m[1]);
     const sub = m[2] || "";
     if (sub === "" && method === "GET") return send(res, 200, { check: await checkSummary(c) });
@@ -280,6 +286,8 @@ export async function createApp(opts = {}) {
       // The word to read is only ever sent for the trial being shown.
       return send(res, 200, { setting, done: out.done, prompt: out.done ? null : out.prompt, result: out.done ? { ...out.result, summary: check.describe(setting, out.result) } : null });
     }
+    // A finished check is final: staff may already have reviewed it.
+    if ((sub === "details" || sub === "finish") && c.status !== "started") throw httpError(409, "This check is finished.");
     if (sub === "details") {
       const patch = {};
       if (body.goal !== undefined) patch.goal = String(body.goal || "").trim().slice(0, 500) || null;

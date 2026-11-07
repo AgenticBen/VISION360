@@ -211,7 +211,7 @@ const CHECKS = [
         if (/localStorage\.(get|set)Item\(\s*["']vrd-display-v1/.test(readFileSync(f, "utf8"))) problems.push(`${f} still reads or writes the old directory display settings; use display-settings.js`);
       }
       for (const f of ["site/index.html", "site/directory/index.html", "site/guide.html", "site/demo/index.html"]) {
-        if (!/<script src="\/display-settings\.js"/.test(readFileSync(f, "utf8"))) problems.push(`${f} doesn't load the shared display settings`);
+        if (!/<script src="\/display-settings\.js"[^>]*data-legacy="(assistant|directory)"/.test(readFileSync(f, "utf8"))) problems.push(`${f} doesn't load the shared display settings (with data-legacy)`);
       }
       return problems;
     },

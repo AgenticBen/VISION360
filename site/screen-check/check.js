@@ -158,6 +158,7 @@
   function screen(o) {
     stopListening();
     st.busy = false;
+    st.onN = null;
     $("stage-h").textContent = o.title;
     $("stage-sub").textContent = o.sub || "";
     $("stage-sub").hidden = !o.sub;
@@ -218,13 +219,18 @@
     screen({ title: "Screen settings check", sub: "Find the text size, colors, speaking speed and pointer that are easiest for you. It takes about ten minutes. Answer by talking, with the keyboard, or by tapping.", body: [el("p", { class: "hint", text: "Your answers are kept private, for Lions Services staff only. This isn't a medical eye exam." })], actions: actions, focus: false });
     // Talk first: a few seconds after opening, or on the first tap or key.
     var started = false;
-    function welcome() { if (started || st.id || st.sr) return; started = true; say(C.say.intro).then(function (ok) { if (!ok && st.blocked) { started = false; } else listen(function (t, n) { if (/\b(ready|start|yes|begin|go)\b/.test(n)) begin(); }); }); }
-    setTimeout(welcome, 5000);
+    function welcome() { if (started || st.id || st.sr || st.leftStart) return; started = true; say(C.say.intro).then(function (ok) { if (!ok && st.blocked) { started = false; } else listen(function (t, n) { if (/\b(ready|start|yes|begin|go)\b/.test(n)) begin(); }); }); }
+    st.leftStart = false;
+    clearTimeout(st.welcomeTimer);
+    st.welcomeTimer = setTimeout(welcome, 5000);
     function first(e) { if (e.target && e.target.closest && e.target.closest(".stage-actions")) return; if (st.blocked || !started) { st.blocked = false; started = false; setTimeout(welcome, 50); } document.removeEventListener("pointerdown", first, true); }
     document.addEventListener("pointerdown", first, true);
   }
 
+  // Leaving the start screen: the welcome mustn't play over the next one.
+  function leaveStart() { st.leftStart = true; clearTimeout(st.welcomeTimer); stopSpeaking(); }
   function showCode() {
+    leaveStart();
     var input = el("input", { id: "code-in", type: "text", autocomplete: "off", placeholder: "for example: maple 47 river" });
     var go = function () { if (input.value.trim()) begin(input.value); };
     screen({ title: "Your code from before", sub: "It's a word, a number and a word, like \"maple 47 river\". Say it or type it.",
@@ -234,10 +240,11 @@
   }
 
   function begin(code) {
-    stopSpeaking();
+    leaveStart();
     var from = null;
     try { from = JSON.parse(sessionStorage.getItem(FROM_KEY) || "null"); } catch (e) {}
     var dev = detectDevice();
+    if (st.sr) dev.skipPointer = true; // the pointer test needs a mouse and eyes on the screen
     st.deviceKey = dev.key;
     api("POST", "/api/check/start", { device: dev, from: from, code: code ? String(code) : undefined }).then(function (j) {
       try { sessionStorage.removeItem(FROM_KEY); sessionStorage.setItem(KEY, JSON.stringify({ id: j.id, token: j.token })); } catch (e) {}
@@ -253,6 +260,7 @@
   }
 
   function carryOn(saved) {
+    leaveStart();
     st.id = saved.id; st.token = saved.token;
     api("GET", "/api/check/" + st.id).then(function (j) {
       var c = j.check;
@@ -353,7 +361,9 @@
   function showRate(p, firstTime) {
     st.rate = p.rate;
     var go = function (answer) { send("speech_rate", { answer: answer }); };
-    screen({ title: "How fast should I talk?", sub: "This is " + (p.atSlowest ? "my slowest speed." : p.atFastest ? "my fastest speed." : "a little faster.") + " Choose faster, slower, or keep this.", progress: progressText(st.stepIdx),
+    var RATE_LIST = ["0.7", "0.85", "1", "1.2", "1.4"];
+    var at = RATE_LIST.indexOf(String(p.rate)) + 1;
+    screen({ title: "How fast should I talk?", sub: "This is " + (p.atSlowest ? "my slowest speed" : p.atFastest ? "my fastest speed" : "speed " + at + " of " + RATE_LIST.length) + ". Choose faster, slower, or keep this.", progress: progressText(st.stepIdx),
       actions: [{ label: "Keep this speed", primary: true, keyHint: "Space", onClick: function () { go("keep"); } }, { label: "Faster", disabled: p.atFastest, onClick: function () { go("faster"); } }, { label: "Slower", disabled: p.atSlowest, onClick: function () { go("slower"); } }],
       speak: firstTime ? C.say.rateIntro : C.say.rateNow, rate: p.rate,
       listen: function (t, n) {

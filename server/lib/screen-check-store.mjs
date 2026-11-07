@@ -55,8 +55,10 @@ export function createSupabaseCheckStore(env, fetchImpl = globalThis.fetch) {
     let json = null;
     try { json = text ? JSON.parse(text) : null; } catch { json = null; }
     if (res.status >= 400) {
-      const e = new Error(`Supabase ${method} ${url.split("?")[0]} failed (${res.status}): ${(json && json.message) || text.slice(0, 160)}`);
-      e.status = 502;
+      // The details go to the server log only; the browser gets a plain message.
+      console.error(`[screen-check store] ${method} ${url.split("?")[0]} failed (${res.status}): ${(json && json.message) || text.slice(0, 160)}`);
+      const e = new Error("The results store isn't available right now. Please try again in a moment.");
+      e.status = 503;
       throw e;
     }
     return json;
