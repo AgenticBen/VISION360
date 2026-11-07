@@ -1114,6 +1114,15 @@
   });
   $("restart").addEventListener("click", function () { window.location.reload(); });
 
+  // After the Vision Assessment: offer the screen settings check (when it's
+  // switched on), linked to this conversation by its own token.
+  var checkOn = false;
+  if (ON_ASSESSMENT) fetch("/api/site", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { checkOn = !!(j.features && j.features.screenCheck); }).catch(function () {});
+  $("to-check").addEventListener("click", function () {
+    try { sessionStorage.setItem("v360-check-from", JSON.stringify({ sessionId: app.sessionId, token: app.token })); } catch (e) {}
+    location.href = "/screen-check/";
+  });
+
   function finishSession(userEnded) {
     app.ended = true;
     stopSpeaking("end", true);
@@ -1126,6 +1135,7 @@
     $("send").disabled = true;
     $("voice-controls").hidden = true;
     $("ended").hidden = false;
+    $("check-cta").hidden = !(ON_ASSESSMENT && checkOn && app.sessionId);
     $("ended-h").focus();
   }
 

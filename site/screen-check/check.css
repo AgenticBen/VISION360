@@ -61,3 +61,11 @@
   .sm, .brand-bar, .voice-row, .stage-actions, .skip-link, .check-progress, #rq-root { display: none !important; }
   .results li { break-inside: avoid; }
 }
+
+/* Results: setup steps and services */
+.guide, .suggest { border-top: 2px solid var(--line-soft); margin-top: 1.4rem; padding-top: 0.6rem; }
+.guide h2, .suggest h2 { font-size: 1.3rem; }
+.guide h3 { font-size: 1.1rem; margin-top: 0.8rem; }
+.guide ol li { margin: 0.3rem 0; }
+.linkish { font: inherit; background: none; border: 0; padding: 0.2rem 0; min-height: 44px; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.org-phone { display: block; margin-top: 0.2rem; }

@@ -29,7 +29,9 @@
     "finished": "Thank you. Your results are on the screen. You can print them, or save them as a P D F.",
     "cantHear": "Sorry, I didn't catch that. You can also press a button.",
     "stopped": "Okay, I've stopped listening. Press the Space bar when you want me to listen again.",
-    "deviceAsk": "You're using {device}. Is that right? Say yes or no."
+    "deviceAsk": "You're using {device}. Is that right? Say yes or no.",
+    "guideIntro": "Here's how to set this up on your own device. I'll read one step at a time. Say next, or press the Space bar, for the next step.",
+    "guideDone": "That's all the steps."
   },
   "deviceNames": {
     "iphone": "an iPhone",
@@ -109,5 +111,135 @@
     "music": [
       "musik"
     ]
+  },
+  "guides": {
+    "_comment": "Read-aloud setup steps for the person's own device, by system and setting. Draft: check each path on a current device before Lions Services signs off (menus move between system versions).",
+    "ios": {
+      "name": "iPhone or iPad",
+      "textSize": [
+        "Open Settings, then Accessibility, then Display and Text Size.",
+        "Tap Larger Text.",
+        "Turn on Larger Accessibility Sizes, then drag the slider to the right until the text is comfortable."
+      ],
+      "zoom": [
+        "Open Settings, then Accessibility, then Zoom, and turn Zoom on.",
+        "To zoom in or out, double-tap the screen with three fingers."
+      ],
+      "contrast": [
+        "Open Settings, then Accessibility, then Display and Text Size, and turn on Increase Contrast.",
+        "For light text on a dark background, open Settings, then Display and Brightness, and choose Dark."
+      ],
+      "bold": [
+        "Open Settings, then Accessibility, then Display and Text Size, and turn on Bold Text."
+      ],
+      "speech": [
+        "Open Settings, then Accessibility, then Spoken Content.",
+        "Turn on Speak Selection or Speak Screen, then move the Speaking Rate slider."
+      ]
+    },
+    "android": {
+      "name": "Android phone or tablet",
+      "textSize": [
+        "Open Settings, then Accessibility, then Display size and text. On a Samsung, it's Settings, then Accessibility, then Vision enhancements.",
+        "Drag the Font size slider, and the Display size slider, until the text is comfortable."
+      ],
+      "zoom": [
+        "Open Settings, then Accessibility, then Magnification, and turn on the Magnification shortcut.",
+        "Use the shortcut, then pinch with two fingers to zoom."
+      ],
+      "contrast": [
+        "Open Settings, then Accessibility, then Display size and text, and turn on High contrast text.",
+        "For light text on a dark background, open Settings, then Display, and turn on Dark theme."
+      ],
+      "bold": [
+        "Open Settings, then Accessibility, then Display size and text, and turn on Bold text."
+      ],
+      "speech": [
+        "Open Settings, then Accessibility, then Text-to-speech output.",
+        "Move the Speech rate slider, then tap Play to hear it."
+      ]
+    },
+    "mac": {
+      "name": "Mac",
+      "textSize": [
+        "Open the Apple menu, then System Settings, then Accessibility, then Display.",
+        "Next to Text size, choose a larger size. To make everything bigger, open System Settings, then Displays, and choose Larger Text."
+      ],
+      "zoom": [
+        "Open System Settings, then Accessibility, then Zoom, and turn on Use keyboard shortcuts to zoom.",
+        "Press Option, Command and the equals sign to zoom in."
+      ],
+      "contrast": [
+        "Open System Settings, then Accessibility, then Display, and turn on Increase contrast.",
+        "For light text on a dark background, open System Settings, then Appearance, and choose Dark."
+      ],
+      "bold": [
+        "The Mac has no setting for bold text everywhere. A larger text size usually helps more."
+      ],
+      "speech": [
+        "Open System Settings, then Accessibility, then Spoken Content.",
+        "Move the Speaking rate slider, then press Play to hear it."
+      ],
+      "pointer": [
+        "Open System Settings, then Accessibility, then Display, then Pointer.",
+        "Drag the Pointer size slider. You can also change the pointer's outline and fill color there."
+      ]
+    },
+    "windows": {
+      "name": "Windows computer",
+      "textSize": [
+        "Open Start, then Settings, then Accessibility, then Text size.",
+        "Drag the slider until the sample text is comfortable, then select Apply."
+      ],
+      "zoom": [
+        "Press the Windows key and the plus sign together to open Magnifier.",
+        "Press the Windows key and plus or minus to zoom in or out. Press the Windows key and Escape to close it."
+      ],
+      "contrast": [
+        "Open Start, then Settings, then Accessibility, then Contrast themes.",
+        "Choose a theme such as Night sky, then select Apply."
+      ],
+      "bold": [
+        "Windows has no setting for bold text everywhere. A larger text size usually helps more."
+      ],
+      "speech": [
+        "Open Start, then Settings, then Accessibility, then Narrator.",
+        "Under Narrator's voice, move the Speed slider."
+      ],
+      "pointer": [
+        "Open Start, then Settings, then Accessibility, then Mouse pointer and touch.",
+        "Choose a pointer style, such as white, black or a custom color like yellow, and drag the Size slider."
+      ]
+    },
+    "chromeos": {
+      "name": "Chromebook",
+      "textSize": [
+        "Open Settings, then Accessibility, then Display and magnification.",
+        "Change the display size. In the Chrome browser, you can also open Settings, then Appearance, and choose a larger Font size."
+      ],
+      "zoom": [
+        "Open Settings, then Accessibility, then Display and magnification, and turn on Fullscreen magnifier."
+      ],
+      "contrast": [
+        "Open Settings, then Accessibility, then Display and magnification, and turn on Color inversion.",
+        "For a dark look, open Settings, then Personalization, and choose Dark."
+      ],
+      "bold": [
+        "Chromebooks have no setting for bold text everywhere. A larger display size usually helps more."
+      ],
+      "speech": [
+        "Open Settings, then Accessibility, then Text-to-speech, then Text-to-speech voice settings.",
+        "Move the Speech rate slider."
+      ],
+      "pointer": [
+        "Open Settings, then Accessibility, then Cursor and touchpad.",
+        "Turn on Show large mouse cursor, drag the size slider, and choose a cursor color."
+      ]
+    }
+  },
+  "suggest": {
+    "_comment": "Why each kind of service is suggested on the results page. The organizations themselves come from site/data/organizations.json.",
+    "low_vision_clinic": "A low vision clinic can check how you see now and find magnifiers and other aids, because you needed very large text.",
+    "assistive_technology": "For help setting these up on your own phone, tablet or computer, and learning to use them."
   }
 }

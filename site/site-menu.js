@@ -113,4 +113,15 @@
     if (!onDemo) nav.insertAdjacentElement("beforebegin", logoBar);
   }
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
+
+  /* The screen settings check joins the ☰ menu once an admin switches it on. */
+  if (!/^\/admin(\/|$)/.test(location.pathname)) fetch("/api/site", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+    if (!(j.features && j.features.screenCheck)) return;
+    var ul = nav.querySelector("#sm-panel-more ul");
+    if (!ul || ul.querySelector('a[href="/screen-check/"]')) return;
+    var a = el("a", { href: "/screen-check/" }, [document.createTextNode("Screen settings check"), el("span", { "class": "sm-desc", text: "Find your best text size, colors and pointer" })]);
+    var li = el("li", null, [a]);
+    ul.insertBefore(li, ul.children[2] || null);
+    markCurrent();
+  }).catch(function () {});
 })();

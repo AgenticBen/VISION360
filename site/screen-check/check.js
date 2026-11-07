@@ -487,6 +487,117 @@
     lines.push("My code for next time: " + c.code);
     return lines.join("\n");
   }
+  // ---- Set this up on your own device: the steps for each setting that changed.
+  function guideKeys(c) {
+    var set = c.settings || {}, keys = [];
+    var mag = c.steps.filter(function (s) { return s.setting === "magnification"; })[0];
+    if (set.textSize && set.textSize !== "100") keys.push(["textSize", "Bigger text"]);
+    if (mag && (mag.flags || []).indexOf("needs_magnifier_or_zoom") !== -1) keys.push(["zoom", "Zoom in further"]);
+    if (set.theme && set.theme !== "standard") keys.push(["contrast", "Colors and contrast"]);
+    if (set.bold === "on") keys.push(["bold", "Bold text"]);
+    keys.push(["speech", "Speaking speed"]);
+    if (set.cursor && set.cursor !== "default") keys.push(["pointer", "A bigger pointer"]);
+    return keys;
+  }
+  function guideSection(c) {
+    var wrap = el("section", { class: "guide", "aria-labelledby": "guide-h" });
+    var G = C.guides || {};
+    var os = c.device && G[c.device.os] ? c.device.os : null;
+    function render(sys) {
+      wrap.textContent = "";
+      var g = G[sys];
+      wrap.appendChild(el("h2", { id: "guide-h", text: "Set this up on your " + g.name }));
+      var all = [];
+      guideKeys(c).forEach(function (k) {
+        var steps = g[k[0]];
+        if (!steps || !steps.length) return;
+        wrap.appendChild(el("h3", { text: k[1] }));
+        wrap.appendChild(el("ol", null, steps.map(function (x) { all.push(x); return el("li", { text: x }); })));
+      });
+      var row = el("div", { class: "stage-actions" });
+      row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "Read the steps aloud", onclick: function () { readSteps(all); } }));
+      wrap.appendChild(row);
+      wrap.appendChild(el("p", { class: "hint", text: "Menus can move a little between system versions. Lions Services can help: 704-921-1527." }));
+      var other = el("p", { class: "hint" }, ["Different device? "]);
+      Object.keys(G).filter(function (k) { return k.charAt(0) !== "_" && k !== sys; }).forEach(function (k, i) {
+        if (i) other.appendChild(document.createTextNode(" · "));
+        other.appendChild(el("button", { type: "button", class: "linkish", text: G[k].name, onclick: function () { render(k); } }));
+      });
+      wrap.appendChild(other);
+    }
+    if (os) render(os);
+    else {
+      wrap.appendChild(el("h2", { id: "guide-h", text: "Set this up on your own device" }));
+      wrap.appendChild(el("p", { text: "Which do you use?" }));
+      var row = el("div", { class: "stage-actions" });
+      Object.keys(G).filter(function (k) { return k.charAt(0) !== "_"; }).forEach(function (k) { row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: G[k].name, onclick: function () { render(k); } })); });
+      wrap.appendChild(row);
+    }
+    return wrap;
+  }
+  // One step at a time: "next" (or Space, or the Next button) moves on.
+  function readSteps(steps) {
+    var i = 0;
+    var bar = el("div", { class: "stage-actions", id: "step-bar" });
+    var next = el("button", { type: "button", class: "btn btn-primary", text: "Next step" });
+    var stop = el("button", { type: "button", class: "btn btn-secondary", text: "Stop reading" });
+    bar.appendChild(next); bar.appendChild(stop);
+    var old = $("step-bar"); if (old) old.remove();
+    $("stage-body").appendChild(bar);
+    primary = next;
+    function done() { bar.remove(); primary = null; stopListening(); }
+    function one() {
+      if (i >= steps.length) { say(C.say.guideDone); return done(); }
+      var t = steps[i++];
+      say(t).then(function () {
+        listen(function onAns(x, n) {
+          if (/\b(next|ok|okay|done|go on|continue)\b/.test(n)) one();
+          else if (/\b(stop|that's enough|quit)\b/.test(n)) done();
+          else listen(onAns);
+        });
+      });
+    }
+    next.addEventListener("click", one);
+    stop.addEventListener("click", function () { stopSpeaking(); done(); });
+    $("voice-row").hidden = st.sr;
+    say(C.say.guideIntro).then(one);
+  }
+
+  // ---- Services that can help, from the directory's own data.
+  function suggestSection(c) {
+    var wrap = el("section", { class: "suggest", "aria-labelledby": "suggest-h" }, [el("h2", { id: "suggest-h", text: "Services that can help" })]);
+    var mag = c.steps.filter(function (s) { return s.setting === "magnification"; })[0];
+    var needZoom = mag && (mag.flags || []).some(function (f) { return f === "needs_magnifier_or_zoom" || f === "could_not_read_largest"; });
+    var cats = needZoom ? ["low_vision_clinic", "assistive_technology"] : ["assistive_technology"];
+    fetch("/data/organizations.json").then(function (r) { return r.json(); }).then(function (orgs) {
+      function rank(o) {
+        var a = o.service_area || {};
+        if ((a.counties || []).indexOf("Mecklenburg") !== -1) return 0;
+        return a.verdict === "in_area" ? 1 : 2;
+      }
+      var shown = {};
+      cats.forEach(function (cat) {
+        var list = orgs.filter(function (o) {
+          var a = o.service_area || {};
+          return (o.categories || []).indexOf(cat) !== -1 && (o.categories || []).indexOf("veterans") === -1 && a.verdict !== "out_of_area" && a.verdict !== "statewide_travel_required" && !shown[o.id];
+        }).sort(function (x, y) { return rank(x) - rank(y) || (y.id === "lions-services") - (x.id === "lions-services"); }).slice(0, 2);
+        if (!list.length) return;
+        wrap.appendChild(el("p", { class: "hint", text: (C.suggest && C.suggest[cat]) || "" }));
+        wrap.appendChild(el("ul", { class: "results" }, list.map(function (o) {
+          shown[o.id] = true;
+          var ct = o.contacts || {};
+          return el("li", null, [
+            el("span", { class: "k" }, [el("a", { href: "/directory/#org-" + encodeURIComponent(o.id), text: o.name })]),
+            o.one_line || "",
+            ct.general_phone && /^[0-9 ()+\-]{7,20}$/.test(ct.general_phone.trim()) ? el("span", { class: "org-phone" }, [" Phone: ", el("a", { href: "tel:" + ct.general_phone.replace(/[^0-9+]/g, ""), text: ct.general_phone })]) : null,
+          ]);
+        })));
+      });
+      wrap.appendChild(el("p", null, ["To find more, ", el("a", { href: "/demo/", text: "talk to the Resource Assistant" }), " or browse the ", el("a", { href: "/directory/", text: "Org Directory" }), "."]));
+    }).catch(function () { wrap.appendChild(el("p", null, [el("a", { href: "/directory/", text: "Browse the Org Directory" })])); });
+    return wrap;
+  }
+
   function showResults(c) {
     try { sessionStorage.removeItem(KEY); } catch (e) {}
     stopListening();
@@ -497,7 +608,8 @@
       el("p", { text: "Your code for next time (to take the check again and see what changed):" }),
       el("p", { class: "code-box", text: c.code }),
       copyMsg,
-      el("p", null, ["Next: ", el("a", { href: "/demo/", text: "find services with the Resource Assistant" }), " or ", el("a", { href: "/assessment/", text: "take the Vision Assessment" }), "."]),
+      guideSection(c),
+      suggestSection(c),
     ];
     screen({ title: "Your screen settings", sub: "These settings are on now, on this device. Lions Services staff will see your results" + (c.status === "finished" ? "." : " when you finish."), body: body,
       actions: [
