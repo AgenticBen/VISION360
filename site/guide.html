@@ -11,14 +11,8 @@
 <link rel="stylesheet" href="/brand/brand.css">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="site-menu.css">
-<script>
-  /* Use the same text size and contrast the person chose in the directory. */
-  try {
-    var s = JSON.parse(localStorage.getItem("vrd-display-v1") || "{}");
-    if (s.textsize === "125" || s.textsize === "150") document.documentElement.setAttribute("data-textsize", s.textsize);
-    if (s.contrast === "high") document.documentElement.setAttribute("data-contrast", "high");
-  } catch (e) {}
-</script>
+<!-- Display settings, shared by every page, applied before first paint. -->
+<script src="/display-settings.js" data-default-size="100" data-default-theme="standard"></script>
 <style>
   .guide { max-width: 46rem; padding-top: 1.5rem; padding-bottom: 3rem; }
   .guide section { margin: 0 0 2rem; }

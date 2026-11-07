@@ -59,6 +59,7 @@
 
 html[data-textsize="125"] { font-size: 22.5px; }
 html[data-textsize="150"] { font-size: 27px; }
+html[data-textsize="200"] { font-size: 36px; } /* chosen on the assistant pages */
 
 /* ---------- High contrast ---------- */
 html[data-contrast="high"] {
