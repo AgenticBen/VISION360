@@ -44,7 +44,7 @@ a { color: var(--accent); text-underline-offset: 0.15em; }
 
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; box-shadow: 0 0 0 6px var(--focus-halo); }
 
-.top { border-bottom: 1px solid var(--line-soft); background: var(--surface); margin-bottom: 1.2rem; }
+.top { background: var(--surface); }
 .top-inner { display: flex; flex-wrap: wrap; gap: 0.8rem 1.5rem; align-items: flex-start; justify-content: space-between; padding-top: 1rem; padding-bottom: 1rem; }
 .brand { margin: 0; font-weight: 700; color: var(--accent); font-family: var(--font-heading, inherit); }
 h1, h2, h3 { font-family: var(--font-heading, inherit); font-weight: 700; }
@@ -159,3 +159,57 @@ input[type="radio"], input[type="checkbox"] { width: 1.3rem; height: 1.3rem; acc
 
 .select { font: inherit; min-height: 48px; padding: 0.3rem 0.6rem; border: 2px solid var(--line); border-radius: 8px; background: var(--page); color: var(--ink); flex: 1 1 14rem; min-width: 0; max-width: 100%; }
 .listen-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.4rem 0 0.8rem; }
+
+/* ---- Display settings bar: under the heading on every screen, collapsible ---- */
+.dbar { background: var(--surface); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); margin-bottom: 1.2rem; }
+.dbar-h { margin: 0; font-size: 1rem; }
+.dbar-toggle { width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 0.2rem 0.7rem; font: inherit; font-weight: 700; background: transparent; border: 0; color: var(--ink); min-height: 48px; padding: 0.3rem 0; cursor: pointer; text-align: left; }
+.dbar-summary { font-weight: 400; font-size: 0.9rem; color: var(--muted); order: 3; flex-basis: 100%; }
+.dbar:not(.is-collapsed) .dbar-summary { display: none; }
+.dbar-action { margin-left: auto; border: 2px solid var(--line); border-radius: 8px; padding: 0.1rem 0.75rem; font-size: 0.95rem; min-height: 36px; display: inline-flex; align-items: center; }
+.dbar-toggle:hover .dbar-action { background: var(--accent-wash); }
+.dbar-body { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; align-items: flex-end; padding-bottom: 0.75rem; }
+.dbar-group { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.dbar-label { font-weight: 700; font-size: 0.9rem; }
+.seg { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.seg-btn { overflow-wrap: normal; word-break: normal; hyphens: none; font: inherit; font-size: 0.95rem; font-weight: 600; line-height: 1.2; min-height: 44px; min-width: 44px; padding: 0.3rem 0.7rem; border: 2px solid var(--line); border-radius: 8px; background: var(--page); color: var(--ink); cursor: pointer; }
+.seg-btn:hover { background: var(--accent-wash); }
+/* Chosen: filled, plus a thick underline so it never relies on color alone. */
+.seg-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: inset 0 -4px 0 var(--accent-ink); }
+@media (forced-colors: active) {
+  .seg-btn, .dbar-action { border: 2px solid CanvasText; }
+  .seg-btn[aria-pressed="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+}
+
+/* ---- Start screen ---- */
+#start h2 { margin-top: 0.4rem; }
+.start-lead { margin: 0.2rem 0 0.6rem; }
+.space-hint { font-weight: 700; margin: 0.4rem 0 0.8rem; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+kbd { font: inherit; font-weight: 800; font-size: 0.95rem; padding: 0.1rem 0.6rem; border: 2px solid var(--ink); border-bottom-width: 4px; border-radius: 6px; background: var(--page); color: var(--ink); }
+.about { margin: 0.4rem 0 1rem; }
+.about summary { cursor: pointer; font-weight: 700; color: var(--accent); min-height: 44px; display: flex; align-items: center; }
+.about ul { margin: 0.2rem 0 0.4rem; padding-left: 1.2rem; }
+.about li { margin: 0.35rem 0; }
+.choose { margin-bottom: 1.5rem; }
+/* Touch screens have no Space bar. */
+@media (hover: none) and (pointer: coarse) { .space-hint { display: none; } }
+
+@media (max-width: 640px) {
+  .dbar-body { gap: 0.35rem; padding-bottom: 0.6rem; }
+  .dbar-group { flex-direction: row; align-items: center; gap: 0.5rem; width: 100%; }
+  .dbar-label { flex: 0 0 4.9rem; }
+  .seg { flex: 1; flex-wrap: nowrap; }
+  .seg-btn { flex: 1 1 0; padding: 0.25rem 0.3rem; font-size: 0.9rem; }
+  .seg-btn { padding: 0.25rem 0.2rem; font-size: 0.85rem; }
+  /* Read aloud and More settings share one row. */
+  .dbar-read { width: auto; flex: 1 1 0; }
+  .dbar-more { width: auto; flex: 0 0 auto; margin-left: auto; }
+  .dbar-more .seg-btn { padding: 0.25rem 0.7rem; }
+  /* Talk and Type sit side by side at the bottom of the screen, in easy reach. */
+  #start { display: flex; flex-direction: column; }
+  #start .choose { order: 99; }
+  #start .choose { position: sticky; bottom: 0; z-index: 5; grid-template-columns: 1fr 1fr; gap: 0.6rem; background: var(--page); border-top: 1px solid var(--line-soft); margin: 0 -16px; padding: 0.7rem 16px calc(0.7rem + env(safe-area-inset-bottom)); }
+  #start .btn-big { min-height: 4.6rem; align-items: center; justify-content: center; text-align: center; padding: 0.6rem; }
+  #start .big-sub { display: none; }
+}
+html[data-textsize="200"] .seg { flex-wrap: wrap; }

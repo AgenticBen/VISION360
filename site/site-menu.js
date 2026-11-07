@@ -1,7 +1,7 @@
-/* Shared site menu: one bar at the top of every page with two short menus,
-   "Find help" (the public tools) and "Admin" (what's happening behind the
-   scenes). Plain disclosure buttons: Enter/Space opens, Escape closes and
-   returns focus, clicking elsewhere closes. Include with
+/* Shared site menu: one bar at the top of every page with a "Find help"
+   menu (the public tools) and a plain "Admin" link (no dropdown; the admin
+   has its own sidebar and sign-in). The menu is a disclosure button:
+   Enter/Space opens, Escape closes and returns focus, clicking elsewhere closes. Include with
    <link rel="stylesheet" href="/site-menu.css"> and <script src="/site-menu.js">. */
 (function () {
   "use strict";
@@ -12,17 +12,6 @@
       ["/#tab-pathways", "Pathways", "Common routes through services"],
       ["/demo/", "Talk or type", "The voice and chat assistant"],
       ["/guide.html", "How to use VISION360", "Step-by-step guide to every page"]
-    ] },
-    { id: "admin", label: "Admin", note: "No password needed for now.", items: [
-      ["/admin/", "Dashboard", "Usage in the last 30 days"],
-      ["/admin/conversations/", "Conversations", "Answers, suggestions and follow-ups"],
-      ["/admin/emails/", "Email tracker", "Every plan email and its status"],
-      ["/admin/workflows/", "Workflows", "Edit the questions visually"],
-      ["/admin/costs/", "Estimated costs", "What the tool is costing to run"],
-      ["/admin/data/", "Raw data", "The data files and JSON feeds"],
-      ["/admin/requests/", "Requests", "Changes you've asked for"],
-      ["/admin/changelog/", "Change log", "Everything that has changed"],
-      ["/admin/settings/", "Connect Claude & ChatGPT", "MCP connector setup"]
     ] }
   ];
 
@@ -83,6 +72,9 @@
     groups.push({ toggle: toggle, panel: panel, group: g });
     inner.appendChild(g);
   });
+
+  /* Admin: a plain link straight to the admin (sign-in if needed). */
+  inner.appendChild(el("a", { "class": "sm-link", href: "/admin/" }, [document.createTextNode("Admin")]));
 
   function closeAll() { groups.forEach(function (x) { x.toggle.setAttribute("aria-expanded", "false"); x.panel.hidden = true; }); }
   function markCurrent() {

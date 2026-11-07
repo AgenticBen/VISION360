@@ -48,7 +48,41 @@
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
     document.documentElement.setAttribute("data-textsize", settings.textSize);
     document.documentElement.setAttribute("data-theme", settings.theme);
+    syncBar();
   }
+
+  // Display settings bar: always on screen under the heading, collapsible.
+  var BAR_KEY = "v360-demo-bar";
+  var THEME_NAMES = { standard: "Standard colors", dark: "Dark", high: "High contrast" };
+  function syncBar() {
+    [].forEach.call(document.querySelectorAll("#display-bar [data-set]"), function (b) {
+      b.setAttribute("aria-pressed", String(String(settings[b.getAttribute("data-set")]) === b.getAttribute("data-value")));
+    });
+    var sum = $("dbar-summary");
+    if (sum) sum.textContent = "Text " + settings.textSize + "% · " + (THEME_NAMES[settings.theme] || "") + " · Read aloud " + (settings.readAloud ? "on" : "off");
+  }
+  function setBarOpen(open, save) {
+    $("dbar-toggle").setAttribute("aria-expanded", String(open));
+    $("dbar-body").hidden = !open;
+    $("dbar-action").textContent = open ? "Hide" : "Show";
+    $("display-bar").classList.toggle("is-collapsed", !open);
+    if (save) { try { localStorage.setItem(BAR_KEY, open ? "open" : "closed"); } catch (e) {} }
+  }
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem(BAR_KEY); } catch (e) {}
+    setBarOpen(saved !== "closed", false);
+  })();
+  $("dbar-toggle").addEventListener("click", function () { setBarOpen($("dbar-toggle").getAttribute("aria-expanded") !== "true", true); });
+  $("display-bar").addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("[data-set]") : null;
+    if (!b) return;
+    var key = b.getAttribute("data-set"), v = b.getAttribute("data-value");
+    settings[key] = key === "readAloud" ? v === "true" : v;
+    saveSettings();
+    if (key === "readAloud" && !settings.readAloud) stopSpeaking("settings");
+    announce(b.closest(".dbar-group").querySelector(".dbar-label").textContent + ": " + b.textContent, true);
+  });
   saveSettings();
 
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -121,8 +155,6 @@
   var settingsReturnFocus = null;
   function openSettings() {
     var f = dlg.querySelector("form");
-    f.textSize.value = settings.textSize;
-    f.theme.value = settings.theme;
     f.readAloud.checked = !!settings.readAloud;
     f.rate.value = settings.rate;
     f.endSilence.value = settings.endSilence;
@@ -134,7 +166,8 @@
     f.readAloud.disabled = !canSpeak;
     settingsReturnFocus = document.activeElement;
     if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
-    f.querySelector('input[name="textSize"]:checked') ? f.querySelector('input[name="textSize"]:checked').focus() : null;
+    var first = f.querySelector("input:not([disabled]), select");
+    if (first) first.focus();
   }
   dlg.addEventListener("change", function (e) {
     var t = e.target;
@@ -182,16 +215,17 @@
     if (!j.flow.routing) {
       document.title = j.flow.title + " — Vision 360 CONNECT";
       document.querySelector(".top h1").textContent = j.flow.title;
-      var li = document.querySelector("#start .notice li:nth-child(2)");
-      if (li) li.textContent = "An automated assistant, not a person, will ask the questions on this form one at a time, then read your answers back so you can check them before anything is sent to Lions Services.";
-      if (j.flow.privacy) { var n = $("start").querySelector(".notice ul"); n.appendChild(el("li", { text: j.flow.privacy })); }
+      $("start-lead").textContent = "I'll ask the questions on this form one at a time, then read your answers back so you can check them before anything is sent to Lions Services.";
+      $("about-what").textContent = "An automated assistant, not a person, asks the questions on this form and reads your answers back before anything is sent.";
+      if (j.flow.privacy) $("about-list").appendChild(el("li", { text: j.flow.privacy }));
     }
   }).catch(function (e) {
     if (e.message !== "gone") return;
     $("start-h").textContent = "This form isn't available";
-    var box = $("start").querySelector(".notice");
+    $("space-hint").hidden = true;
+    var box = $("start-lead");
     box.textContent = "";
-    box.appendChild(el("p", null, ["This link doesn't lead to a form that's open right now. ", el("a", { href: "/demo", text: "Go to the Vision 360 CONNECT assistant" }), "."]));
+    box.appendChild(el("span", null, ["This link doesn't lead to a form that's open right now. ", el("a", { href: "/demo", text: "Go to the Vision 360 CONNECT assistant" }), "."]));
     $("start-voice").disabled = true; $("start-text").disabled = true;
   });
 
@@ -205,12 +239,14 @@
     if (notes.length) { var n = $("env-notice"); n.hidden = false; n.textContent = "Please note: " + notes.join(" "); }
   }).catch(function () {
     var n = $("env-notice"); n.hidden = false; n.textContent = "The demo server isn't reachable right now. Please try again in a moment.";
+    $("about").open = true;
   });
 
   if (!canListen) {
     var vs = $("voice-support");
     vs.hidden = false;
     vs.textContent = "Talking isn't available in this browser. Type works here. Talking works in recent Chrome, Edge and Safari.";
+    $("space-hint").innerHTML = "<kbd>Space</kbd> Press the Space bar to start typing.";
   }
 
   // ---------------------------------------------------------------- status
@@ -959,4 +995,22 @@
 
   $("start-voice").addEventListener("click", function () { startSession(canListen ? "voice" : "text").then(function () { if (!canListen) fallbackToText("Talking isn't available in this browser, so we'll type instead."); }); });
   $("start-text").addEventListener("click", function () { startSession("text"); });
+
+  // Space bar on the start screen starts the conversation (talking where the
+  // browser can listen, typing otherwise), so someone sent straight to this
+  // link can just press Space. Ignored while typing in a field, on a focused
+  // control (Space already presses it) or with a dialog open.
+  function startFromKey() {
+    if ($("start-voice").disabled) return;
+    $("start-voice").click();
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== " " && e.code !== "Space") return;
+    if (e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if ($("start").hidden || dlg.open || app.sessionId) return;
+    var t = e.target;
+    if (t && t.closest && t.closest("input, textarea, select, button, a, summary, [contenteditable], [role='button'], dialog")) return;
+    e.preventDefault();
+    startFromKey();
+  });
 })();

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
 <meta name="referrer" content="no-referrer">
-<meta name="description" content="Vision 360 CONNECT demo: talk or type to find vision-loss services in the greater Charlotte area.">
+<meta name="description" content="Vision 360 CONNECT demo: talk or type to learn about vision-loss resources in the greater Charlotte area.">
 <title>Vision 360 CONNECT — demo</title>
 <link rel="icon" type="image/png" href="/brand/favicon.png">
 <link rel="stylesheet" href="/brand/brand.css">
@@ -29,40 +29,82 @@
   <div class="wrap top-inner">
     <div>
       <p class="brand">Lions Services · Vision 360 CONNECT</p>
-      <h1>Find vision-loss services by talking or typing</h1>
+      <h1>Learn about vision-loss resources</h1>
       <p class="demo-tag"><strong>Demo version.</strong> Please use made-up details only.</p>
     </div>
-    <button type="button" class="btn btn-secondary" id="open-settings" aria-haspopup="dialog">Settings</button>
   </div>
 </header>
+
+<!-- ===================== Display settings (always on screen) ===================== -->
+<section class="dbar" id="display-bar" aria-labelledby="dbar-h">
+  <div class="wrap">
+    <h2 class="dbar-h" id="dbar-h">
+      <button type="button" class="dbar-toggle" id="dbar-toggle" aria-expanded="true" aria-controls="dbar-body">
+        <span>Display settings</span>
+        <span class="dbar-summary" id="dbar-summary"></span>
+        <span class="dbar-action" id="dbar-action">Hide</span>
+      </button>
+    </h2>
+    <div class="dbar-body" id="dbar-body">
+      <div class="dbar-group" role="group" aria-labelledby="dbar-size-l">
+        <span class="dbar-label" id="dbar-size-l">Text size</span>
+        <div class="seg">
+          <button type="button" class="seg-btn" data-set="textSize" data-value="100" aria-pressed="false">100%</button>
+          <button type="button" class="seg-btn" data-set="textSize" data-value="125" aria-pressed="false">125%</button>
+          <button type="button" class="seg-btn" data-set="textSize" data-value="150" aria-pressed="false">150%</button>
+          <button type="button" class="seg-btn" data-set="textSize" data-value="200" aria-pressed="false">200%</button>
+        </div>
+      </div>
+      <div class="dbar-group" role="group" aria-labelledby="dbar-colors-l">
+        <span class="dbar-label" id="dbar-colors-l">Colors</span>
+        <div class="seg">
+          <button type="button" class="seg-btn" data-set="theme" data-value="standard" aria-pressed="false">Standard</button>
+          <button type="button" class="seg-btn" data-set="theme" data-value="dark" aria-pressed="false">Dark</button>
+          <button type="button" class="seg-btn" data-set="theme" data-value="high" aria-pressed="false">High contrast</button>
+        </div>
+      </div>
+      <div class="dbar-group dbar-read" role="group" aria-labelledby="dbar-read-l">
+        <span class="dbar-label" id="dbar-read-l">Read aloud</span>
+        <div class="seg">
+          <button type="button" class="seg-btn" data-set="readAloud" data-value="true" aria-pressed="false">On</button>
+          <button type="button" class="seg-btn" data-set="readAloud" data-value="false" aria-pressed="false">Off</button>
+        </div>
+      </div>
+      <div class="dbar-group dbar-more">
+        <button type="button" class="seg-btn" id="open-settings" aria-haspopup="dialog">More settings<span class="sr-only">: voice, speaking speed and screen reader</span></button>
+      </div>
+    </div>
+  </div>
+</section>
 
 <main id="main" class="wrap">
 
   <!-- ===================== Start screen ===================== -->
   <section id="start" aria-labelledby="start-h">
-    <h2 id="start-h">Before you start</h2>
-    <div class="notice">
-      <ul>
-        <li>This is a <strong>demonstration</strong>. Please don't use a real person's health or personal details.</li>
-        <li>An automated assistant, not a person, will ask a few questions one at a time, then suggest services from the <a href="/">Lions Services directory</a>. It checks everything with you before suggesting anything.</li>
-        <li>The assistant will ask your first name, so a staff member knows who they're helping. Your answers are kept until Lions Services staff delete them, so staff can follow up if you ask. The full conversation isn't saved there, and this site doesn't record audio.</li>
-        <li><strong>If you choose Talk:</strong> your browser turns speech into text. In Chrome and Edge, the browser sends your voice to its maker's speech service to do that; Safari uses Apple's. Choose Type to avoid that.</li>
-        <li>You can change the text size, colors and voice options in Settings at any time.</li>
-      </ul>
-    </div>
-    <p class="choose-lead">How would you like to start? Choosing an option means you've read the notes above.</p>
-    <div class="choose">
-      <button type="button" class="btn btn-big" id="start-voice">
+    <h2 id="start-h">Hi there, I'm the Vision 360 assistant.</h2>
+    <p class="start-lead" id="start-lead">I'll ask a few questions, one at a time, then suggest services from the <a href="/">Lions Services directory</a>. I check everything with you first.</p>
+    <p class="space-hint" id="space-hint"><kbd>Space</kbd> Press the Space bar to start talking.</p>
+    <div class="choose" id="choose">
+      <button type="button" class="btn btn-big btn-talk" id="start-voice">
         <span class="big-label">Talk</span>
         <span class="big-sub">Uses your microphone. Your browser will ask for permission.</span>
       </button>
       <button type="button" class="btn btn-big" id="start-text">
         <span class="big-label">Type</span>
-        <span class="big-sub">Read and type. Works in every browser, no microphone needed.</span>
+        <span class="big-sub">Read and type. No microphone needed.</span>
       </button>
     </div>
     <p id="voice-support" class="hint" hidden></p>
-    <p id="env-notice" class="notice" hidden></p>
+    <details class="about" id="about">
+      <summary>About this demo and your privacy</summary>
+      <p id="env-notice" class="notice" hidden></p>
+      <ul id="about-list">
+        <li>This is a <strong>demonstration</strong>. Please don't use a real person's health or personal details.</li>
+        <li id="about-what">An automated assistant, not a person, asks the questions and checks everything with you before suggesting anything.</li>
+        <li>The assistant will ask your first name, so a staff member knows who they're helping. Your answers are kept until Lions Services staff delete them, so staff can follow up if you ask. The full conversation isn't saved there, and this site doesn't record audio.</li>
+        <li><strong>If you choose Talk:</strong> your browser turns speech into text. In Chrome and Edge, the browser sends your voice to its maker's speech service to do that; Safari uses Apple's. Choose Type to avoid that.</li>
+      </ul>
+    </details>
   </section>
 
   <!-- ===================== Conversation ===================== -->
@@ -119,27 +161,9 @@
 <!-- ===================== Settings ===================== -->
 <dialog id="settings" aria-labelledby="settings-h">
   <form method="dialog" class="settings-form">
-    <h2 id="settings-h">Settings</h2>
-    <p class="hint">Saved on this device only. Your conversation is never saved here.</p>
+    <h2 id="settings-h">More settings</h2>
+    <p class="hint">Saved on this device only. Text size, colors and read aloud are in Display settings at the top of the page.</p>
 
-    <fieldset>
-      <legend>Text size</legend>
-      <div class="radio-row">
-        <label><input type="radio" name="textSize" value="100"> 100%</label>
-        <label><input type="radio" name="textSize" value="125"> 125%</label>
-        <label><input type="radio" name="textSize" value="150"> 150%</label>
-        <label><input type="radio" name="textSize" value="200"> 200%</label>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Colors</legend>
-      <div class="radio-row">
-        <label><input type="radio" name="theme" value="standard"> Standard</label>
-        <label><input type="radio" name="theme" value="dark"> Dark</label>
-        <label><input type="radio" name="theme" value="high"> High contrast (yellow on black)</label>
-      </div>
-    </fieldset>
 
     <fieldset>
       <legend>Voice</legend>

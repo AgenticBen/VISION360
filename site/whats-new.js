@@ -25,6 +25,7 @@
   /* New this release. `pages` lists where each one shows; `target` is a CSS
      selector or a data-tour key. */
   var NEW = [
+    { id: "2026-11-09-display-bar", pages: ["demo"], target: "#display-bar", title: "Display settings on screen", body: "Text size, colors and read aloud now sit under the heading, so anyone can change them in one press. Hide folds them away to leave more room for the conversation.", how: "On a computer, press the Space bar to start talking. On a phone, Talk and Type are at the bottom of the screen." },
     { id: "2026-11-08-admin-password", pages: ["admin-settings"], target: "admin-password", title: "The admin has a password", body: "Every admin page now needs the admin password. You stay signed in for 8 hours on this device.", how: "Change the password here. Changing it signs everyone else out. Sign out is at the bottom of the sidebar." },
     { id: "2026-11-08-main-and-links", pages: ["admin-workflows", "admin-dashboard"], target: "flow-list", title: "A main workflow, and a link and QR code for every workflow", body: "The workflow marked “Main site” runs on the public home page. Every published workflow also has its own link, a QR code (SVG or PNG) and a printable flyer you can save as a PDF.", how: "Use “Make main site” to switch the home page. “+ New workflow” starts a new form; Delete asks you to type DELETE." },
     { id: "2026-11-08-conversation-filter", pages: ["admin-conversations"], target: "conversation-filter", title: "Filter and delete conversations", body: "Show all conversations or one workflow, a staff status, a stage or a date range. Conversations are now kept until you delete them, even when their workflow is deleted.", how: "Tick conversations, press Delete selected, and type DELETE to confirm. Deleting can't be undone." },
@@ -35,7 +36,7 @@
     { id: "2026-11-07-requests", pages: ["admin-requests"], target: "request-groups", title: "Your requests in one place", body: "App changes and content changes, each with a status and a thread where Claude replies.", how: "Comment on a finished request and it reopens. Done ones move to the Archive." },
     { id: "2026-11-07-changelog", pages: ["admin-changelog", "admin-dashboard"], target: "#admin-nav a[data-href='/admin/changelog/']", title: "A change log", body: "Every published workflow version and every finished request lands here, newest first, with a link to what changed.", how: "A blue count in the sidebar means there are changes you haven't looked at." },
     { id: "2026-11-07-connect", pages: ["admin-settings"], target: "mcp-url", title: "Connect Claude or ChatGPT", body: "This site now has its own MCP connector, so Claude or ChatGPT can edit workflows and work through your requests.", how: "Copy the URL and follow the steps for your app below." },
-    { id: "2026-11-06-site-menu", pages: ["directory", "demo"], target: "#site-menu", title: "A menu on every page", body: "“Find help” opens the directory, Find services, Pathways, the assistant and the guide. “Admin” shows what's happening behind the scenes.", how: "It's the dark bar at the top of every page." }
+    { id: "2026-11-06-site-menu", pages: ["directory", "demo"], target: "#site-menu", title: "A menu on every page", body: "“Find help” opens the directory, Find services, Pathways, the assistant and the guide. “Admin” goes straight to the admin sign-in.", how: "It's the dark bar at the top of every page." }
   ];
 
   var TOURS = {
@@ -49,7 +50,7 @@
     ],
     demo: [
       { target: "#start", hint: "This choice is at the top when you begin.", title: "Talk or type", body: "Choose Talk to use your microphone, or Type to chat. You can switch at any time. This is a demo: please use made-up details." },
-      { target: "#open-settings", title: "Make it comfortable", body: "Settings change text size, colors and contrast, whether replies are read aloud, and the voice speed." },
+      { target: "#display-bar", title: "Make it comfortable", body: "Display settings change text size, colors and contrast, and whether replies are read aloud. More settings has the voice and speaking speed." },
       { target: "#log", hint: "This appears once you start a conversation.", title: "One question at a time", body: "You can say or type: repeat, skip, I don't know, change an answer, or talk to a person." },
       { target: "#panel", hint: "The summary appears after the questions.", title: "Check the summary", body: "Nothing is suggested until you say the summary is right. Use the Change buttons, or say what to fix." },
       { target: "#end-session", hint: "This appears once you start a conversation.", title: "Stop any time", body: "End session is always there and turns the microphone off." }
