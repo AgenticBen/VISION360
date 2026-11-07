@@ -7,6 +7,9 @@ import { createApp } from "../server/lib/api.mjs";
 
 let appPromise = null;
 
+// The API reads request bodies itself (the email webhook needs the exact bytes).
+export const config = { api: { bodyParser: false } };
+
 export default async function handler(req, res) {
   if (!appPromise) {
     appPromise = createApp({

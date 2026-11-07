@@ -5,7 +5,7 @@
   function usd(n) { return n == null ? "Needs a price" : "$" + Number(n).toFixed(2); }
   A.api("GET", "/api/admin/overview").then(function (o) {
     var c = o.costs;
-    var sent = o.emails.filter(function (e) { return e.status === "mock_written" || e.status === "provider_accepted"; }).length;
+    var sent = o.emails.filter(function (e) { return e.status === "mock_written" || e.status === "provider_accepted" || e.status === "delivered"; }).length;
     var rows = [
       ["AI understanding", c.ai.on ? "On — " + c.ai.model : "Off (rules only)", c.ai.calls + " AI calls" + (c.ai.perCallUsd != null ? " × $" + c.ai.perCallUsd : ""), c.ai.estimateUsd],
       ["Voice (text to speech)", c.tts.provider === "browser" ? "The listener's own browser voice" : c.tts.provider, "—", c.tts.estimateUsd],

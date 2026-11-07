@@ -51,6 +51,7 @@ export function createSupabaseSessions(env, fetchImpl = globalThis.fetch) {
       status: s.status, staff_status: s.staff_status,
       open_followups: reviews.filter((r) => r.status !== "closed").length + (s.staff_status === "needs_follow_up" ? 1 : 0),
       next_action_at: due, bundle,
+      email_receipts: (bundle.rows.actions || []).map((a) => a.provider_receipt).filter(Boolean),
     };
   };
   return {
@@ -78,6 +79,10 @@ export function createSupabaseSessions(env, fetchImpl = globalThis.fetch) {
     },
     async purge() {
       return req("POST", `/rpc/purge_expired_sessions`, {});
+    },
+    async findByReceipt(receipt) {
+      const r = await req("GET", `/session_bundles?email_receipts=cs.${encodeURIComponent("{" + JSON.stringify(String(receipt)) + "}")}&select=id&limit=1`);
+      return r && r.length ? r[0].id : null;
     },
   };
 }
@@ -145,5 +150,11 @@ export function createDurableSessions({ store, sqliteRepo, remote, log = console
       }
     },
     async purge() { return remote.purge(); },
+    // Loads the conversation that sent this email into the cache.
+    async pullByReceipt(receipt) {
+      const id = remote.findByReceipt ? await remote.findByReceipt(receipt) : null;
+      if (id) await pull(id);
+      return id;
+    },
   };
 }

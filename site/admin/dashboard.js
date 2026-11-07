@@ -11,7 +11,7 @@
     $("updated").textContent = "Updated " + A.when(o.generatedAt);
     $("open-note").hidden = o.signInRequired;
     var u = o.usage;
-    var sent = o.emails.filter(function (e) { return e.status === "mock_written" || e.status === "provider_accepted"; }).length;
+    var sent = o.emails.filter(function (e) { return e.status === "mock_written" || e.status === "provider_accepted" || e.status === "delivered"; }).length;
     var failed = o.emails.filter(function (e) { return e.status === "failed"; }).length;
     var needsBen = reqs.filter(function (r) { return r.status === "needs_ben"; }).length;
     var open = reqs.filter(function (r) { return r.status === "open" || r.status === "in_progress"; }).length;

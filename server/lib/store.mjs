@@ -408,6 +408,9 @@ export function openStore(file) {
         for (const tbl of SESSION_TABLES) for (const r of (bundle.rows && bundle.rows[tbl]) || []) insertRow(tbl, r);
       });
     },
+    actionByReceipt(receipt) {
+      return q(`SELECT id, session_id, status FROM actions WHERE provider_receipt=?`).get(receipt) || null;
+    },
     localSessionVersions() {
       return new Map(q(`SELECT id, version FROM sessions`).all().map((r) => [r.id, r.version]));
     },

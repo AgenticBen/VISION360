@@ -134,7 +134,7 @@ export function createDialogue(ctx) {
       const staleRecs = session.work.markRecommendationsStale();
       const cancelled = session.work.cancelStaleActions(session.revision);
       // Anything already handed over can't be unsent: flag it for staff to reconcile.
-      const sent = session.work.actionsForSession().filter((a) => ["provider_accepted", "mock_written", "running"].includes(a.status) && a.revision < session.revision);
+      const sent = session.work.actionsForSession().filter((a) => ["provider_accepted", "delivered", "bounced", "mock_written", "running"].includes(a.status) && a.revision < session.revision);
       if (sent.length && !session.work.staffReviews().some((r) => r.reason.startsWith("Automatic: answers changed after"))) {
         session.work.createStaffReview("Automatic: answers changed after an email plan was already sent — please reconcile", null, false);
         session.state.sentBeforeChange = true;

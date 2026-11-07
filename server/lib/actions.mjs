@@ -3,6 +3,7 @@
 //   authorise -> queued -> running -> provider_accepted        (real provider)
 //                                  -> mock_written             (local test outbox; NOT a real send)
 //                                  -> retrying -> ... -> failed (+ staff review)
+//   provider_accepted -> delivered | bounced (+ staff review)  (provider webhook)
 //   any not-yet-started action -> cancelled when answers change
 //
 // "provider_accepted" means the email service accepted it. It does not prove
@@ -107,7 +108,23 @@ export function createActions(ctx) {
     return true;
   }
 
-  return { transportName, recipientAllowed, runOnce, drain, retry };
+  // Delivery report from the email provider (see /api/webhooks/email).
+  function recordDelivery(receipt, outcome, detail) {
+    const a = store.actionByReceipt(receipt);
+    if (!a) return null;
+    if (a.status === "delivered" || a.status === "bounced") return a.session_id;
+    if (outcome === "delivered") {
+      store.updateAction(a.id, { status: "delivered" });
+      store.audit("provider", a.session_id, "action_delivered", { actionId: a.id });
+    } else {
+      store.updateAction(a.id, { status: "bounced", error: redact(String(detail || outcome)).slice(0, 200) });
+      store.createStaffReview(a.session_id, "Automatic: the emailed plan " + (outcome === "complained" ? "was marked as spam" : "bounced") + " — please follow up another way", null, false);
+      store.audit("provider", a.session_id, "action_" + outcome, { actionId: a.id });
+    }
+    return a.session_id;
+  }
+
+  return { transportName, recipientAllowed, runOnce, drain, retry, recordDelivery };
 }
 
 function redact(s) {

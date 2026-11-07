@@ -3,8 +3,8 @@
   "use strict";
   var A = window.V360Admin, el = A.el;
   var all = [], filter = (location.hash || "").slice(1) || "all";
-  var GROUP = { mock_written: "sent", provider_accepted: "sent", failed: "failed" };
-  var CHIP = { mock_written: ["Mock written", "ok"], provider_accepted: ["Provider accepted", "ok"], failed: ["Failed", "bad"], queued: ["Queued", "sky"], retrying: ["Retrying", "amber"], cancelled: ["Cancelled", "strike"] };
+  var GROUP = { mock_written: "sent", provider_accepted: "sent", delivered: "sent", bounced: "failed", failed: "failed" };
+  var CHIP = { mock_written: ["Mock written", "ok"], provider_accepted: ["Accepted by email service", "ok"], delivered: ["Delivered", "ok"], bounced: ["Bounced", "bad"], failed: ["Failed", "bad"], queued: ["Queued", "sky"], retrying: ["Retrying", "amber"], cancelled: ["Cancelled", "strike"] };
   function load() { A.api("GET", "/api/admin/overview").then(function (o) { all = o.emails; render(); }); }
   function render() {
     [].forEach.call(document.querySelectorAll("#filter button"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.f === filter)); });

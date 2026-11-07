@@ -18,6 +18,7 @@ import { createAdminStore } from "./supabase-store.mjs";
 import { createRequests } from "./requests.mjs";
 import { createFlowRepo } from "./flow-repo.mjs";
 import { createMcp } from "./mcp.mjs";
+import { verifyWebhook, deliveryEvent } from "./email-webhook.mjs";
 import { supabaseConfigured, supabaseKeyProblem, createSupabaseSessions, createDurableSessions } from "./supabase-sessions.mjs";
 
 import { randomUUID } from "node:crypto";
@@ -108,6 +109,15 @@ export async function createApp(opts = {}) {
     if (!chunks.length) return {};
     try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); }
     catch { throw httpError(400, "Invalid JSON"); }
+  }
+
+  // Exact bytes (for signatures). Reads the stream; never touches req.body,
+  // which on Vercel is a lazy parser that would consume it.
+  async function readRaw(req, max) {
+    let size = 0;
+    const chunks = [];
+    for await (const c of req) { size += c.length; if (size > max) throw httpError(413, "Request too large"); chunks.push(c); }
+    return Buffer.concat(chunks).toString("utf8");
   }
 
   // Same-origin only for anything that changes state.
@@ -455,6 +465,21 @@ export async function createApp(opts = {}) {
         store.audit("staff:" + u.username, null, "action_retry", { actionId: m[1], ok });
         if (ok) await processQueueSoon();
         return send(res, ok ? 200 : 409, { ok });
+      }
+
+      // ---------------- email delivery reports (Resend webhook) -------------
+      if (p === "/api/webhooks/email" && method === "POST") {
+        if (!env.RESEND_WEBHOOK_SECRET) throw httpError(503, "Email delivery reports aren't set up (RESEND_WEBHOOK_SECRET).");
+        const raw = await readRaw(req, 64 * 1024);
+        if (!verifyWebhook(env.RESEND_WEBHOOK_SECRET, req.headers, raw)) throw httpError(401, "Bad signature");
+        let evt = null;
+        try { evt = JSON.parse(raw); } catch { throw httpError(400, "Invalid JSON"); }
+        const d = deliveryEvent(evt);
+        if (!d) return send(res, 200, { ok: true, ignored: true });
+        if (durable) await durable.pullByReceipt(d.receipt);
+        const sessionId = ctx.actions.recordDelivery(d.receipt, d.outcome, d.detail);
+        ctx.markDirty(sessionId);
+        return send(res, 200, { ok: true, matched: !!sessionId });
       }
 
       // ---------------- scheduled work (Vercel Cron) ----------------------
