@@ -8,11 +8,15 @@
      <script src="/display-settings.js" data-default-size="150" data-default-theme="high"></script>
 
    The data-default-* attributes are what the page shows to someone who has
-   never chosen anything. Nothing is saved until they do.
+   never chosen anything. data-legacy names the page's own older saved
+   settings ("assistant" or "directory").
 
-   Saved in localStorage under "v360-display" (this device only). Older
-   saved settings (the assistant's "v360-demo-settings" and the directory's
-   "vrd-display-v1") are read once, so nobody loses what they chose.
+   Saved in localStorage under "v360-display" (this device only). The first
+   time a page loads with nothing saved there, it copies over what that page
+   used to keep (the assistant's "v360-demo-settings" or the directory's
+   "vrd-display-v1"), so nobody loses what they chose. Each page reads only
+   its own older key: the assistant used to save its defaults on every visit,
+   so its old key would wrongly override a directory visitor's choice.
 
    Sets on <html>:
      data-textsize  100 | 125 | 150 | 200
@@ -53,15 +57,22 @@
 
   // What this person chose, or null if they never chose anything.
   // `get` reads a localStorage key (passed in so this can be tested).
-  D.saved = function (get) {
+  // `own` is the page's older key: "assistant" or "directory".
+  // Returns { settings, migrated } — migrated: true when it came from an older key.
+  D.read = function (get, own) {
     var now = parse(get(D.KEY));
-    if (now) return now;
-    var a = parse(get(D.LEGACY_ASSISTANT));
-    if (a && (a.textSize || a.theme)) return { textSize: a.textSize, theme: a.theme };
-    var d = parse(get(D.LEGACY_DIRECTORY));
-    if (d && (d.textsize || d.contrast)) return { textSize: d.textsize, theme: d.contrast === "high" ? "high" : "standard" };
-    return null;
+    if (now) return { settings: now, migrated: false };
+    if (own === "assistant") {
+      var a = parse(get(D.LEGACY_ASSISTANT));
+      if (a && (a.textSize || a.theme)) return { settings: { textSize: a.textSize, theme: a.theme }, migrated: true };
+    }
+    if (own === "directory") {
+      var d = parse(get(D.LEGACY_DIRECTORY));
+      if (d && (d.textsize || d.contrast)) return { settings: { textSize: d.textsize, theme: d.contrast === "high" ? "high" : "standard" }, migrated: true };
+    }
+    return { settings: null, migrated: false };
   };
+  D.saved = function (get, own) { return D.read(get, own).settings; };
 
   // The attributes to put on <html>.
   D.attributes = function (s) {
@@ -106,8 +117,12 @@
     theme: (script && script.getAttribute("data-default-theme")) || "standard"
   };
   function get(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  var own = (script && script.getAttribute("data-legacy")) || (defaults.textSize === "100" ? "directory" : "assistant");
   var listeners = [];
-  var current = D.normalize(D.saved(get), defaults);
+  var first = D.read(get, own);
+  var current = D.normalize(first.settings, defaults);
+  // One-time copy from the page's older key, so later pages see it too.
+  if (first.migrated) { try { window.localStorage.setItem(D.KEY, JSON.stringify(current)); } catch (e) {} }
 
   function apply() {
     var attrs = D.attributes(current);

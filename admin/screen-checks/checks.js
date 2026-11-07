@@ -121,7 +121,7 @@
         if (r) decisions[s.setting] = { decision: r.value, value: r.value === "edit" ? $("d-" + s.setting + "-v").value : null };
       });
       api("POST", "/api/admin/checks/" + c.id + "/review", { decisions: decisions, notes: $("r-notes").value, next_steps: $("r-next").value, staff_status: stSel.value, review_ms: Date.now() - openedAt })
-        .then(function (r) { msg.className = "ok-text"; msg.textContent = "✓ Saved."; note.value = r.case_note; })
+        .then(function (r) { msg.className = "ok-text"; msg.textContent = "✓ Saved."; note.value = r.case_note; openedAt = Date.now(); /* a second save counts only the time since this one */ })
         .catch(function (err) { msg.className = "danger-text"; msg.textContent = "⚠ " + err.message; });
     });
     body.appendChild(form);
@@ -193,7 +193,7 @@
 
   // ---------------------------------------------------------------- start
   var q = new URLSearchParams(location.search).get("show");
-  if (q && $("f-show").querySelector('option[value="' + q + '"]')) $("f-show").value = q;
+  if (q && [].some.call($("f-show").options, function (o) { return o.value === q; })) $("f-show").value = q;
   api("GET", "/api/admin/settings").then(function (r) { $("off-note").hidden = !!(r.settings.features && r.settings.features.screenCheck); }).catch(function () {});
   var deep = /^#([0-9a-f-]{36})$/.exec(location.hash);
   if (deep) openCheck(deep[1]); else loadList();
