@@ -44,3 +44,12 @@ html[data-contrast="high"] .brand-bar, html[data-theme="high"] .brand-bar, html[
   .sm-link, .sm-toggle { width: 100%; justify-content: center; text-align: center; padding: 0.3rem 0.4rem; }
   .sm-group { position: static; }
 }
+/* Assistant pages: the lockup in the top corner, on white as the brand rules require. */
+.sm-logo { display: inline-flex; align-items: center; background: #fff; border-radius: 8px; padding: 0.3rem 0.6rem; }
+.sm-logo img { display: block; height: 34px; width: auto; max-width: 100%; }
+.sm-home-logo:hover { text-decoration: none; }
+.sm-home-logo:hover .sm-logo { box-shadow: 0 0 0 3px currentColor; }
+@media (max-width: 640px) {
+  .sm-home.sm-home-logo { display: flex; grid-column: 1 / -1; padding: 0.1rem 0; }
+  .sm-logo img { height: 28px; }
+}
