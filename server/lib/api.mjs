@@ -350,6 +350,28 @@ export async function createApp(opts = {}) {
     try { return (await settings.site()).voice.elevenlabs; } catch { return false; }
   }
 
+  // This calendar month's screen checks: how many, how long people took, and
+  // how long staff spent reviewing (the "time saved" numbers).
+  async function screenCheckMonth(site) {
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+    const all = await checks.listChecks({ limit: 1000 });
+    const month = all.filter((c) => c.created_at >= start);
+    const finished = month.filter((c) => c.status === "finished" && c.finished_at);
+    const mins = finished.map((c) => Math.max(0, (new Date(c.finished_at) - new Date(c.created_at)) / 60000));
+    const reviews = await checks.reviewsSince(start);
+    const reviewMs = reviews.reduce((n, r) => n + (Number(r.review_ms) || 0), 0);
+    const reviewed = new Set(reviews.map((r) => r.check_id)).size;
+    return {
+      on: !!(site.features && site.features.screenCheck), monthStart: start,
+      started: month.length, finished: finished.length,
+      avgMinutes: mins.length ? Math.round(mins.reduce((a, b) => a + b, 0) / mins.length) : null,
+      reviewed, reviewMinutes: Math.round(reviewMs / 60000), avgReviewMinutes: reviewed ? Math.round(reviewMs / 60000 / reviewed) : null,
+      needsReview: all.filter((c) => c.status === "finished" && c.staff_status === "needs_review").length,
+      wantsCall: all.filter((c) => c.wants_call && c.staff_status !== "closed").length,
+    };
+  }
+
   async function adminOverview() {
     const days = 30;
     const site = await settings.site().catch(() => ({ mainFlow: "referral", voice: { elevenlabs: false } }));
@@ -377,6 +399,7 @@ export async function createApp(opts = {}) {
             email: { transport: ctx.actions.transportName(), estimateUsd: ctx.actions.transportName() === "outbox" ? 0 : null },
           },
           emails: store.adminEmails(since).map((e) => ({ ...e, to: maskEmail(e.to) })),
+          screenChecks: await screenCheckMonth(site).catch(() => null),
           settings: {
             corpusVersion: corpus.version, organizations: corpus.organizations.length, policyVersion: POLICY_VERSION,
             emailTransport: ctx.actions.transportName(), tts, aiUnderstanding: ai,
