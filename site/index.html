@@ -12,15 +12,9 @@
 <link rel="stylesheet" href="/demo/demo.css">
 <link rel="stylesheet" href="/home/home.css">
 <link rel="stylesheet" href="/site-menu.css">
-<script>
-  /* Same display settings as the assistant pages, applied before first paint.
-     New visitors start in large print with high contrast. */
-  try {
-    var s = JSON.parse(localStorage.getItem("v360-demo-settings") || "{}");
-    if (s.textSize) document.documentElement.setAttribute("data-textsize", s.textSize);
-    if (s.theme) document.documentElement.setAttribute("data-theme", s.theme);
-  } catch (e) {}
-</script>
+<!-- Display settings, shared by every page, applied before first paint.
+     New visitors start in large print with high contrast. -->
+<script src="/display-settings.js" data-default-size="150" data-default-theme="high" data-legacy="assistant"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to the main content</a>
@@ -100,6 +94,7 @@
     <ul class="go-grid">
       <li><a class="go" href="/assessment/"><span class="go-title">Vision Assessment</span><span class="go-text">Check how vision affects everyday things</span></a></li>
       <li><a class="go" href="/demo/"><span class="go-title">Resource Assistant</span><span class="go-text">Talk or type to find services</span></a></li>
+      <li id="go-check" hidden><a class="go" href="/screen-check/"><span class="go-title">Screen settings check</span><span class="go-text">Find your best text size, colors and pointer</span></a></li>
       <li><a class="go" href="/directory/"><span class="go-title">Org Directory</span><span class="go-text">Every organization, with search and filters</span></a></li>
       <li><a class="go" href="/directory/#tab-quiz"><span class="go-title">Find services</span><span class="go-text">A short on-screen questionnaire</span></a></li>
       <li><a class="go" href="/directory/#tab-pathways"><span class="go-title">Pathways</span><span class="go-text">Common routes through services</span></a></li>

@@ -6,8 +6,10 @@
 //                        (scrypt hash, never the password) and the key that
 //                        signs admin sign-in cookies. Changing the password
 //                        makes a new key, which signs everyone out.
-//   settings/site.json  { mainFlow, voice: { elevenlabs } }   which workflow
-//                        the public home page runs, and the natural-voice switch.
+//   settings/site.json  { mainFlow, voice: { elevenlabs }, features: { screenCheck } }
+//                        which workflow the public home page runs, the
+//                        natural-voice switch, and features that are still
+//                        being built (off until switched on).
 //
 // Each server copy caches both for a short while, so a change reaches every
 // copy within ttlMs.
@@ -17,7 +19,7 @@ import { hashPassword } from "./auth.mjs";
 
 export const AUTH_FILE = "settings/auth.json";
 export const SITE_FILE = "settings/site.json";
-export const SITE_DEFAULTS = Object.freeze({ mainFlow: "referral", voice: Object.freeze({ elevenlabs: false }) });
+export const SITE_DEFAULTS = Object.freeze({ mainFlow: "referral", voice: Object.freeze({ elevenlabs: false }), features: Object.freeze({ screenCheck: false }) });
 export const MIN_PASSWORD = 8;
 
 export function createSiteSettings({ gh, env = {}, ttlMs = 30000 }) {
@@ -67,6 +69,8 @@ export function createSiteSettings({ gh, env = {}, ttlMs = 30000 }) {
     return {
       mainFlow: typeof doc.mainFlow === "string" && doc.mainFlow ? doc.mainFlow : SITE_DEFAULTS.mainFlow,
       voice: { elevenlabs: !!(doc.voice && doc.voice.elevenlabs) },
+      // Only an explicit true turns a feature on.
+      features: { screenCheck: !!(doc.features && doc.features.screenCheck === true) },
     };
   }
 
@@ -74,6 +78,7 @@ export function createSiteSettings({ gh, env = {}, ttlMs = 30000 }) {
     const out = await gh.updateJson(DATA_BRANCH, SITE_FILE, (d) => {
       if (patch.mainFlow !== undefined) d.mainFlow = String(patch.mainFlow);
       if (patch.voice && patch.voice.elevenlabs !== undefined) d.voice = { ...(d.voice || {}), elevenlabs: !!patch.voice.elevenlabs };
+      if (patch.features && patch.features.screenCheck !== undefined) d.features = { ...(d.features || {}), screenCheck: patch.features.screenCheck === true };
       d.updatedAt = new Date().toISOString();
     }, "Site settings changed", {});
     cache.delete(SITE_FILE);

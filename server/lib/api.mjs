@@ -28,6 +28,11 @@ import { supabaseConfigured, supabaseKeyProblem, createSupabaseSessions, createD
 import { createSiteSettings } from "./site-settings.mjs";
 import { serveAdmin } from "./admin-pages.mjs";
 import { qrSvg } from "./qr.mjs";
+import * as check from "./screen-check.mjs";
+import { createCheckStore } from "./screen-check-store.mjs";
+import { readFileSync as readFileSyncCheck } from "node:fs";
+import pathCheck from "node:path";
+import { ROOT_DIR as ROOT_DIR_CHECK } from "./corpus.mjs";
 
 import { randomUUID } from "node:crypto";
 
@@ -101,6 +106,9 @@ export async function createApp(opts = {}) {
     : opts.sessionRemote ? createDurableSessions({ store, sqliteRepo, remote: opts.sessionRemote })
     : supabaseConfigured(env) ? createDurableSessions({ store, sqliteRepo, remote: createSupabaseSessions(env, opts.supabaseFetch) }) : null;
   const repo = durable ? durable.repo : sqliteRepo;
+  // Screen settings check: results in their own private tables (or memory locally).
+  const checks = createCheckStore(env, opts);
+  const CHECK_CONTENT = JSON.parse(readFileSyncCheck(pathCheck.join(ROOT_DIR_CHECK, "site", "data", "screen-check.json"), "utf8"));
   store.durableKind = durable ? "supabase" : "local";
   // Conversations changed outside a guarded turn save (emails sent, replay
   // cache, staff status) are copied to the database before each reply.
@@ -202,6 +210,128 @@ export async function createApp(opts = {}) {
     return s;
   }
 
+  // ---------------------------------------------------- screen settings check
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  const checkCtx = (c) => ({ words: CHECK_CONTENT.words, soundsLike: CHECK_CONTENT.sounds_like || {}, seed: c.id, device: c.device || {} });
+  function cleanDevice(d) {
+    d = d || {};
+    const type = ["phone", "tablet", "computer"].includes(d.type) ? d.type : "computer";
+    const os = ["ios", "android", "mac", "windows", "chromeos", "other"].includes(d.os) ? d.os : "other";
+    const num = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(20000, Math.round(Number(v)))) : null);
+    return { type, os, touchOnly: type !== "computer" || !!d.touchOnly, skipPointer: !!d.skipPointer, screenW: num(d.screenW), screenH: num(d.screenH), dpr: Number.isFinite(Number(d.dpr)) ? Math.min(8, Math.max(0.5, Number(d.dpr))) : null };
+  }
+  async function loadCheck(req, id) {
+    const c = await checks.getCheck(id);
+    const auth = String(req.headers.authorization || "");
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    if (!c || !tokenMatches(token, c.token_hash)) throw httpError(404, "Check not found");
+    return c;
+  }
+  // What the person sees about their own check: results only, never other checks.
+  async function checkSummary(c) {
+    const st = await checks.steps(c.id);
+    const plan = check.plan(c.device);
+    return {
+      id: c.id, code: c.code, status: c.status, device: c.device, goal: c.goal || null, settings: c.settings || {}, retake: !!c.previous_check_id,
+      plan,
+      steps: plan.map((setting) => {
+        const s = st.find((x) => x.setting === setting);
+        const done = s && s.recommended_value != null;
+        return { setting, done: !!done, recommended_value: done ? s.recommended_value : null, measured_limit: done ? s.measured_limit : null, summary: done ? check.describe(setting, s) : null, flags: done ? s.flags || [] : [] };
+      }),
+    };
+  }
+  async function handleCheck(req, res, p, method, ip) {
+    if (p === "/api/check/start" && method === "POST") {
+      if (!limiter(ip + ":check-start", 10)) throw httpError(429, "Too many new checks at once — please wait a minute.");
+      const body = await readJson(req);
+      const device = cleanDevice(body.device);
+      let assessment_session_id = null, previous_check_id = null, code = null;
+      // Started from the Vision Assessment's button: link it, but only with
+      // that conversation's own token.
+      if (body.from && body.from.sessionId) {
+        const s = UUID.test(String(body.from.sessionId)) ? await repo.load(String(body.from.sessionId)) : null;
+        if (s && tokenMatches(String(body.from.token || ""), s.token_hash)) assessment_session_id = s.id;
+      }
+      if (body.code) {
+        if (!limiter(ip + ":check-code", 5)) throw httpError(429, "Too many codes tried — please wait a minute.");
+        const want = check.normalizeCode(body.code);
+        const prev = want ? await checks.latestByCode(want) : null;
+        if (!prev) throw httpError(404, "We couldn't find that code. Check the three parts (a word, a number and a word), or start a new check.");
+        previous_check_id = prev.id; code = prev.code;
+      }
+      // A new person gets a code nobody else has.
+      if (!code) {
+        for (let i = 0; i < 25 && !code; i++) { const c0 = check.newCode(); if (!(await checks.latestByCode(c0))) code = c0; }
+        if (!code) throw httpError(503, "Couldn't start a new check right now. Please try again.");
+      }
+      const token = newToken();
+      const c = await checks.createCheck({ id: randomUUID(), code, token_hash: tokenHash(token), device, assessment_session_id, previous_check_id });
+      store.audit("system", null, "screen_check_started", { retake: !!previous_check_id, linked: !!assessment_session_id });
+      const plan = check.plan(device);
+      return send(res, 200, { id: c.id, token, code: c.code, retake: !!previous_check_id, linked: !!assessment_session_id, plan, device });
+    }
+    const m = p.match(/^\/api\/check\/([^/]+)(?:\/(step|trial|details|finish))?$/);
+    if (!m || !UUID.test(m[1])) throw httpError(404, "Not found");
+    const c = await loadCheck(req, m[1]);
+    const sub = m[2] || "";
+    if (sub === "" && method === "GET") return send(res, 200, { check: await checkSummary(c) });
+    if (method !== "POST") throw httpError(405, "Method not allowed");
+    const body = await readJson(req);
+    if (sub === "step" || sub === "trial") {
+      const setting = String(body.setting || "");
+      if (!check.plan(c.device).includes(setting)) throw httpError(400, "That test isn't part of this check.");
+      if (c.status !== "started") throw httpError(409, "This check is finished.");
+      const existing = (await checks.steps(c.id)).find((x) => x.setting === setting);
+      let trials = existing && Array.isArray(existing.trials) ? existing.trials : [];
+      let out = check.next(setting, trials, checkCtx(c));
+      if (sub === "trial") {
+        if (out.done) throw httpError(409, "That test is already done.");
+        trials = [...trials, check.cleanTrial(setting, body.trial, out.prompt)];
+        out = check.next(setting, trials, checkCtx(c));
+        const step = { trials, tries: trials.length };
+        if (out.done) Object.assign(step, { measured_limit: out.result.measured_limit, recommended_value: out.result.recommended_value, unit: out.result.unit, duration_ms: out.result.duration_ms, flags: out.result.flags });
+        await checks.putStep(c.id, setting, step);
+        if (out.done) await checks.updateCheck(c.id, { settings: { ...(c.settings || {}), ...out.result.apply } });
+      }
+      // The word to read is only ever sent for the trial being shown.
+      return send(res, 200, { setting, done: out.done, prompt: out.done ? null : out.prompt, result: out.done ? { ...out.result, summary: check.describe(setting, out.result) } : null });
+    }
+    // A finished check is final: staff may already have reviewed it.
+    if ((sub === "details" || sub === "finish") && c.status !== "started") throw httpError(409, "This check is finished.");
+    if (sub === "details") {
+      const patch = {};
+      if (body.goal !== undefined) patch.goal = String(body.goal || "").trim().slice(0, 500) || null;
+      if (body.device !== undefined) patch.device = cleanDevice(body.device);
+      if (!Object.keys(patch).length) throw httpError(400, "Nothing to change.");
+      await checks.updateCheck(c.id, patch);
+      return send(res, 200, { check: await checkSummary(await checks.getCheck(c.id)) });
+    }
+    if (sub === "finish") {
+      const consent = body.consent === true;
+      const ct = body.contact || {};
+      const contact = consent ? {
+        first_name: String(ct.first_name || "").trim().slice(0, 80) || null,
+        phone: String(ct.phone || "").replace(/[^0-9+()\- ]/g, "").trim().slice(0, 30) || null,
+        email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(ct.email || "").trim()) ? String(ct.email).trim().slice(0, 200) : null,
+      } : null;
+      const ages = ["under_18", "18_34", "35_54", "55_64", "65_74", "75_plus"];
+      const patch = {
+        status: "finished", finished_at: new Date().toISOString(),
+        consent_contact: consent && !!(contact && (contact.phone || contact.email)),
+        contact: consent && contact && (contact.phone || contact.email) ? contact : null,
+        wants_call: consent && body.wants_call === true,
+        age_range: ages.includes(body.age_range) ? body.age_range : null,
+        zip: /^[0-9]{5}$/.test(String(body.zip || "")) ? String(body.zip) : null,
+      };
+      if (body.goal !== undefined) patch.goal = String(body.goal || "").trim().slice(0, 500) || null;
+      await checks.updateCheck(c.id, patch);
+      store.audit("system", null, "screen_check_finished", { contact: patch.consent_contact, wants_call: patch.wants_call });
+      return send(res, 200, { check: await checkSummary(await checks.getCheck(c.id)) });
+    }
+    throw httpError(404, "Not found");
+  }
+
   // Legacy named staff accounts (V360_STAFF_USER) still sign in with their own
   // key; the admin password (site-settings.mjs) signs its own cookies.
   const signer = sessionSecret(env);
@@ -239,6 +369,28 @@ export async function createApp(opts = {}) {
     try { return (await settings.site()).voice.elevenlabs; } catch { return false; }
   }
 
+  // This calendar month's screen checks: how many, how long people took, and
+  // how long staff spent reviewing (the "time saved" numbers).
+  async function screenCheckMonth(site) {
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+    const all = await checks.listChecks({ limit: 1000 });
+    const month = all.filter((c) => c.created_at >= start);
+    const finished = month.filter((c) => c.status === "finished" && c.finished_at);
+    const mins = finished.map((c) => Math.max(0, (new Date(c.finished_at) - new Date(c.created_at)) / 60000));
+    const reviews = await checks.reviewsSince(start);
+    const reviewMs = reviews.reduce((n, r) => n + (Number(r.review_ms) || 0), 0);
+    const reviewed = new Set(reviews.map((r) => r.check_id)).size;
+    return {
+      on: !!(site.features && site.features.screenCheck), monthStart: start,
+      started: month.length, finished: finished.length,
+      avgMinutes: mins.length ? Math.round(mins.reduce((a, b) => a + b, 0) / mins.length) : null,
+      reviewed, reviewMinutes: Math.round(reviewMs / 60000), avgReviewMinutes: reviewed ? Math.round(reviewMs / 60000 / reviewed) : null,
+      needsReview: all.filter((c) => c.status === "finished" && c.staff_status === "needs_review").length,
+      wantsCall: all.filter((c) => c.wants_call && c.staff_status !== "closed").length,
+    };
+  }
+
   async function adminOverview() {
     const days = 30;
     const site = await settings.site().catch(() => ({ mainFlow: "referral", voice: { elevenlabs: false } }));
@@ -267,6 +419,7 @@ export async function createApp(opts = {}) {
             email: { transport: ctx.actions.transportName(), estimateUsd: ctx.actions.transportName() === "outbox" ? 0 : null },
           },
           emails: store.adminEmails(since).map((e) => ({ ...e, to: maskEmail(e.to) })),
+          screenChecks: await screenCheckMonth(site).catch(() => null),
           settings: {
             corpusVersion: corpus.version, organizations: corpus.organizations.length, policyVersion: POLICY_VERSION,
             emailTransport: ctx.actions.transportName(), tts, aiUnderstanding: ai,
@@ -375,7 +528,7 @@ export async function createApp(opts = {}) {
         const body = await readJson(req);
         const text = String(body.text || "");
         if (!voicePhrases().allowed.has(text)) throw httpError(404, "That line isn't one the assistant says");
-        const rate = [0.85, 1, 1.2, 1.4].includes(Number(body.rate)) ? Number(body.rate) : 1;
+        const rate = [0.7, 0.85, 1, 1.2, 1.4].includes(Number(body.rate)) ? Number(body.rate) : 1;
         const key = rate + "|" + text;
         if (!phraseCache.has(key)) {
           if (phraseCache.size > 400) phraseCache.clear();
@@ -424,7 +577,16 @@ export async function createApp(opts = {}) {
       if (p === "/api/site" && method === "GET") {
         const main = (await settings.site()).mainFlow;
         const origin = publicOrigin(req);
-        return send(res, 200, { mainFlow: flowRunnable(main) ? main : "referral", flows: [...corpus.flows.values()].map((F) => ({ id: F.id, title: F.title, main: F.id === main, url: `${origin}/f/${F.id}` })) });
+        const features = (await settings.site()).features;
+        return send(res, 200, { mainFlow: flowRunnable(main) ? main : "referral", features, flows: [...corpus.flows.values()].map((F) => ({ id: F.id, title: F.title, main: F.id === main, url: `${origin}/f/${F.id}` })) });
+      }
+
+      // Screen Settings Check: switched off unless an admin turns it on in
+      // Settings. The browser shows the tests; every answer comes here and
+      // the server decides what's next (server/lib/screen-check.mjs).
+      if (p === "/api/check" || p.startsWith("/api/check/")) {
+        if (!(await settings.site()).features.screenCheck) throw httpError(404, "Not available.");
+        return await handleCheck(req, res, p, method, ip);
       }
 
       // Feedback at the end of a conversation: needs that conversation's own
@@ -584,10 +746,15 @@ export async function createApp(opts = {}) {
           if (body.voice.elevenlabs && !ttsKeySet(env)) throw httpError(400, "Add ELEVENLABS_API_KEY in Vercel first, then switch natural voice on.");
           patch.voice = { elevenlabs: !!body.voice.elevenlabs };
         }
+        if (body.features && body.features.screenCheck !== undefined) patch.features = { screenCheck: body.features.screenCheck === true };
+        if (!Object.keys(patch).length) throw httpError(400, "Nothing to change.");
         await settings.updateSite(patch);
         store.audit("staff:" + u.username, null, "settings_changed", patch);
-        const what = patch.mainFlow ? `Main workflow is now "${patch.mainFlow}".` : `Natural voice (ElevenLabs) switched ${patch.voice && patch.voice.elevenlabs ? "on" : "off"}.`;
-        await requests.logChange({ title: patch.mainFlow ? "Main workflow changed" : "Voice setting changed", summary: what, kind: "app" }).catch(() => {});
+        const what = patch.mainFlow ? `Main workflow is now "${patch.mainFlow}".`
+          : patch.voice ? `Natural voice (ElevenLabs) switched ${patch.voice.elevenlabs ? "on" : "off"}.`
+          : `Screen settings check switched ${patch.features.screenCheck ? "on" : "off"}.`;
+        const title = patch.mainFlow ? "Main workflow changed" : patch.voice ? "Voice setting changed" : "Feature switch changed";
+        await requests.logChange({ title, summary: what, kind: "app" }).catch(() => {});
         return send(res, 200, { settings: await settings.site() });
       }
       // ---------------- staff -------------------------------------------
@@ -757,6 +924,106 @@ export async function createApp(opts = {}) {
         store.audit("staff:" + u.username, null, "conversations_deleted", { count: Math.max(local, remote) });
         await requests.logChange({ title: "Conversations deleted", summary: `${Math.max(local, remote)} conversation(s) were permanently deleted.`, kind: "content" }).catch(() => {});
         return send(res, 200, { ok: true, deleted: Math.max(local, remote) });
+      }
+      // ---------------- screen settings check: staff side -------------
+      if (p === "/api/admin/checks" && method === "GET") {
+        await requireStaff(req);
+        const want = url.searchParams.get("filter") || "all";
+        const rows = (await checks.listChecks({ limit: 1000 })).map((c) => {
+          const st = c.steps || [];
+          const minutes = c.finished_at ? Math.max(0, Math.round((new Date(c.finished_at) - new Date(c.created_at)) / 60000)) : null;
+          return {
+            id: c.id, code: c.code, created_at: c.created_at, finished_at: c.finished_at, status: c.status, staff_status: c.staff_status,
+            device: check.deviceWords(c.device), goal: c.goal ? String(c.goal).slice(0, 120) : null, wants_call: !!c.wants_call, contact: !!c.consent_contact,
+            retake: !!c.previous_check_id, linked: !!c.assessment_session_id, attention: check.needsAttention(st), minutes,
+            settings: Object.fromEntries(st.filter((x) => x.recommended_value != null).map((x) => [x.setting, x.recommended_value])),
+          };
+        });
+        const keep = {
+          all: () => true,
+          needs_review: (r) => r.status === "finished" && r.staff_status === "needs_review",
+          unfinished: (r) => r.status !== "finished",
+          low: (r) => r.attention,
+          call: (r) => r.wants_call,
+          retakes: (r) => r.retake,
+          linked: (r) => r.linked,
+        }[want] || (() => true);
+        const out = rows.filter(keep);
+        const finished = rows.filter((r) => r.minutes != null);
+        return send(res, 200, { checks: out, total: rows.length, counts: { needs_review: rows.filter((r) => r.status === "finished" && r.staff_status === "needs_review").length, unfinished: rows.filter((r) => r.status !== "finished").length, call: rows.filter((r) => r.wants_call).length }, avgMinutes: finished.length ? Math.round(finished.reduce((n, r) => n + r.minutes, 0) / finished.length) : null });
+      }
+      if (p === "/api/admin/checks/delete" && method === "POST") {
+        const u = await requireStaff(req);
+        requireSameSite(req);
+        if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
+        const body = await readJson(req, 64 * 1024);
+        if (body.confirm !== "DELETE") throw httpError(400, "Type DELETE to confirm.");
+        const ids = [...new Set(Array.isArray(body.ids) ? body.ids.map(String) : [])];
+        if (!ids.length) throw httpError(400, "Choose at least one check.");
+        if (ids.length > 200) throw httpError(400, "Delete at most 200 checks at a time.");
+        if (ids.some((id) => !UUID.test(id))) throw httpError(400, "Invalid check id.");
+        const n = await checks.remove(ids);
+        store.audit("staff:" + u.username, null, "screen_checks_deleted", { count: n });
+        await requests.logChange({ title: "Screen checks deleted", summary: `${n} screen settings check(s) were permanently deleted.`, kind: "content" }).catch(() => {});
+        return send(res, 200, { ok: true, deleted: n });
+      }
+      m = p.match(/^\/api\/admin\/checks\/([^/]+)(?:\/(review))?$/);
+      if (m && !UUID.test(m[1])) throw httpError(404, "Check not found");
+      if (m) {
+        const u = await requireStaff(req);
+        const c = await checks.getCheck(m[1]);
+        if (!c) throw httpError(404, "Check not found");
+        if (!m[2] && method === "GET") {
+          const [steps, reviews, sameCode] = await Promise.all([checks.steps(c.id), checks.reviews(c.id), checks.byCode(c.code)]);
+          // This person's other checks: those joined to this one by retakes
+          // (previous_check_id), not just any check that shares the code.
+          const byId = new Map(sameCode.map((x) => [x.id, x]));
+          const linked = new Set([c.id]);
+          for (let grew = true; grew;) {
+            grew = false;
+            for (const x of sameCode) {
+              if (linked.has(x.id)) { if (x.previous_check_id && byId.has(x.previous_check_id) && !linked.has(x.previous_check_id)) { linked.add(x.previous_check_id); grew = true; } }
+              else if (x.previous_check_id && linked.has(x.previous_check_id)) { linked.add(x.id); grew = true; }
+            }
+          }
+          const history = sameCode.filter((x) => linked.has(x.id));
+          const others = await Promise.all(history.filter((h) => h.id !== c.id).map(async (h) => ({ id: h.id, created_at: h.created_at, status: h.status, steps: (await checks.steps(h.id)).map((s) => ({ setting: s.setting, recommended_value: s.recommended_value, measured_limit: s.measured_limit, summary: check.describe(s.setting, s) })) })));
+          const { token_hash, ...safe } = c;
+          return send(res, 200, {
+            check: { ...safe, device_words: check.deviceWords(c.device) },
+            steps: check.SETTINGS.map((setting) => steps.find((s) => s.setting === setting)).filter(Boolean).map((s) => ({ ...s, name: check.prettySetting(s.setting), summary: check.describe(s.setting, s), flag_words: check.flagWords(s.flags) })),
+            reviews, history: others, attention: check.needsAttention(steps),
+            case_note: check.caseNote(c, steps, reviews[0] || null),
+          });
+        }
+        if (m[2] === "review" && method === "POST") {
+          requireSameSite(req);
+          if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
+          const body = await readJson(req, 64 * 1024);
+          const steps = await checks.steps(c.id);
+          const decisions = {};
+          for (const s of steps) {
+            const d = body.decisions && body.decisions[s.setting];
+            if (!d) continue;
+            if (!check.DECISIONS.includes(d.decision)) throw httpError(400, `Choose accept, edit or reject for ${check.prettySetting(s.setting)}.`);
+            if (d.decision === "edit" && !String(d.value || "").trim()) throw httpError(400, `Say what ${check.prettySetting(s.setting)} should be changed to.`);
+            decisions[s.setting] = { decision: d.decision, value: d.decision === "edit" ? String(d.value).trim().slice(0, 200) : null };
+          }
+          const review = {
+            reviewer: u.username, decisions,
+            notes: String(body.notes || "").trim().slice(0, 4000) || null,
+            next_steps: String(body.next_steps || "").trim().slice(0, 2000) || null,
+            review_ms: Math.max(0, Math.min(24 * 3600 * 1000, Number(body.review_ms) || 0)) || null,
+            created_at: new Date().toISOString(),
+          };
+          review.case_note = check.caseNote(c, steps, review);
+          const saved = await checks.addReview(c.id, review);
+          const status = ["needs_review", "reviewed", "closed"].includes(body.staff_status) ? body.staff_status : "reviewed";
+          await checks.updateCheck(c.id, { staff_status: status });
+          store.audit("staff:" + u.username, null, "screen_check_reviewed", { decisions: Object.keys(decisions).length });
+          return send(res, 200, { review: saved, case_note: review.case_note, staff_status: status });
+        }
+        throw httpError(405, "Method not allowed");
       }
       m = p.match(/^\/api\/staff\/sessions\/([0-9a-f-]{36})(?:\/(status))?$/);
       if (m) {

@@ -17,7 +17,7 @@
 
   var SETTINGS_KEY = "v360-demo-settings";
   var DEFAULTS = { textSize: "150", theme: "high", readAloud: true, rate: "1", bargeIn: false, announce: true, voiceName: "", endSilence: "2000" };
-  var RATES = ["0.85", "1", "1.2", "1.4"];
+  var RATES = ["0.7", "0.85", "1", "1.2", "1.4"];
   var SILENCES = ["1200", "2000", "3200"];
 
   var $ = function (id) { return document.getElementById(id); };
@@ -40,16 +40,29 @@
     try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); } catch (e) {}
     var out = {};
     Object.keys(DEFAULTS).forEach(function (k) { out[k] = s[k] !== undefined ? s[k] : DEFAULTS[k]; });
-    if (RATES.indexOf(String(out.rate)) === -1) out.rate = Number(out.rate) < 1 ? "0.85" : "1";
+    if (RATES.indexOf(String(out.rate)) === -1) out.rate = Number(out.rate) < 0.8 ? "0.7" : Number(out.rate) < 1 ? "0.85" : "1";
     if (SILENCES.indexOf(String(out.endSilence)) === -1) out.endSilence = DEFAULTS.endSilence;
+    // Text size and colors are shared with every page (display-settings.js).
+    if (window.V360Display) { var d = window.V360Display.get(); out.textSize = d.textSize; out.theme = d.theme; }
     return out;
   }
   function saveSettings() {
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
-    document.documentElement.setAttribute("data-textsize", settings.textSize);
-    document.documentElement.setAttribute("data-theme", settings.theme);
+    // Voice, speed and the like stay on this page's own key; text size and
+    // colors go to the shared settings, which redraw the page.
+    var own = {};
+    Object.keys(settings).forEach(function (k) { if (k !== "textSize" && k !== "theme") own[k] = settings[k]; });
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(own)); } catch (e) {}
+    if (window.V360Display) {
+      var d = window.V360Display.get();
+      if (d.textSize !== settings.textSize || d.theme !== settings.theme) window.V360Display.set({ textSize: settings.textSize, theme: settings.theme });
+    } else {
+      document.documentElement.setAttribute("data-textsize", settings.textSize);
+      document.documentElement.setAttribute("data-theme", settings.theme);
+    }
     syncBar();
   }
+  // Changed on another page or tab: follow along.
+  if (window.V360Display) window.V360Display.onChange(function (d) { settings.textSize = d.textSize; settings.theme = d.theme; syncBar(); });
 
   // Display settings bar: always on screen under the heading, collapsible.
   var BAR_KEY = "v360-demo-bar";
@@ -1140,6 +1153,15 @@
   });
   $("restart").addEventListener("click", function () { window.location.reload(); });
 
+  // After the Vision Assessment: offer the screen settings check (when it's
+  // switched on), linked to this conversation by its own token.
+  var checkOn = false;
+  if (ON_ASSESSMENT) fetch("/api/site", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { checkOn = !!(j.features && j.features.screenCheck); }).catch(function () {});
+  $("to-check").addEventListener("click", function () {
+    try { sessionStorage.setItem("v360-check-from", JSON.stringify({ sessionId: app.sessionId, token: app.token })); } catch (e) {}
+    location.href = "/screen-check/";
+  });
+
   function finishSession(userEnded) {
     app.ended = true;
     stopSpeaking("end", true);
@@ -1152,6 +1174,7 @@
     $("send").disabled = true;
     $("voice-controls").hidden = true;
     $("ended").hidden = false;
+    $("check-cta").hidden = !(ON_ASSESSMENT && checkOn && app.sessionId);
     if (app.sessionId) showFeedback(); else $("ended-h").focus();
   }
 

@@ -11,14 +11,8 @@
 <link rel="stylesheet" href="/brand/brand.css">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="site-menu.css">
-<script>
-  /* Use the same text size and contrast the person chose in the directory. */
-  try {
-    var s = JSON.parse(localStorage.getItem("vrd-display-v1") || "{}");
-    if (s.textsize === "125" || s.textsize === "150") document.documentElement.setAttribute("data-textsize", s.textsize);
-    if (s.contrast === "high") document.documentElement.setAttribute("data-contrast", "high");
-  } catch (e) {}
-</script>
+<!-- Display settings, shared by every page, applied before first paint. -->
+<script src="/display-settings.js" data-default-size="100" data-default-theme="standard" data-legacy="directory"></script>
 <style>
   .guide { max-width: 46rem; padding-top: 1.5rem; padding-bottom: 3rem; }
   .guide section { margin: 0 0 2rem; }
@@ -197,6 +191,7 @@
       <li>Speech recognition in Chrome and Edge is handled by the browser maker's service; Safari uses Apple's. Choose Type to avoid that.</li>
       <li>At the end you're asked how it went and what would make it better, then for a rating from 1 to 5. Both can be skipped. Feedback is kept apart from your answers, until Lions Services staff delete it. Please don't put personal or health details in it.</li>
       <li>The Vision Assessment keeps your answers the same way, so Lions Services can follow up if you agree. It isn't a medical eye exam. If your vision changes suddenly, or you have eye pain, contact an eye doctor or urgent care right away.</li>
+      <li>The screen settings check (when it's open) keeps the settings it finds and how you answered, for Lions Services staff only, until staff delete them. Contact details are kept only if you give permission. It isn't a medical eye exam.</li>
       <li>While this is a demo, emailed plans go to a test outbox and aren't actually sent.</li>
     </ul>
     <p><a href="/">Home</a> · <a href="/directory/">The directory</a> · <a href="/demo/">Open the Resource Assistant</a></p>

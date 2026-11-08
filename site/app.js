@@ -208,21 +208,27 @@
   /* ---------------------------------------------------------------------
      Settings (text size + high contrast), persisted defensively
      --------------------------------------------------------------------- */
-  var STORE_KEY = "vrd-display-v1";
+  /* Text size and contrast are the settings shared by every page
+     (display-settings.js, loaded in <head>), so a change here carries over
+     to the home page and the assistant, and back. This page offers
+     100–150% and a high-contrast switch; 200% or dark colors chosen
+     elsewhere still show here (dark as normal contrast). */
+  var D = window.V360Display;
   function readSettings() {
-    try {
-      var raw = window.localStorage.getItem(STORE_KEY);
-      return raw ? JSON.parse(raw) : {};
-    } catch (e) { return {}; }
+    var d = D.get();
+    return { textsize: d.textSize, contrast: d.theme === "high" ? "high" : "normal" };
   }
   function writeSettings(s) {
-    try { window.localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) { /* private mode: ignore */ }
+    var patch = { textSize: s.textsize };
+    // Only change the colors when the contrast switch actually changed, so a
+    // dark theme chosen on another page survives a text-size click here.
+    var d = D.get();
+    if ((d.theme === "high") !== (s.contrast === "high")) patch.theme = s.contrast === "high" ? "high" : "standard";
+    D.set(patch);
   }
   function applySettings(s) {
-    var size = (s && (s.textsize === "125" || s.textsize === "150")) ? s.textsize : "100";
-    var hc = !!(s && s.contrast === "high");
-    document.documentElement.setAttribute("data-textsize", size);
-    document.documentElement.setAttribute("data-contrast", hc ? "high" : "normal");
+    var size = s.textsize;
+    var hc = s.contrast === "high";
     Array.prototype.forEach.call(document.querySelectorAll("#textsize-group .seg-btn"), function (b) {
       b.setAttribute("aria-pressed", b.getAttribute("data-size") === size ? "true" : "false");
     });
@@ -231,6 +237,7 @@
   function initSettings() {
     var s = readSettings();
     applySettings(s);
+    D.onChange(function () { applySettings(readSettings()); });
     Array.prototype.forEach.call(document.querySelectorAll("#textsize-group .seg-btn"), function (b) {
       b.addEventListener("click", function () {
         var next = readSettings(); next.textsize = b.getAttribute("data-size");

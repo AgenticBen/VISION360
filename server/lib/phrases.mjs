@@ -1,4 +1,5 @@
-// The assistant's fixed lines (site/voice-phrases.js, shared with the page).
+// The assistant's fixed lines (site/voice-phrases.js, shared with the page,
+// and the screen check's lines in site/data/screen-check.json).
 // Only these exact lines may be voiced by /api/tts-phrase, so it can't be used
 // to turn arbitrary text into speech.
 import { readFileSync } from "node:fs";
@@ -13,6 +14,19 @@ export function voicePhrases() {
   const ctx = vm.createContext({});
   vm.runInContext(code, ctx, { timeout: 1000 });
   const P = ctx.V360_PHRASES;
-  cached = { P, allowed: new Set(P.all()) };
+  const allowed = new Set(P.all());
+  // The screen check's fixed lines (site/data/screen-check.json).
+  const sc = JSON.parse(readFileSync(path.join(ROOT_DIR, "site", "data", "screen-check.json"), "utf8"));
+  for (const [k, line] of Object.entries(sc.say || {})) {
+    if (k === "deviceAsk") for (const name of Object.values(sc.deviceNames || {})) allowed.add(line.replace("{device}", name));
+    else allowed.add(line);
+  }
+  if (sc.say && sc.say.magIntro) allowed.add(sc.say.magIntro + " " + sc.say.magWord);
+  // Device setup steps are read one at a time.
+  for (const [os, g] of Object.entries(sc.guides || {})) {
+    if (os.startsWith("_")) continue;
+    for (const [k, steps] of Object.entries(g)) if (Array.isArray(steps)) steps.forEach((x) => allowed.add(x));
+  }
+  cached = { P, allowed };
   return cached;
 }

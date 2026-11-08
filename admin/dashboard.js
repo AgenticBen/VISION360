@@ -22,12 +22,23 @@
     if (failed) chips.push(["/admin/emails/#failed", failed + (failed === 1 ? " email failed" : " emails failed"), "err"]);
     if (u.staffRequests) chips.push(["/admin/conversations/", u.staffRequests + (u.staffRequests === 1 ? " person asked for staff follow-up" : " people asked for staff follow-up"), "warn"]);
     if (open) chips.push(["/admin/requests/", open + (open === 1 ? " request waiting for Claude" : " requests waiting for Claude"), ""]);
+    var sc = o.screenChecks;
+    if (sc && sc.needsReview) chips.push(["/admin/screen-checks/?show=needs_review", sc.needsReview + (sc.needsReview === 1 ? " screen check to review" : " screen checks to review"), "warn"]);
+    if (sc && sc.wantsCall) chips.push(["/admin/screen-checks/?show=call", sc.wantsCall + (sc.wantsCall === 1 ? " person asked for a call (screen check)" : " people asked for a call (screen check)"), "warn"]);
     if (!chips.length) needs.appendChild(el("span", { class: "hint", text: "Nothing needs you right now." }));
     chips.forEach(function (c) { needs.appendChild(el("a", { href: c[0], class: c[2], text: c[1] })); });
 
     var stats = [[u.conversations, "conversations started"], [u.byMode.voice, "by voice"], [u.byMode.text, "by typing"], [u.summariesConfirmed, "confirmed their summary"], [u.completed, "reached suggestions"], [sent, "plan emails sent"], [u.staffRequests, "asked for staff follow-up"]];
     var box = $("stats"); box.textContent = "";
     stats.forEach(function (s) { box.appendChild(el("div", { class: "stat" }, [el("div", { class: "num", text: String(s[0]) }), el("div", { class: "lbl", text: s[1] })])); });
+    // Screen settings check, this calendar month: time taken and staff time.
+    if (sc && (sc.on || sc.started)) {
+      var sbox = $("check-stats");
+      sbox.hidden = false;
+      var g = sbox.querySelector(".grid"); g.textContent = "";
+      [[sc.finished, "screen checks finished"], [sc.avgMinutes == null ? "—" : sc.avgMinutes + " min", "average time to finish"], [sc.reviewed, "reviewed by staff"], [sc.avgReviewMinutes == null ? "—" : sc.avgReviewMinutes + " min", "average staff review time"], [sc.reviewMinutes + " min", "staff review time in all"]]
+        .forEach(function (s) { g.appendChild(el("div", { class: "stat" }, [el("div", { class: "num", text: String(s[0]) }), el("div", { class: "lbl", text: s[1] })])); });
+    }
 
     var days = Object.keys(u.byDay).sort().reverse();
     var max = Math.max.apply(null, [1].concat(days.map(function (d) { return u.byDay[d]; })));
