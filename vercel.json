@@ -104,10 +104,18 @@
     },
     {
       "source": "/assessment",
-      "destination": "/demo/index.html"
+      "destination": "/screen-check/index.html"
     },
     {
       "source": "/assessment/",
+      "destination": "/screen-check/index.html"
+    },
+    {
+      "source": "/assessment/interview",
+      "destination": "/demo/index.html"
+    },
+    {
+      "source": "/assessment/interview/",
       "destination": "/demo/index.html"
     },
     {

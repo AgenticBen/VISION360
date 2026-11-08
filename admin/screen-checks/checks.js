@@ -6,7 +6,7 @@
   "use strict";
   var A = window.V360Admin, el = A.el, api = A.api;
   var $ = function (id) { return document.getElementById(id); };
-  var NAMES = { speech_rate: "Speaking speed", magnification: "Text size", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
+  var NAMES = { speech_rate: "Speaking speed", magnification: "Text size", pictures: "Pictures", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
   var THEMES = { high: "High contrast", dark: "Light on dark", standard: "Dark on white" };
   var selected = new Set(), current = null, openedAt = 0;
 

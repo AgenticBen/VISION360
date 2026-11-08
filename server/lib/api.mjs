@@ -212,7 +212,7 @@ export async function createApp(opts = {}) {
 
   // ---------------------------------------------------- screen settings check
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-  const checkCtx = (c) => ({ words: CHECK_CONTENT.words, soundsLike: CHECK_CONTENT.sounds_like || {}, seed: c.id, device: c.device || {} });
+  const checkCtx = (c) => ({ words: CHECK_CONTENT.words, phrases: CHECK_CONTENT.phrases || null, soundsLike: CHECK_CONTENT.sounds_like || {}, seed: c.id, device: c.device || {} });
   function cleanDevice(d) {
     d = d || {};
     const type = ["phone", "tablet", "computer"].includes(d.type) ? d.type : "computer";
