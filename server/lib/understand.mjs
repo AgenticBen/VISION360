@@ -657,3 +657,44 @@ export function formatTyped(q, value, detail) {
   if (q && q.type === "consent") return value === "yes" ? "Yes" : value === "no" ? "No" : String(value);
   return value == null ? "" : String(value);
 }
+
+// ------------------------------------------------------------- going back
+// "go back", "can we go back to where I live", "previous question",
+// "I want to change an earlier answer". Only when that is what the whole
+// reply is about, so "I want to go back to work" stays an answer (the
+// caller checks a "go back to …" target is really a step).
+// Returns null, or { target: string|null, last: boolean }.
+export function goBackIntent(text) {
+  const n = normalize(text).trim().replace(/\b(please|thanks|thank you)\b/g, "").replace(/\s+/g, " ").trim();
+  if (!n || n.split(" ").length > 14) return null;
+  const lead = "(?:(?:can|could|may) (?:we|i|you) |let's |let us |i (?:want|need|would like|'d like) to |i'd like to |wait |um |uh |actually |oh |sorry |hold on |hang on )*";
+  let m = new RegExp("^" + lead + "(?:go back|back up|go backwards|undo(?: that)?)(?: (?:one|a) (?:step|question))?(?: to (.+))?$").exec(n);
+  if (m) {
+    const t = (m[1] || "").replace(/^(?:the |my |a |an )/, "").trim();
+    if (!t) return { target: null, last: /\b(one|a) (step|question)\b|undo/.test(n) };
+    if (/^(?:the )?(?:last|previous|prior) (?:one|question|step|answer)$|^(?:last|previous) one$/.test(t)) return { target: null, last: true };
+    return { target: t, last: false };
+  }
+  if (new RegExp("^" + lead + "(?:go to )?(?:the )?(?:previous|last|prior) (?:question|step)$").test(n)) return { target: null, last: true };
+  if (new RegExp("^" + lead + "change (?:an?|my|one of my|some) ?(?:earlier |previous |old |other )?(?:answer|answers|step|question|something)$").test(n)) return { target: null, last: false };
+  if (/^change something$/.test(n)) return { target: null, last: false };
+  return null;
+}
+
+// "list", "what have I answered so far?", "read me the steps".
+export function listStepsIntent(text) {
+  const n = normalize(text).trim();
+  if (!n || n.split(" ").length > 10) return false;
+  return /^(?:(?:can|could) you |please )?(?:list|give me (?:a|the) list|read (?:me )?(?:the )?(?:list|steps|them)|list (?:them|the steps|the questions|my answers)|what (?:have i|did i|have we|did we) (?:answer|answered|do|done|cover|covered)(?: so far)?|what are (?:the|my) (?:steps|answers)(?: so far)?|which (?:steps|questions)(?: have i done| did i do)?|(?:the )?steps so far|(?:my )?answers so far|show me the (?:list|steps))(?: please)?$/.test(n);
+}
+
+// "3", "number three", "the second one", "step 4" -> 3, 2, 4. Else null.
+export function stepNumber(text) {
+  const n = normalize(text).trim();
+  const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+    first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10 };
+  const m = /^(?:(?:go (?:back )?to |back to )?(?:the |number |step |question |no )*)?(\d{1,2}|[a-z]+)(?: one| step| question)?$/.exec(n);
+  if (!m) return null;
+  if (/^\d+$/.test(m[1])) return Number(m[1]);
+  return WORDS[m[1]] || null;
+}

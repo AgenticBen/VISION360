@@ -17,7 +17,7 @@ import { createHash } from "node:crypto";
 import {
   interpretAnswer, extractMany, detectGlobal, yesNo, strictConfirm, findCorrectionTarget, mentionedTopics,
   looksLikeCorrection, parseEmail, parseName, spellEmail, normalize,
-  isTyped, formatTyped, interpretTyped, spellPhone,
+  isTyped, formatTyped, interpretTyped, spellPhone, goBackIntent, listStepsIntent, stepNumber,
 } from "./understand.mjs";
 import { corpusView, flowMeta } from "./corpus.mjs";
 import { buildResults, resultsSpeech } from "./results.mjs";
@@ -467,6 +467,101 @@ export function createDialogue(ctx) {
     return reply(session, ["Sure, let's fix that.", askOpen(question, whoFor(session))], { expect: "answer", question: questionPayload(question, whoFor(session)) });
   }
 
+  // ------------------------------------------------------------ going back
+  // "Go back" at any point: ask which step (or read out a numbered list of
+  // the steps done so far), ask that question again, then carry on from
+  // where they were. The steps are the first name and every answer, in the
+  // order the questions are asked.
+  function stepsOf(session) {
+    const corpus = C(session);
+    const w = whoFor(session);
+    const steps = [];
+    if (session.state.names && session.state.names.caller) steps.push({ id: "__name", label: "Your first name", display: session.state.names.caller });
+    for (const a of answersOf(session)) steps.push({ id: a.questionId, label: screenLabel(q(corpus, a.questionId), w, recapLabel(corpus, a.questionId)), display: answerText(corpus, a, true) });
+    return steps.map((x, i) => ({ n: i + 1, ...x }));
+  }
+  function canGoBack(session) { return ["intake", "recap", "results"].includes(session.state.phase); }
+  function stepsSpeech(steps) { return steps.map((x) => `${x.n}: ${x.label.replace(/[.:?]+$/, "")} — ${x.display}.`).join(" "); }
+  function askWhichStep(session, lead = [], withList = false) {
+    const steps = stepsOf(session);
+    const parts = [...lead];
+    if (withList) parts.push(`Here are the steps so far. ${stepsSpeech(steps)}`, "Which one would you like to go back to? Say its number or its name, or say carry on.");
+    else parts.push("Which step would you like to go back to? You can name it, like where you live, or say the last one. Or say list, and I'll read out the steps we've done.");
+    return reply(session, parts, { expect: "go_back", steps });
+  }
+  // Which step they mean: a number, "the last one", the name, a step's label,
+  // or the topic of an earlier answer ("where I live"). null if unclear.
+  function resolveStep(session, text, { last = false } = {}) {
+    const corpus = C(session);
+    const steps = stepsOf(session);
+    if (last) {
+      const answers = session.work.getAnswers();
+      if (!answers.length) return steps.find((x) => x.id === "__name") || null;
+      const latest = answers.slice().sort((a, b) => (b.revision || 0) - (a.revision || 0))[0];
+      return steps.find((x) => x.id === latest.questionId) || null;
+    }
+    const num = stepNumber(text);
+    if (num) return steps.find((x) => x.n === num) || { missing: num, count: steps.length };
+    const n = normalize(text);
+    if (/ (my |your |the )?(first )?name /.test(n) && steps[0] && steps[0].id === "__name") return steps[0];
+    const byLabel = steps.find((x) => x.id !== "__name" && n.includes(" " + normalize(x.label).trim() + " "));
+    if (byLabel) return byLabel;
+    const askable = answersOf(session).map((a) => a.questionId);
+    const t = findCorrectionTarget(text, corpus.assessment, askable, { geography: corpus.geography });
+    if (t && t.ambiguousTargets) return { ambiguous: t.ambiguousTargets };
+    if (t) { const hit = steps.find((x) => x.id === t.questionId); return hit ? { ...hit, interpretation: t.interpretation } : null; }
+    return null;
+  }
+  function finishGoBack(session, resumePhase, ackText) {
+    if (resumePhase === "intake") { session.state.phase = "intake"; return askNext(session, [ackText, "Now, back to where we left off."]); }
+    return afterCorrection(session, ackText);
+  }
+  function goBackTo(session, step, resumePhase) {
+    const corpus = C(session);
+    const st = session.state;
+    const w = whoFor(session);
+    st.phase = resumePhase;
+    if (step.id === "__name") {
+      st.pending = { type: "reask_name", resumePhase };
+      return reply(session, [`Sure, let's go back to your name. Right now I have ${st.names.caller}.`, "What should I call you?"], { expect: "name" });
+    }
+    const question = q(corpus, step.id);
+    const interp = step.interpretation;
+    // They gave the new answer too ("go back to my county, it's Gaston").
+    if (interp && ["answer", "unknown", "declined"].includes(interp.kind) && !READ_BACK.has(question.type) && !(question.required === true && interp.kind !== "answer")) {
+      st.pending = null;
+      setAnswer(session, question.id, interp.kind, interp.value ?? null, "correction", interp.detail || null);
+      session.work.answerEvent(question.id, "corrected", interp.value ?? null, interp.kind, session.revision);
+      const now = answersOf(session).find((a) => a.questionId === question.id);
+      return finishGoBack(session, resumePhase, `Okay, I've changed that — ${now ? lineFor(session, now) : "noted"}.`);
+    }
+    st.pending = { type: "reask_for_correction", questionId: question.id, resumePhase, backTo: true };
+    const now = answersOf(session).find((a) => a.questionId === question.id);
+    return reply(session, ["Okay, let's go back to that.", now ? `Right now I have that ${lineFor(session, now)}.` : "", askOpen(question, w)], { expect: "answer", question: questionPayload(question, w) });
+  }
+  function handleGoBackPending(session, text) {
+    const corpus = C(session);
+    const st = session.state;
+    const pend = st.pending;
+    const n = normalize(text);
+    if (listStepsIntent(text)) return askWhichStep(session, [], true);
+    if (/ (never ?mind|carry on|continue|keep going|forget it|cancel|go on) /.test(n) || yesNo(text) === "no") {
+      st.pending = null;
+      return resumeAfterAside(session, ["Okay, carrying on."]);
+    }
+    const gb = goBackIntent(text);
+    const last = !!(gb && gb.last) || / (the )?(last|previous|most recent) (one|question|step|answer) |^ (the )?last one $/.test(n);
+    const step = resolveStep(session, gb && gb.target ? gb.target : text, { last });
+    if (step && step.ambiguous) {
+      const names = step.ambiguous.map((id) => recapLabel(corpus, id).toLowerCase());
+      return reply(session, [`Do you mean ${joinList(names, "or")}?`], { expect: "go_back", steps: stepsOf(session) });
+    }
+    if (step && step.id) { st.pending = null; return goBackTo(session, step, pend.resumePhase); }
+    pend.tries = (pend.tries || 0) + 1;
+    if (step && step.missing) return askWhichStep(session, [`There isn't a step ${step.missing}; we've done ${step.count} so far.`], true);
+    return askWhichStep(session, ["Sorry, I couldn't tell which step you mean."], pend.tries >= 2);
+  }
+
   // ------------------------------------------------------------------ turn
   // input: {text, choice?: {questionId, value}, action?, revision?, mode}
   function handle(session, input) {
@@ -498,8 +593,12 @@ export function createDialogue(ctx) {
     if (input.action === "edit_answer" && input.questionId) {
       const question = q(corpus, input.questionId);
       if (!question || !answersOf(session).some((a) => a.questionId === input.questionId)) return reply(session, ["I can't find that answer to change."], { expect: "free" });
-      st.pending = { type: "reask_for_correction", questionId: question.id, resumePhase: st.phase === "intake" ? "intake" : "recap" };
+      st.pending = { type: "reask_for_correction", questionId: question.id, resumePhase: st.phase === "intake" ? "intake" : "recap", backTo: true };
       return reply(session, ["Sure, let's change that.", askOpen(question, whoFor(session))], { expect: "answer", question: questionPayload(question, whoFor(session)) });
+    }
+    if (input.action === "edit_name") {
+      if (!canGoBack(session) || !st.names.caller) return reply(session, ["There's no name to change right now."], { expect: "free" });
+      return goBackTo(session, { id: "__name" }, st.phase);
     }
     if (input.action === "request_email") return beginEmail(session);
     if (input.action === "request_staff") return beginStaff(session);
@@ -521,6 +620,29 @@ export function createDialogue(ctx) {
     }
     if (g.staff && !["staff_contact", "staff_confirm", "name"].includes(st.phase)) return beginStaff(session);
 
+    // Going back to an earlier step ----------------------------------------
+    if (st.pending && st.pending.type === "go_back") return handleGoBackPending(session, text);
+    const gb = goBackIntent(text);
+    const wantsList = listStepsIntent(text);
+    if ((gb || wantsList) && canGoBack(session)) {
+      const steps = stepsOf(session);
+      const resumePhase = st.phase;
+      if (!steps.length) {
+        if (wantsList || (gb && !gb.target)) return resumeAfterAside(session, ["We haven't answered any questions yet, so there's nothing to go back to."]);
+      } else if (gb && (gb.target || gb.last)) {
+        const step = resolveStep(session, gb.target || "", { last: gb.last });
+        if (step && step.id) return goBackTo(session, step, resumePhase);
+        // "go back to work" isn't a step: it's an answer, handled below.
+        if (!gb.target || (step && (step.ambiguous || step.missing))) {
+          st.pending = { type: "go_back", resumePhase };
+          return askWhichStep(session, step && step.missing ? [`There isn't a step ${step.missing}; we've done ${step.count} so far.`] : [], !!(step && step.missing));
+        }
+      } else {
+        st.pending = { type: "go_back", resumePhase };
+        return askWhichStep(session, wantsList ? [] : ["Sure."], wantsList);
+      }
+    }
+
     // First name ------------------------------------------------------------
     if (st.phase === "name") return handleName(session, text);
 
@@ -531,6 +653,15 @@ export function createDialogue(ctx) {
       if (nm) st.names.subject = nm;
       const leadText = nm ? `Thanks — I'll call them ${nm}.` : (g.declined || g.skip ? "No problem." : "That's okay, we'll carry on.");
       return askNext(session, [leadText]);
+    }
+    if (st.pending && st.pending.type === "reask_name") {
+      const resume = st.pending.resumePhase;
+      st.pending = null;
+      const nm = g.declined || g.skip ? null : parseName(text);
+      if (nm) st.names.caller = nm;
+      else if (g.declined || g.skip) st.names.caller = null;
+      st.phase = resume;
+      return resumeAfterAside(session, [nm ? `Thanks, ${nm}.` : "Okay.", "Now, back to where we left off."]);
     }
     if (st.pending && st.pending.type === "confirm_restart") {
       const yn = yesNo(text);
@@ -557,6 +688,13 @@ export function createDialogue(ctx) {
       }
     }
     if (st.pending && st.pending.type === "reask_for_correction") {
+      // Went back, then decided it was right: keep it and carry on.
+      if (st.pending.backTo && / (never ?mind|keep it|keep that|leave it|leave that|no change|don't change it|it was right|that's (right|fine|correct)|it's (right|fine|correct)|carry on|keep going) /.test(normalize(text))) {
+        const resume = st.pending.resumePhase;
+        st.pending = null;
+        st.phase = resume;
+        return resumeAfterAside(session, ["Okay, I'll keep that as it is.", "Now, back to where we left off."]);
+      }
       const question = q(corpus, st.pending.questionId);
       const interp = input.choice && input.choice.questionId === question.id ? choiceInterp(question, input.choice.value) : interpretAnswer(text, question, { geography: corpus.geography, aiEmail: turnAi.email, attempts: (st.unclearCount[question.id] || 0) });
       if (interp.kind === "ambiguous") return clarify(session, question, interp, st.pending);
@@ -565,12 +703,13 @@ export function createDialogue(ctx) {
       if (interp.kind === "answer" && READ_BACK.has(question.type)) return readBack(session, question, interp, { correction: true, resumePhase: st.pending.resumePhase });
       if (interp.kind === "unclear") return reply(session, ["Sorry, I didn't quite catch that.", askWithChoices(question, whoFor(session))], { expect: "answer", question: questionPayload(question, whoFor(session)) });
       const resume = st.pending.resumePhase;
+      const backTo = !!st.pending.backTo;
       st.pending = null;
       setAnswer(session, question.id, interp.kind, interp.value ?? null, "correction", interp.detail || null);
       session.work.answerEvent(question.id, "corrected", interp.value ?? null, interp.kind, session.revision);
       const after = answersOf(session).find((a) => a.questionId === question.id);
       const ackText = `Okay, I've changed that — ${after ? lineFor(session, after) : "noted"}.`;
-      if (resume === "intake") return askNext(session, [ackText]);
+      if (resume === "intake") return askNext(session, backTo ? [ackText, "Now, back to where we left off."] : [ackText]);
       return afterCorrection(session, ackText);
     }
 

@@ -572,6 +572,7 @@
     else if (turn.question) panel.appendChild(questionCard(turn.question));
     else if (turn.expect === "block_offer") panel.appendChild(blockOfferCard());
     else if (turn.expect === "yes_no") panel.appendChild(yesNoCard());
+    else if (turn.expect === "go_back" && turn.steps) panel.appendChild(stepsCard(turn.steps));
     if (turn.consent) panel.appendChild(consentCard(turn.consent));
     var results = turn.results || (state && state.results);
     if (results && ["results", "email_address", "email_confirm_address", "email_consent", "staff_contact", "staff_confirm"].indexOf(state.phase) !== -1) {
@@ -586,7 +587,24 @@
     if (question.skippable) row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "Skip", onclick: function () { sendTurn({ action: "skip" }, { text: "Skip" }); } }));
     if (question.sensitive && !question.required) row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "Prefer not to say", onclick: function () { sendTurn({ action: "decline" }, { text: "I'd rather not say" }); } }));
     row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "Why do you ask?", onclick: function () { sendTurn({ text: "why do you ask" }, { text: "Why do you ask?" }); } }));
+    if (app.state && app.state.answers && app.state.answers.length) row.appendChild(el("button", { type: "button", class: "btn btn-secondary", text: "← Go back", onclick: function () { sendTurn({ text: "go back" }, { text: "Go back" }); } }));
     return row;
+  }
+
+  // "Go back": every step so far, numbered, each one a button.
+  function stepsCard(steps) {
+    var card = el("section", { class: "card steps-card", "aria-labelledby": "steps-h" });
+    card.appendChild(el("h3", { id: "steps-h", text: "Which step would you like to go back to?" }));
+    var ol = el("ol", { class: "steps-list" });
+    steps.forEach(function (x) {
+      ol.appendChild(el("li", null, [el("button", { type: "button", class: "btn btn-secondary step-btn", onclick: function () {
+        if (x.id === "__name") sendTurn({ action: "edit_name" }, { text: "Go back to: " + x.label });
+        else sendTurn({ action: "edit_answer", questionId: x.id }, { text: "Go back to: " + x.label });
+      } }, [el("span", { class: "step-n", text: x.n + "." }), el("span", { class: "step-l", text: x.label.replace(/[.:?]+$/, "") }), el("span", { class: "step-v", text: x.display })])]));
+    });
+    card.appendChild(ol);
+    card.appendChild(el("div", { class: "action-row" }, [el("button", { type: "button", class: "btn btn-primary", text: "Carry on where I was", onclick: function () { sendTurn({ text: "carry on" }, { text: "Carry on" }); } })]));
+    return card;
   }
 
   function questionCard(question) {

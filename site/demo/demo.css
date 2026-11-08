@@ -255,3 +255,10 @@ html[data-textsize="200"] .seg { flex-wrap: wrap; }
 .rate-w { font-size: 0.8rem; font-weight: 600; text-align: center; line-height: 1.15; }
 #fb-done-text { font-weight: 700; font-size: 1.1rem; }
 @media (max-width: 480px) { .rate-w { display: none; } }
+
+/* Go back: the steps so far, each a button. */
+.steps-list { list-style: none; margin: 0.4rem 0; padding: 0; display: grid; gap: 0.4rem; }
+.step-btn { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 0.1rem 0.6rem; text-align: left; align-items: baseline; }
+.step-n { font-weight: 800; grid-row: span 2; }
+.step-l { font-weight: 700; }
+.step-v { font-weight: 400; color: var(--ink); grid-column: 2; overflow-wrap: anywhere; }
