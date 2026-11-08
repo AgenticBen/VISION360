@@ -60,6 +60,17 @@
 html[data-textsize="125"] { font-size: 22.5px; }
 html[data-textsize="150"] { font-size: 27px; }
 html[data-textsize="200"] { font-size: 36px; } /* chosen on the assistant pages */
+html[data-textsize="300"] { font-size: 54px; } /* chosen in the Vision Assessment */
+
+/* ---------- Blue: white on dark blue (chosen in the Vision Assessment) ---------- */
+html[data-theme="blue"]:not([data-contrast="high"]) {
+  --page: #0b2560; --brand-deep: #ffffff; --surface: #102d6e; --surface-2: #17377f;
+  --ink: #ffffff; --ink-muted: #dbe3f3; --accent: #ffd24a; --accent-ink: #0b2560; --accent-wash: #1a3c86;
+  --line: #c9d4ec; --line-soft: #34508f; --gap-bg: #3a2c05; --gap-ink: #ffd88a; --gap-line: #ffd24a;
+  --stop-bg: #3a1512; --stop-ink: #ffb3a7; --go-bg: #0f2a18; --go-ink: #9be6b4;
+  --focus: #ffd24a; --focus-halo: #000000; --btn-bg: #ffd24a; --btn-hover: #ffd24a;
+  color-scheme: dark;
+}
 
 /* ---------- High contrast ---------- */
 html[data-contrast="high"] {

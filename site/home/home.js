@@ -5,7 +5,7 @@
   "use strict";
   var BAR_KEY = "v360-demo-bar";
   var D = window.V360Display;
-  var THEME_NAMES = { standard: "Standard colors", dark: "Dark", high: "High contrast" };
+  var THEME_NAMES = { standard: "Standard colors", blue: "Blue", dark: "Dark", high: "High contrast" };
   var $ = function (id) { return document.getElementById(id); };
   var settings = D.get();
 

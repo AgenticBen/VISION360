@@ -85,3 +85,13 @@ test("an admin can switch it on and off (same-site only); it still answers nothi
   assert.equal(s.mainFlow, "referral");
   assert.equal(s.voice.elevenlabs, false);
 });
+
+test("display settings: blue (white on dark blue) and 300% are real choices everywhere", () => {
+  const D = displayCore();
+  assert.deepEqual({ ...D.normalize({ textSize: "300", theme: "blue" }, { textSize: "100", theme: "standard" }) }, { textSize: "300", theme: "blue", cursor: "default", cursorColor: "black", bold: "off" });
+  assert.equal(D.attributes({ ...D.normalize({ theme: "blue" }), theme: "blue" })["data-contrast"], "normal");
+  assert.equal(D.normalize({ textSize: "75" }).textSize, "100", "75% is only a sample size in the test, never a page setting");
+  for (const [file, re] of [["site/demo/demo.css", /html\[data-theme="blue"\]/], ["site/demo/demo.css", /html\[data-textsize="300"\]/], ["site/styles.css", /html\[data-theme="blue"\]/], ["site/styles.css", /html\[data-textsize="300"\]/], ["site/screen-check/check.css", /\.theme-blue/]]) {
+    assert.match(readFileSync(new URL("../" + file, import.meta.url), "utf8"), re, file);
+  }
+});

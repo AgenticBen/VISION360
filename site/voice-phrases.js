@@ -9,10 +9,10 @@
 (function (root) {
   "use strict";
   var P = {};
-  P.SIZES = ["100", "125", "150", "200"];
-  P.THEMES = ["standard", "dark", "high"];
-  P.SIZE_WORDS = { "100": "regular size", "125": "large", "150": "extra large", "200": "the largest size" };
-  P.THEME_WORDS = { standard: "standard colors, dark text on white", dark: "dark colors, light text on a dark background", high: "high contrast, yellow and white on black" };
+  P.SIZES = ["100", "125", "150", "200", "300"];
+  P.THEMES = ["standard", "blue", "dark", "high"];
+  P.SIZE_WORDS = { "100": "regular size", "125": "large", "150": "extra large", "200": "very large", "300": "the largest size" };
+  P.THEME_WORDS = { standard: "standard colors, dark text on white", blue: "white text on dark blue", dark: "dark colors, light text on a dark background", high: "high contrast, yellow and white on black" };
   P.ASKS = {
     demo: { q: "Would you like help understanding the services available?", sub: "You can tell me the answer whenever you're ready!" },
     assessment: { q: "Would you like to check how your vision affects everyday things?", sub: "It takes about five minutes, and it isn't a medical exam. You can tell me the answer whenever you're ready!" }

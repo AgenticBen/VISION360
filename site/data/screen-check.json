@@ -4,10 +4,10 @@
   "status": "draft",
   "say": {
     "intro": "Hi, I'm the Vision 360 screen check. In about ten minutes, we'll find the text size, colors, speaking speed and pointer that are easiest for you, and set them up as we go. Press the Space bar, or say ready, to begin.",
-    "assessIntro": "Hi, I'm the Vision 360 vision assessment. In about ten minutes, I'll ask you to read some short phrases, name some pictures, and pick the colors and pointer that are easiest for you to see. I'll set them up on this page as we go. Press the Space bar, or say ready, to begin.",
+    "assessIntro": "Hi, I'm the Vision 360 vision assessment. In about ten minutes, I'll ask you to read some short phrases, name some pictures, and pick the colors and pointer that are easiest for you to see. I'll set them up on this page as we go. You can answer by talking. Say left or right to pick a side, say I can't tell if you're not sure, and say show menu for more choices. Press the Space bar, or say ready, to begin.",
     "screenReader": "Okay. I'll stay quiet so your screen reader can lead. Everything on this page works with the keyboard.",
-    "practice": "First, a quick practice. You can answer by talking, by pressing a button, or by typing. Say ready, or press the Space bar.",
-    "practiceHeard": "Great. That works.",
+    "practice": "First, a quick practice. There are two boxes on the screen. Say left or right, press an arrow key, or tap a box.",
+    "practiceHeard": "Great. That works. You can say what can I say at any time to hear all the things you can say.",
     "deviceFix": "Thanks. Which are you using: a phone, a tablet, or a computer?",
     "goal": "What would you like to do on this device? For example, read email, video call family, or read the news. You can also say skip.",
     "rateIntro": "Let's set how fast I talk. This is my slowest speed. Say faster, slower, or keep this.",
@@ -37,7 +37,42 @@
     "stopped": "Okay, I've stopped listening. Press the Space bar when you want me to listen again.",
     "deviceAsk": "You're using {device}. Is that right? Say yes or no.",
     "guideIntro": "Here's how to set this up on your own device. I'll read one step at a time. Say next, or press the Space bar, for the next step.",
-    "guideDone": "That's all the steps."
+    "guideDone": "That's all the steps.",
+    "help": "Here's what you can say at any time. Left, right, or same. I can't tell. Bigger, or smaller. White background, blue background, or black background. Too bright. Bold on, or bold off. Bigger pointer, or smaller pointer. Slower, faster, louder, or softer. Repeat. Go back. Skip. Show menu, or hide menu. Stop listening. And end, to stop and save what you've done.",
+    "sizeUp": "Done. The text is bigger.",
+    "sizeDown": "Done. The text is smaller.",
+    "sizeMax": "The text is already at the largest size.",
+    "sizeMin": "The text is already at the regular size.",
+    "themeStandard": "Done. Dark text on a white background.",
+    "themeBlue": "Done. White text on a dark blue background.",
+    "themeDark": "Done. Light text on a black background.",
+    "themeHigh": "Done. Yellow and white text on black.",
+    "themeAlready": "Those are already the colors.",
+    "boldOn": "Done. The text is bold.",
+    "boldOff": "Done. The text is regular weight.",
+    "pointerBigger": "Done. The pointer is bigger.",
+    "pointerSmaller": "Done. The pointer is smaller.",
+    "pointerMax": "The pointer is already at its largest.",
+    "pointerMin": "The pointer is already at its regular size.",
+    "voiceSlower": "Okay, I'll talk slower.",
+    "voiceFaster": "Okay, I'll talk faster.",
+    "voiceSlowest": "This is already my slowest speed.",
+    "voiceFastest": "This is already my fastest speed.",
+    "voiceLouder": "Okay, I'll talk louder.",
+    "voiceSofter": "Okay, I'll talk more softly.",
+    "menuOpen": "The menu is open. You can change the text size, colors, bold, pointer and my voice, or end the assessment. Say hide menu to close it.",
+    "menuClosed": "The menu is closed.",
+    "backFirst": "There's no earlier test to go back to yet.",
+    "back": "Okay, let's do the last test again.",
+    "skipped": "Okay, I've skipped that test.",
+    "notInTest": "You can do that once the tests start.",
+    "endAsk": "Do you want to end now? Everything you've done so far is saved. Say end to finish now, or say keep going.",
+    "ended": "Okay, I've ended the assessment and saved what you did. Your results so far are on the screen.",
+    "keepGoing": "Okay, let's keep going.",
+    "nothingToEnd": "We haven't started yet, so there's nothing to save. You can just close this page.",
+    "voiceLoudest": "I'm already as loud as I can be. Turn up your device's volume for more.",
+    "voiceSoftest": "I'm already at my softest.",
+    "practicePhone": "First, a quick practice. There are two boxes on the screen. Say top or bottom, or tap a box."
   },
   "deviceNames": {
     "iphone": "an iPhone",
@@ -265,5 +300,59 @@
     "_comment": "Why each kind of service is suggested on the results page. The organizations themselves come from site/data/organizations.json.",
     "low_vision_clinic": "A low vision clinic can check how you see now and find magnifiers and other aids, because you needed very large text.",
     "assistive_technology": "For help setting these up on your own phone, tablet or computer, and learning to use them."
-  }
+  },
+  "commands": [
+    [
+      "Left, right, or same",
+      "Pick a side, or say they look the same. On a phone: top or bottom."
+    ],
+    [
+      "I can't tell",
+      "When you're not sure. It's never a wrong answer."
+    ],
+    [
+      "Bigger, smaller",
+      "Text size, one step."
+    ],
+    [
+      "White background, blue background, black background",
+      "Change the colors."
+    ],
+    [
+      "Too bright",
+      "Softer, darker colors."
+    ],
+    [
+      "Bold on, bold off",
+      "Heavier or regular text."
+    ],
+    [
+      "Bigger pointer, smaller pointer",
+      "The mouse pointer (computers)."
+    ],
+    [
+      "Slower, faster, louder, softer",
+      "My voice."
+    ],
+    [
+      "Repeat, go back, skip",
+      "Hear it again, do the last test again, or skip this test."
+    ],
+    [
+      "Show menu, hide menu",
+      "Open or close the menu."
+    ],
+    [
+      "What can I say",
+      "Hear this list."
+    ],
+    [
+      "Stop listening",
+      "Microphone off until you press the Space bar."
+    ],
+    [
+      "End",
+      "Stop now. What you've done is saved."
+    ]
+  ]
 }

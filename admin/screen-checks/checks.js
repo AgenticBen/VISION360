@@ -7,12 +7,14 @@
   var A = window.V360Admin, el = A.el, api = A.api;
   var $ = function (id) { return document.getElementById(id); };
   var NAMES = { speech_rate: "Speaking speed", magnification: "Text size", pictures: "Pictures", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
-  var THEMES = { high: "High contrast", dark: "Light on dark", standard: "Dark on white" };
+  var THEMES = { high: "High contrast", dark: "Light on dark", blue: "White on dark blue", standard: "Dark on white" };
   var selected = new Set(), current = null, openedAt = 0;
 
+  var STATE = { in_progress: "In progress", left: "Left without ending", ended: "Ended early", finished: "Finished" };
   function statusWords(r) {
-    if (r.status !== "finished") return "Not finished";
-    return { needs_review: "Needs review", reviewed: "Reviewed", closed: "Closed" }[r.staff_status] || r.staff_status;
+    if (r.state === "in_progress" || r.state === "left") return STATE[r.state];
+    var staff = { needs_review: "Needs review", reviewed: "Reviewed", closed: "Closed" }[r.staff_status] || r.staff_status;
+    return r.state === "ended" ? "Ended early · " + staff : staff;
   }
 
   // ---------------------------------------------------------------- list
@@ -42,7 +44,7 @@
         ]));
       });
       if (!j.checks.length) tb.appendChild(el("tr", null, [el("td", { colspan: "8", class: "hint", text: j.total ? "No checks match this filter." : "No screen checks yet." })]));
-      $("totals").textContent = j.total + " check" + (j.total === 1 ? "" : "s") + " in all · " + j.counts.needs_review + " to review · " + j.counts.unfinished + " not finished · " + j.counts.call + " asked for a call" + (j.avgMinutes != null ? " · about " + j.avgMinutes + " min to finish on average" : "");
+      $("totals").textContent = j.total + " check" + (j.total === 1 ? "" : "s") + " in all · " + j.counts.needs_review + " to review · " + j.counts.unfinished + " not finished (" + (j.counts.ended || 0) + " ended early, " + (j.counts.left || 0) + " left without ending) · " + j.counts.call + " asked for a call" + (j.avgMinutes != null ? " · about " + j.avgMinutes + " min to finish on average" : "");
       A.setBadge("/admin/screen-checks/", j.counts.needs_review);
     }).catch(function (e) { $("totals").textContent = "⚠ " + e.message; });
   }
@@ -70,7 +72,9 @@
     var body = $("detail-body"); body.textContent = "";
     var facts = el("dl", { class: "kv" });
     function fact(k, v) { if (v) { facts.appendChild(el("dt", { text: k })); facts.appendChild(el("dd", null, [v])); } }
-    fact("Status", c.status === "finished" ? "Finished " + A.when(c.finished_at) : "Not finished");
+    fact("Status", c.state === "finished" ? "Finished " + A.when(c.finished_at) : c.state === "ended" ? "Ended early " + A.when(c.ended_at) : c.state_words || "Not finished");
+    fact("Not reached", c.not_reached && c.not_reached.length ? c.not_reached.join(", ") : null);
+    fact("Changed outside the tests", c.change_words && c.change_words.length ? el("ul", null, c.change_words.map(function (w) { return el("li", { text: w }); })) : null);
     fact("Device", c.device_words);
     fact("Goal", c.goal || "Not given");
     fact("Code", c.code);

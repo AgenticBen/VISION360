@@ -305,6 +305,8 @@ export function cleanTrial(setting, raw, prompt) {
 export function describe(setting, result) {
   if (!result) return "Not tested";
   const v = result.recommended_value;
+  if (v === "skipped") return `${PRETTY[setting] || setting}: skipped`;
+  if (v == null) return `${PRETTY[setting] || setting}: started, not finished`;
   if (setting === "speech_rate") return `Speech rate ${v}x (started at the slowest, ${RATES[0]}x)`;
   if (setting === "magnification") {
     const comfort = result.comfort_px || (result.measured_limit ? Number(result.measured_limit) * 2 : LADDER[0] * 2);
@@ -343,6 +345,35 @@ export function plan(device = {}) {
   return steps;
 }
 
+// ---------------------------------------------------------------- how it ended
+// "left" (left without ending) is worked out when read: still started, and
+// nothing has happened for two hours.
+export const LEFT_AFTER_MS = 2 * 60 * 60 * 1000;
+export function checkState(c, now = Date.now()) {
+  if (c.status === "finished") return "finished";
+  if (c.status === "ended") return "ended";
+  if (c.status === "abandoned") return "left";
+  const last = new Date(c.updated_at || c.created_at).getTime();
+  return Number.isFinite(last) && now - last > LEFT_AFTER_MS ? "left" : "in_progress";
+}
+export const STATE_WORDS = { finished: "Finished", ended: "Ended early", left: "Left without ending", in_progress: "In progress" };
+
+// What the person may change outside a test, from the menu or by voice.
+export const LIVE_SETTINGS = {
+  textSize: ["100", "125", "150", "200", "300"],
+  theme: ["standard", "blue", "dark", "high"],
+  bold: ["off", "on"],
+  cursor: ["default", "large", "xl"],
+  cursorColor: ["black", "white", "yellow"],
+  rate: RATES.map(String),
+};
+const LIVE_WORDS = { textSize: "text size", theme: "colors", bold: "bold", cursor: "pointer size", cursorColor: "pointer color", rate: "speaking speed" };
+const VALUE_WORDS = { standard: "dark on white", blue: "white on dark blue", dark: "light on dark", high: "yellow and white on black", xl: "extra large" };
+export function settingChangeWords(ch) {
+  const v = ch.setting === "textSize" ? `${ch.value}%` : ch.setting === "rate" ? `${ch.value}x` : VALUE_WORDS[ch.value] || ch.value;
+  return `${LIVE_WORDS[ch.setting] || ch.setting} → ${v} (${ch.via === "voice" ? "by voice" : "from the menu"}${ch.step ? `, during ${(PRETTY[ch.step] || ch.step).toLowerCase()}` : ""})`;
+}
+
 // ---------------------------------------------------------------- staff side
 export const DECISIONS = ["accept", "edit", "reject"];
 const PRETTY = { speech_rate: "Speaking speed", magnification: "Text size", pictures: "Pictures", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
@@ -379,7 +410,11 @@ export function caseNote(c, steps, review) {
   L.push(`Vision 360 screen settings check, ${date(c.finished_at || c.created_at)} (code: ${c.code})${c.previous_check_id ? " — retake" : ""}`);
   L.push(`Device: ${deviceWords(c.device)}`);
   if (c.goal) L.push(`Goal: ${c.goal}`);
-  L.push(`Status: ${c.status === "finished" ? "finished" : "not finished"}`);
+  const state = checkState(c);
+  const stopped = c.stopped_at ? ` (stopped at ${(PRETTY[c.stopped_at] || c.stopped_at).toLowerCase()})` : "";
+  L.push(`Status: ${STATE_WORDS[state].toLowerCase()}${state === "ended" || state === "left" ? stopped : ""}`);
+  const notReached = state === "finished" ? [] : plan(c.device).filter((s) => !(steps || []).some((x) => x.setting === s && x.recommended_value != null));
+  if (notReached.length) L.push(`Not reached: ${notReached.map((s) => PRETTY[s].toLowerCase()).join(", ")}`);
   L.push("");
   L.push(review ? `Settings (reviewed by ${review.reviewer}, ${date(review.created_at)}):` : "Settings (not reviewed yet):");
   for (const setting of SETTINGS) {
@@ -396,6 +431,8 @@ export function caseNote(c, steps, review) {
   if (flags.length) L.push(`Noticed: ${flagWords(flags).join("; ")}`);
   if (review && review.next_steps) { L.push(""); L.push(`Next steps: ${review.next_steps}`); }
   if (review && review.notes) L.push(`Notes: ${review.notes}`);
+  const changes = Array.isArray(c.setting_changes) ? c.setting_changes : [];
+  if (changes.length) { L.push(""); L.push("Changed by the person outside the tests:"); for (const ch of changes.slice(0, 30)) L.push(`- ${settingChangeWords(ch)}`); }
   if (c.wants_call) L.push("The person asked for a call.");
   if (c.consent_contact && c.contact) {
     const ct = c.contact;

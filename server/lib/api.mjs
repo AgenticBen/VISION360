@@ -232,7 +232,7 @@ export async function createApp(opts = {}) {
     const st = await checks.steps(c.id);
     const plan = check.plan(c.device);
     return {
-      id: c.id, code: c.code, status: c.status, device: c.device, goal: c.goal || null, settings: c.settings || {}, retake: !!c.previous_check_id,
+      id: c.id, code: c.code, status: c.status, state: check.checkState(c), stopped_at: c.stopped_at || null, device: c.device, goal: c.goal || null, settings: c.settings || {}, retake: !!c.previous_check_id,
       plan,
       steps: plan.map((setting) => {
         const s = st.find((x) => x.setting === setting);
@@ -271,7 +271,7 @@ export async function createApp(opts = {}) {
       const plan = check.plan(device);
       return send(res, 200, { id: c.id, token, code: c.code, retake: !!previous_check_id, linked: !!assessment_session_id, plan, device });
     }
-    const m = p.match(/^\/api\/check\/([^/]+)(?:\/(step|trial|details|finish))?$/);
+    const m = p.match(/^\/api\/check\/([^/]+)(?:\/(step|trial|details|finish|end|back|skip|setting))?$/);
     if (!m || !UUID.test(m[1])) throw httpError(404, "Not found");
     const c = await loadCheck(req, m[1]);
     const sub = m[2] || "";
@@ -283,6 +283,11 @@ export async function createApp(opts = {}) {
       if (!check.plan(c.device).includes(setting)) throw httpError(400, "That test isn't part of this check.");
       if (c.status !== "started") throw httpError(409, "This check is finished.");
       const existing = (await checks.steps(c.id)).find((x) => x.setting === setting);
+      // Skipped by the person: done, with nothing measured.
+      if (existing && existing.recommended_value === "skipped") {
+        if (sub === "trial") throw httpError(409, "That test was skipped.");
+        return send(res, 200, { setting, done: true, prompt: null, result: { recommended_value: "skipped", apply: {}, flags: existing.flags || [], summary: check.describe(setting, existing) } });
+      }
       let trials = existing && Array.isArray(existing.trials) ? existing.trials : [];
       let out = check.next(setting, trials, checkCtx(c));
       if (sub === "trial") {
@@ -297,8 +302,45 @@ export async function createApp(opts = {}) {
       // The word to read is only ever sent for the trial being shown.
       return send(res, 200, { setting, done: out.done, prompt: out.done ? null : out.prompt, result: out.done ? { ...out.result, summary: check.describe(setting, out.result) } : null });
     }
-    // A finished check is final: staff may already have reviewed it.
-    if ((sub === "details" || sub === "finish") && c.status !== "started") throw httpError(409, "This check is finished.");
+    // A finished or ended check is final: staff may already have reviewed it.
+    if (c.status !== "started") throw httpError(409, c.status === "ended" ? "This check was ended." : "This check is finished.");
+    const plan = check.plan(c.device);
+    const inPlan = (s) => { if (!plan.includes(s)) throw httpError(400, "That test isn't part of this check."); return s; };
+    if (sub === "end") {
+      // Ended early: everything done so far is kept for staff.
+      const steps = await checks.steps(c.id);
+      const doneSet = new Set(steps.filter((s) => s.recommended_value != null).map((s) => s.setting));
+      const at = plan.includes(String(body.at || "")) ? String(body.at) : plan.find((s) => !doneSet.has(s)) || null;
+      await checks.updateCheck(c.id, { status: "ended", ended_at: new Date().toISOString(), stopped_at: at });
+      store.audit("system", null, "screen_check_ended", { stopped_at: at, done: doneSet.size });
+      return send(res, 200, { check: await checkSummary(await checks.getCheck(c.id)) });
+    }
+    if (sub === "back") {
+      // Go back: that test starts again from its first trial.
+      await checks.clearStep(c.id, inPlan(String(body.setting || "")));
+      return send(res, 200, { check: await checkSummary(await checks.getCheck(c.id)) });
+    }
+    if (sub === "skip") {
+      const setting = inPlan(String(body.setting || ""));
+      const existing = (await checks.steps(c.id)).find((x) => x.setting === setting);
+      if (existing && existing.recommended_value != null) throw httpError(409, "That test is already done.");
+      const trials = existing && Array.isArray(existing.trials) ? existing.trials : [];
+      const step = await checks.putStep(c.id, setting, { trials, tries: trials.length, recommended_value: "skipped", measured_limit: null, unit: null, flags: ["skipped_by_person"] });
+      return send(res, 200, { setting, done: true, prompt: null, result: { recommended_value: "skipped", apply: {}, flags: step.flags || ["skipped_by_person"], summary: check.describe(setting, step) } });
+    }
+    if (sub === "setting") {
+      // Changed from the menu or by voice outside a test: kept for staff.
+      const key = String(body.setting || "");
+      const allowed = check.LIVE_SETTINGS[key];
+      if (!allowed) throw httpError(400, "Unknown setting.");
+      const value = String(body.value == null ? "" : body.value);
+      if (!allowed.includes(value)) throw httpError(400, "That isn't one of the choices.");
+      const list = Array.isArray(c.setting_changes) ? c.setting_changes : [];
+      if (list.length >= 200) return send(res, 200, { ok: true, kept: false });
+      const step = plan.includes(String(body.step || "")) ? String(body.step) : null;
+      await checks.updateCheck(c.id, { setting_changes: [...list, { setting: key, value, via: body.via === "voice" ? "voice" : "menu", step, at: new Date().toISOString() }] });
+      return send(res, 200, { ok: true, kept: true });
+    }
     if (sub === "details") {
       const patch = {};
       if (body.goal !== undefined) patch.goal = String(body.goal || "").trim().slice(0, 500) || null;
@@ -933,7 +975,8 @@ export async function createApp(opts = {}) {
           const st = c.steps || [];
           const minutes = c.finished_at ? Math.max(0, Math.round((new Date(c.finished_at) - new Date(c.created_at)) / 60000)) : null;
           return {
-            id: c.id, code: c.code, created_at: c.created_at, finished_at: c.finished_at, status: c.status, staff_status: c.staff_status,
+            id: c.id, code: c.code, created_at: c.created_at, finished_at: c.finished_at, status: c.status, state: check.checkState(c), stopped_at: c.stopped_at || null, staff_status: c.staff_status,
+            changes: Array.isArray(c.setting_changes) ? c.setting_changes.length : 0,
             device: check.deviceWords(c.device), goal: c.goal ? String(c.goal).slice(0, 120) : null, wants_call: !!c.wants_call, contact: !!c.consent_contact,
             retake: !!c.previous_check_id, linked: !!c.assessment_session_id, attention: check.needsAttention(st), minutes,
             settings: Object.fromEntries(st.filter((x) => x.recommended_value != null).map((x) => [x.setting, x.recommended_value])),
@@ -941,8 +984,10 @@ export async function createApp(opts = {}) {
         });
         const keep = {
           all: () => true,
-          needs_review: (r) => r.status === "finished" && r.staff_status === "needs_review",
+          needs_review: (r) => (r.state === "finished" || r.state === "ended") && r.staff_status === "needs_review",
           unfinished: (r) => r.status !== "finished",
+          ended: (r) => r.state === "ended",
+          left: (r) => r.state === "left",
           low: (r) => r.attention,
           call: (r) => r.wants_call,
           retakes: (r) => r.retake,
@@ -950,7 +995,7 @@ export async function createApp(opts = {}) {
         }[want] || (() => true);
         const out = rows.filter(keep);
         const finished = rows.filter((r) => r.minutes != null);
-        return send(res, 200, { checks: out, total: rows.length, counts: { needs_review: rows.filter((r) => r.status === "finished" && r.staff_status === "needs_review").length, unfinished: rows.filter((r) => r.status !== "finished").length, call: rows.filter((r) => r.wants_call).length }, avgMinutes: finished.length ? Math.round(finished.reduce((n, r) => n + r.minutes, 0) / finished.length) : null });
+        return send(res, 200, { checks: out, total: rows.length, counts: { needs_review: rows.filter((r) => (r.state === "finished" || r.state === "ended") && r.staff_status === "needs_review").length, ended: rows.filter((r) => r.state === "ended").length, left: rows.filter((r) => r.state === "left").length, unfinished: rows.filter((r) => r.status !== "finished").length, call: rows.filter((r) => r.wants_call).length }, avgMinutes: finished.length ? Math.round(finished.reduce((n, r) => n + r.minutes, 0) / finished.length) : null });
       }
       if (p === "/api/admin/checks/delete" && method === "POST") {
         const u = await requireStaff(req);
@@ -990,7 +1035,7 @@ export async function createApp(opts = {}) {
           const others = await Promise.all(history.filter((h) => h.id !== c.id).map(async (h) => ({ id: h.id, created_at: h.created_at, status: h.status, steps: (await checks.steps(h.id)).map((s) => ({ setting: s.setting, recommended_value: s.recommended_value, measured_limit: s.measured_limit, summary: check.describe(s.setting, s) })) })));
           const { token_hash, ...safe } = c;
           return send(res, 200, {
-            check: { ...safe, device_words: check.deviceWords(c.device) },
+            check: { ...safe, device_words: check.deviceWords(c.device), state: check.checkState(c), state_words: check.STATE_WORDS[check.checkState(c)], change_words: (Array.isArray(c.setting_changes) ? c.setting_changes : []).map(check.settingChangeWords), not_reached: c.status === "finished" ? [] : check.plan(c.device).filter((s) => !steps.some((x) => x.setting === s && x.recommended_value != null)).map(check.prettySetting) },
             steps: check.SETTINGS.map((setting) => steps.find((s) => s.setting === setting)).filter(Boolean).map((s) => ({ ...s, name: check.prettySetting(s.setting), summary: check.describe(s.setting, s), flag_words: check.flagWords(s.flags) })),
             reviews, history: others, attention: check.needsAttention(steps),
             case_note: check.caseNote(c, steps, reviews[0] || null),

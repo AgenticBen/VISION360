@@ -31,7 +31,7 @@
 @media print { .sm { display: none; } }
 .sm-eye { display: inline-grid; place-items: center; background: #fff; border-radius: 6px; padding: 2px 4px; }
 .sm-eye img { display: block; height: 20px; width: auto; }
-html[data-contrast="high"] .brand-bar, html[data-theme="high"] .brand-bar, html[data-theme="dark"] .brand-bar { background: #fff; }
+html[data-contrast="high"] .brand-bar, html[data-theme="high"] .brand-bar, html[data-theme="dark"] .brand-bar, html[data-theme="blue"] .brand-bar { background: #fff; }
 .sm-link { font-weight: 700; color: inherit; text-decoration: none; border: 2px solid transparent; border-radius: 6px; padding: 0.4em 0.7em; min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; }
 .sm-link:hover { border-color: currentColor; text-decoration: underline; }
 .sm-link[aria-current="page"] { background: var(--page, #fff); color: var(--ink, #16191d); border-color: var(--page, #fff); }
