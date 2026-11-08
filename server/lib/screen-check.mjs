@@ -13,17 +13,33 @@
 //   magnification  a staircase: two right in a row at a size moves to the
 //                  next smaller size; two wrong at a size ends the test;
 //                  "I can't tell" counts as wrong. Recommended text size is
-//                  about twice the smallest size read correctly.
+//                  about twice the smallest size read correctly. The person
+//                  reads a short phrase aloud ("find my glasses") when the
+//                  wording file has phrases, otherwise a single word.
+//   pictures       the same staircase with four simple pictures (house,
+//                  apple, circle, square), the symbol set eye clinics use
+//                  for people who can't read letters. Changes nothing on the
+//                  page; tells staff how big icons and pictures need to be.
 //   contrast       left-or-right pairs that narrow to one color scheme
 //   cursor         computers only: the pointer starts very large and shrinks
 //                  while it's found; the last size found is kept; then a
 //                  color pair
 //   bold           one left-or-right pair: regular or bold text
-export const SETTINGS = ["speech_rate", "magnification", "contrast", "cursor", "bold"];
+export const SETTINGS = ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold"];
 
 export const RATES = ["0.7", "0.85", "1", "1.2", "1.4"];
 // Word sizes shown, in CSS pixels, largest first.
 export const LADDER = [72, 60, 48, 40, 34, 28, 24, 20, 18, 16, 14, 12];
+// Picture sizes shown, in CSS pixels, largest first.
+export const PICTURE_LADDER = [120, 96, 72, 56, 44, 36, 28, 22, 18, 14];
+export const PICTURES = ["house", "apple", "circle", "square"];
+// Other words people use for each picture.
+export const PICTURE_WORDS = {
+  house: ["house", "home", "houses", "building", "barn", "hut"],
+  apple: ["apple", "apples", "fruit", "cherry", "tomato", "peach"],
+  circle: ["circle", "ball", "round", "ring", "dot", "o", "oval", "zero", "sun"],
+  square: ["square", "box", "block", "rectangle", "squares", "cube"],
+};
 // The page's text at 100% is 18px; the display settings offer these sizes.
 export const BASE_PX = 18;
 export const TEXT_SIZES = [100, 125, 150, 200];
@@ -44,6 +60,43 @@ export function wordMatches(answer, target, soundsLike = {}) {
   const words = a.split(" ");
   const ok = new Set([t, ...(soundsLike[t] || []).map(norm)]);
   return words.some((w) => ok.has(w)) || ok.has(a);
+}
+
+// Small words that don't count when checking a phrase that was read aloud.
+const STOP = new Set(["a", "an", "the", "my", "to", "of", "on", "in", "at", "for", "and", "is", "it", "you", "me", "some", "your", "our", "with"]);
+function editDistance(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+// Two words that are close enough for speech recognition: the same, a plural,
+// or (for words of 4+ letters) one letter off ("bill" heard as "bell").
+function close(heard, want) {
+  if (heard === want) return true;
+  if (heard.replace(/(es|s)$/, "") === want.replace(/(es|s)$/, "")) return true;
+  return heard.length >= 4 && want.length >= 4 && editDistance(heard, want) <= 1;
+}
+// A spoken or typed answer to "read this out loud". A single word is checked
+// with wordMatches; a phrase needs its main words (not "the", "my", ...):
+// all of them for two, all but one for three or more, in any order.
+export function phraseMatches(answer, target, soundsLike = {}) {
+  const t = norm(target).split(" ").filter(Boolean);
+  if (t.length <= 1) return wordMatches(answer, target, soundsLike);
+  const heard = norm(answer).split(" ").filter(Boolean);
+  if (!heard.length) return false;
+  const content = t.filter((w) => !STOP.has(w));
+  const need = content.length ? content : t;
+  const hit = need.filter((w) => heard.some((h) => close(h, w) || (soundsLike[w] || []).map(norm).includes(h))).length;
+  return hit >= need.length - (need.length >= 3 ? 1 : 0);
+}
+// A spoken or typed answer to "what picture do you see?".
+export function pictureMatches(answer, target) {
+  const ok = PICTURE_WORDS[target] || [target];
+  const words = norm(answer).split(" ");
+  // Saying two different pictures ("a house or a circle") is a guess, not an answer.
+  const named = PICTURES.filter((p) => words.some((w) => (PICTURE_WORDS[p] || []).includes(w)));
+  return named.length === 1 && named[0] === target && words.some((w) => ok.includes(w));
 }
 
 // Which word to show for the nth trial: a fixed shuffle seeded by the check
@@ -115,7 +168,7 @@ function magnification(trials, ctx) {
     };
   };
   for (const t of trials) {
-    const ok = !t.cant_tell && wordMatches(t.answer, t.word, ctx.soundsLike);
+    const ok = !t.cant_tell && phraseMatches(t.answer, t.word, ctx.soundsLike);
     if (ok) {
       rightRun++;
       if (rightRun >= 2) {
@@ -129,7 +182,36 @@ function magnification(trials, ctx) {
     }
   }
   if (trials.length >= MAX_TRIALS) return end("max");
-  return { done: false, prompt: { kind: "word", px: LADDER[level], word: wordFor(ctx.seed, trials.length, ctx.words), n: trials.length + 1 } };
+  const list = ctx.phrases && ctx.phrases.length ? ctx.phrases : ctx.words;
+  return { done: false, prompt: { kind: "word", px: LADDER[level], word: wordFor(ctx.seed, trials.length, list), n: trials.length + 1 } };
+}
+
+// ------------------------------------------------------------------- pictures
+function pictures(trials, ctx) {
+  let level = 0, rightRun = 0, wrongHere = 0, smallestOk = null;
+  const end = (reason) => {
+    const flags = struggleFlags(trials);
+    if (smallestOk == null) flags.push("could_not_see_largest_picture");
+    if (reason === "max") flags.push("stopped_at_trial_limit");
+    const comfortPx = smallestOk == null ? PICTURE_LADDER[0] * 2 : smallestOk * 2;
+    return { done: true, result: { measured_limit: smallestOk == null ? null : String(smallestOk), recommended_value: String(comfortPx), unit: "px", tries: trials.length, flags, comfort_px: comfortPx, apply: {} } };
+  };
+  for (const t of trials) {
+    const ok = !t.cant_tell && pictureMatches(t.answer, t.picture);
+    if (ok) {
+      rightRun++;
+      if (rightRun >= 2) {
+        smallestOk = PICTURE_LADDER[level];
+        if (level === PICTURE_LADDER.length - 1) return end("bottom");
+        level++; rightRun = 0; wrongHere = 0;
+      }
+    } else {
+      rightRun = 0; wrongHere++;
+      if (wrongHere >= 2) return end("limit");
+    }
+  }
+  if (trials.length >= MAX_TRIALS) return end("max");
+  return { done: false, prompt: { kind: "picture", px: PICTURE_LADDER[level], picture: wordFor(ctx.seed + "/pictures", trials.length, PICTURES), choices: PICTURES, n: trials.length + 1 } };
 }
 
 // ---------------------------------------------------------- left-or-right pairs
@@ -189,10 +271,11 @@ function cursor(trials, ctx) {
 // One step of a test: what to show next, or the result.
 export function next(setting, trials = [], ctx = {}) {
   const t = Array.isArray(trials) ? trials : [];
-  const c = { words: ctx.words || ["apple"], soundsLike: ctx.soundsLike || {}, seed: ctx.seed || "", device: ctx.device || {} };
+  const c = { words: ctx.words || ["apple"], phrases: ctx.phrases || null, soundsLike: ctx.soundsLike || {}, seed: ctx.seed || "", device: ctx.device || {} };
   let out;
   if (setting === "speech_rate") out = speechRate(t);
   else if (setting === "magnification") out = magnification(t, c);
+  else if (setting === "pictures") out = pictures(t, c);
   else if (setting === "contrast") out = contrast(t);
   else if (setting === "cursor") out = cursor(t, c);
   else if (setting === "bold") out = bold(t);
@@ -208,7 +291,8 @@ export function cleanTrial(setting, raw, prompt) {
   const repeats = Math.round(Math.max(0, Math.min(50, Number(r.repeats) || 0)));
   const base = { ms, repeats, at: new Date().toISOString() };
   if (setting === "speech_rate") return { ...base, answer: ["faster", "slower", "keep"].includes(r.answer) ? r.answer : "keep", rate: prompt.rate };
-  if (setting === "magnification") return { ...base, word: prompt.word, px: prompt.px, answer: String(r.answer || "").slice(0, 60), cant_tell: !!r.cant_tell };
+  if (setting === "magnification") return { ...base, word: prompt.word, px: prompt.px, answer: String(r.answer || "").slice(0, 120), cant_tell: !!r.cant_tell };
+  if (setting === "pictures") return { ...base, picture: prompt.picture, px: prompt.px, answer: String(r.answer || "").slice(0, 60), cant_tell: !!r.cant_tell };
   if (setting === "contrast" || setting === "bold") return { ...base, left: prompt.left, right: prompt.right, answer: ["left", "right", "same"].includes(r.answer) ? r.answer : "same" };
   if (setting === "cursor") {
     if (prompt.kind === "pair_cursor") return { ...base, kind: "color", left: prompt.left, right: prompt.right, answer: ["left", "right", "same"].includes(r.answer) ? r.answer : "same" };
@@ -225,9 +309,10 @@ export function describe(setting, result) {
   if (setting === "magnification") {
     const comfort = result.comfort_px || (result.measured_limit ? Number(result.measured_limit) * 2 : LADDER[0] * 2);
     const extra = result.extra_zoom || textSizeFor(comfort).extraZoom;
-    const lim = result.measured_limit ? `smallest word read correctly: ${result.measured_limit}px` : `could not read the largest word (${LADDER[0]}px)`;
+    const lim = result.measured_limit ? `smallest text read correctly: ${result.measured_limit}px` : `could not read the largest text (${LADDER[0]}px)`;
     return `Text size ${v}% (${lim}; comfortable size about ${comfort}px${extra > 1 ? `, needs about ${extra}x extra zoom or a magnifier` : ""})`;
   }
+  if (setting === "pictures") return result.measured_limit ? `Pictures: smallest picture recognized ${result.measured_limit}px; icons and pictures about ${v}px should be comfortable` : `Pictures: could not recognize the largest picture (${PICTURE_LADDER[0]}px)`;
   if (setting === "contrast") return `Colors: ${{ high: "high contrast (yellow and white on black)", dark: "light text on dark", standard: "dark text on white" }[v] || v}`;
   if (setting === "cursor" && v === "not_found") return "Pointer: couldn't find the largest pointer (128px); no change made";
   if (setting === "cursor") return v === "not_tested" ? "Pointer: not tested (no pointer on this device, or uses the keyboard)" : `Pointer: ${String(v).split("/")[0] === "xl" ? "extra large" : String(v).split("/")[0] === "large" ? "large" : "normal size"}, ${String(v).split("/")[1]}`;
@@ -252,7 +337,7 @@ export function normalizeCode(text) {
 
 // Which tests a device gets, in order.
 export function plan(device = {}) {
-  const steps = ["speech_rate", "magnification", "contrast"];
+  const steps = ["speech_rate", "magnification", "pictures", "contrast"];
   if (!device.touchOnly && !device.skipPointer) steps.push("cursor");
   steps.push("bold");
   return steps;
@@ -260,10 +345,11 @@ export function plan(device = {}) {
 
 // ---------------------------------------------------------------- staff side
 export const DECISIONS = ["accept", "edit", "reject"];
-const PRETTY = { speech_rate: "Speaking speed", magnification: "Text size", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
+const PRETTY = { speech_rate: "Speaking speed", magnification: "Text size", pictures: "Pictures", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
 const FLAG_WORDS = {
   needs_magnifier_or_zoom: "needs a magnifier or screen zoom beyond 200% text",
-  could_not_read_largest: "could not read the largest word",
+  could_not_read_largest: "could not read the largest text",
+  could_not_see_largest_picture: "could not recognize the largest picture",
   could_not_find_largest_pointer: "could not find the largest pointer",
   asked_to_repeat_often: "asked to repeat often",
   many_cant_tell: "often said \"I can't tell\"",
@@ -277,7 +363,7 @@ export function flagWords(flags) { return (flags || []).map((f) => FLAG_WORDS[f]
 // the largest, or the person struggled.
 export function needsAttention(steps) {
   const all = (steps || []).flatMap((s) => s.flags || []);
-  return all.some((f) => ["needs_magnifier_or_zoom", "could_not_read_largest", "could_not_find_largest_pointer", "many_cant_tell"].includes(f));
+  return all.some((f) => ["needs_magnifier_or_zoom", "could_not_read_largest", "could_not_see_largest_picture", "could_not_find_largest_pointer", "many_cant_tell"].includes(f));
 }
 
 const DEVICE_WORDS = { ios: { phone: "iPhone", tablet: "iPad" }, android: { phone: "Android phone", tablet: "Android tablet" }, mac: { computer: "Mac" }, windows: { computer: "Windows computer" }, chromeos: { computer: "Chromebook" } };

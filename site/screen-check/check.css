@@ -69,3 +69,9 @@
 .guide ol li { margin: 0.3rem 0; }
 .linkish { font: inherit; background: none; border: 0; padding: 0.2rem 0; min-height: 44px; color: var(--accent); text-decoration: underline; cursor: pointer; }
 .org-phone { display: block; margin-top: 0.2rem; }
+
+/* Vision Assessment: phrases wrap inside their box at any size, and the
+   pictures use the page's text color. */
+.phrase-box .word { min-width: 0; max-width: 100%; text-align: center; overflow-wrap: break-word; white-space: normal; }
+.pic-box { color: var(--ink); min-height: 10rem; }
+.pic-box .pic { display: block; max-width: 100%; height: auto; }

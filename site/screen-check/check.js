@@ -32,7 +32,13 @@
   var KEY = "v360-check";               // this tab's check id and token, to carry on after a reload
   var FROM_KEY = "v360-check-from";     // set by the Vision Assessment's "Check my screen settings" button
   var ASSIST_KEY = "v360-demo-settings"; // the assistant's own settings (speech rate)
-  var NAMES = { speech_rate: "Speaking speed", magnification: "Text size", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
+  var NAMES = { speech_rate: "Speaking speed", magnification: "Text size", pictures: "Pictures", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
+  // The same live test runs as the Vision Assessment (/assessment/). The older
+  // question-and-answer version stays at /assessment/interview/.
+  var ASSESS = /^\/assessment\/?$/.test(location.pathname);
+  var INTERVIEW_URL = "/assessment/interview/";
+  var PAGE_NAME = ASSESS ? "Vision Assessment" : "Screen settings check";
+  if (ASSESS) { document.title = "Vision Assessment — Vision 360"; $("stage-h").textContent = PAGE_NAME; }
 
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var canListen = !!SR;
@@ -159,6 +165,7 @@
     stopListening();
     st.busy = false;
     st.onN = null;
+    st.onDigit = null;
     $("stage-h").textContent = o.title;
     $("stage-sub").textContent = o.sub || "";
     $("stage-sub").hidden = !o.sub;
@@ -187,6 +194,7 @@
     var inField = t && t.closest && t.closest("input, textarea, select, button, a, [contenteditable]");
     if ((e.key === " " || e.code === "Space") && !inField && primary && !primary.disabled) { e.preventDefault(); primary.click(); }
     if ((e.key === "n" || e.key === "N") && !inField && st.onN) { e.preventDefault(); st.onN(); }
+    if (/^[1-4]$/.test(e.key) && !inField && st.onDigit) { e.preventDefault(); st.onDigit(Number(e.key)); }
   });
   $("repeat-btn").addEventListener("click", function () { st.repeats++; say(st.lastSay).then(function () { if (waiting) listen(waiting); }); });
   $("listen-btn").addEventListener("click", function () { st.listenOn = !st.listenOn; syncListenBtn(); if (st.listenOn && waiting) listen(waiting); });
@@ -216,10 +224,19 @@
       { label: "I have a code from before", onClick: function () { showCode(); } },
     ];
     if (resume) actions.unshift({ label: "Carry on where I left off", onClick: function () { carryOn(resume); } });
-    screen({ title: "Screen settings check", sub: "Find the text size, colors, speaking speed and pointer that are easiest for you. It takes about ten minutes. Answer by talking, with the keyboard, or by tapping.", body: [el("p", { class: "hint", text: "Your answers are kept private, for Lions Services staff only. This isn't a medical eye exam." })], actions: actions, focus: false });
+    if (ASSESS) actions.push({ label: "Answer questions instead", onClick: function () { location.href = INTERVIEW_URL; } });
+    screen({ title: PAGE_NAME,
+      sub: ASSESS
+        ? "A live check of what you can see on this screen: read short phrases out loud, name pictures, and pick the colors and pointer that are easiest for you. It takes about ten minutes. Answer by talking, with the keyboard, or by tapping."
+        : "Find the text size, colors, speaking speed and pointer that are easiest for you. It takes about ten minutes. Answer by talking, with the keyboard, or by tapping.",
+      body: [
+        el("p", { class: "hint", text: "Your answers are kept private, for Lions Services staff only. This isn't a medical eye exam." }),
+        ASSESS ? el("p", { class: "hint", text: "If your vision changed suddenly, or you have eye pain, please contact an eye doctor or urgent care today." }) : null,
+        ASSESS ? el("p", { class: "hint", text: "Helping someone? Let the person with low vision sit at the screen and answer." }) : null,
+      ], actions: actions, focus: false });
     // Talk first: a few seconds after opening, or on the first tap or key.
     var started = false;
-    function welcome() { if (started || st.id || st.sr || st.leftStart) return; started = true; say(C.say.intro).then(function (ok) { if (!ok && st.blocked) { started = false; } else listen(function (t, n) { if (/\b(ready|start|yes|begin|go)\b/.test(n)) begin(); }); }); }
+    function welcome() { if (started || st.id || st.sr || st.leftStart) return; started = true; say(ASSESS && C.say.assessIntro ? C.say.assessIntro : C.say.intro).then(function (ok) { if (!ok && st.blocked) { started = false; } else listen(function (t, n) { if (/\b(ready|start|yes|begin|go)\b/.test(n)) begin(); }); }); }
     st.leftStart = false;
     clearTimeout(st.welcomeTimer);
     st.welcomeTimer = setTimeout(welcome, 5000);
@@ -332,7 +349,7 @@
       st.busy = false; alertNow(e.message); runStep(st.stepIdx);
     });
   }
-  var DONE_LINE = { speech_rate: "rateKept", magnification: "magDone", contrast: "contrastDone", cursor: "cursorDone", bold: "boldDone" };
+  var DONE_LINE = { speech_rate: "rateKept", magnification: "magDone", pictures: "picDone", contrast: "contrastDone", cursor: "cursorDone", bold: "boldDone" };
   function handle(setting, r) {
     if (r.done) {
       applyResult(r.result);
@@ -344,6 +361,7 @@
     var firstTime = !st.first[setting]; st.first[setting] = true;
     if (p.kind === "rate") return showRate(p, firstTime);
     if (p.kind === "word") return showWord(p, firstTime);
+    if (p.kind === "picture") return showPicture(p, firstTime);
     if (p.kind === "pair_theme") return showPair(setting, p, firstTime, "theme");
     if (p.kind === "pair_bold") return showPair(setting, p, firstTime, "bold");
     if (p.kind === "find_pointer") return showFindPointer(p, firstTime);
@@ -375,15 +393,52 @@
   }
 
   function showWord(p, firstTime) {
-    var input = el("input", { id: "word-in", type: "text", autocomplete: "off", autocapitalize: "off", spellcheck: "false", maxlength: "60", "aria-label": "Type the word you see" });
+    // A short phrase to read out loud, or (with older wording) one word.
+    var phrase = /\s/.test(String(p.word).trim());
+    var what = phrase ? "phrase" : "word";
+    var input = el("input", { id: "word-in", type: "text", autocomplete: "off", autocapitalize: "off", spellcheck: "false", maxlength: "120", "aria-label": "Type the " + what + " you see" });
     var go = function (answer) { send("magnification", { answer: answer }); };
     var cant = function () { send("magnification", { cant_tell: true }); };
-    var box = el("div", { class: "word-box", "aria-hidden": "true" }, [el("span", { class: "word", style: "font-size:" + p.px + "px", text: p.word })]);
-    screen({ title: "What word do you see?", sub: "Say the word, or type it. If you can't read it, that's fine: choose \"I can't tell\".", progress: progressText(st.stepIdx) + " — word " + p.n,
-      body: [box, el("form", { class: "answer-row", onsubmit: function (e) { e.preventDefault(); if (input.value.trim()) go(input.value); } }, [el("label", { for: "word-in", text: "Type the word" }), input, el("button", { type: "submit", class: "btn btn-primary", text: "Done" })])],
+    var box = el("div", { class: "word-box" + (phrase ? " phrase-box" : ""), "aria-hidden": "true" }, [el("span", { class: "word", style: "font-size:" + p.px + "px", text: p.word })]);
+    screen({ title: phrase ? "Read this out loud" : "What word do you see?", sub: (phrase ? "Read the phrase out loud, or type it." : "Say the word, or type it.") + " If you can't read it, that's fine: choose \"I can't tell\".", progress: progressText(st.stepIdx) + " — " + what + " " + p.n,
+      body: [box, el("form", { class: "answer-row", onsubmit: function (e) { e.preventDefault(); if (input.value.trim()) go(input.value); } }, [el("label", { for: "word-in", text: "Type the " + what }), input, el("button", { type: "submit", class: "btn btn-primary", text: "Done" })])],
       actions: [{ label: "I can't tell", onClick: cant }],
-      speak: firstTime ? C.say.magIntro + " " + C.say.magWord : C.say.magWord,
+      speak: phrase ? (firstTime ? C.say.readIntro : C.say.readNext) : (firstTime ? C.say.magIntro + " " + C.say.magWord : C.say.magWord),
       listen: function (t, n) { if (/\b(can't tell|cannot tell|can't see|cannot see|can't read|don't know|no idea|not sure|nothing)\b/.test(n)) cant(); else go(t); } });
+  }
+
+  // The four pictures, drawn as thick outlines in the page's text color.
+  var PIC_LABEL = { house: "House", apple: "Apple", circle: "Circle", square: "Square" };
+  function pictureSvg(name, px) {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("width", px); svg.setAttribute("height", px); svg.setAttribute("viewBox", "0 0 100 100"); svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("class", "pic");
+    var d = {
+      house: "M12 50 L50 14 L88 50 M24 40 V88 H76 V40",
+      apple: "M50 32 C34 18 10 26 12 52 C14 78 34 94 50 84 C66 94 86 78 88 52 C90 26 66 18 50 32 Z M50 32 C50 22 54 14 62 10",
+      square: "M14 14 H86 V86 H14 Z",
+    }[name];
+    var shape;
+    if (name === "circle") { shape = document.createElementNS(ns, "circle"); shape.setAttribute("cx", "50"); shape.setAttribute("cy", "50"); shape.setAttribute("r", "37"); }
+    else { shape = document.createElementNS(ns, "path"); shape.setAttribute("d", d); }
+    shape.setAttribute("fill", "none"); shape.setAttribute("stroke", "currentColor"); shape.setAttribute("stroke-width", "9"); shape.setAttribute("stroke-linejoin", "round"); shape.setAttribute("stroke-linecap", "round");
+    svg.appendChild(shape);
+    return svg;
+  }
+  function showPicture(p, firstTime) {
+    var go = function (answer) { send("pictures", { answer: answer }); };
+    var cant = function () { send("pictures", { cant_tell: true }); };
+    var box = el("div", { class: "word-box pic-box" }, [pictureSvg(p.picture, p.px)]);
+    var acts = (p.choices || ["house", "apple", "circle", "square"]).map(function (c, i) { return { label: PIC_LABEL[c] || c, keyHint: String(i + 1), onClick: function () { go(c); } }; });
+    acts.push({ label: "I can't tell", onClick: cant });
+    st.onDigit = function (k) { var c = (p.choices || [])[k - 1]; if (c) go(c); };
+    screen({ title: "What picture do you see?", sub: "A house, an apple, a circle or a square. Say it, or press its button. If you can't tell, that's fine: choose \"I can't tell\".", progress: progressText(st.stepIdx) + " — picture " + p.n,
+      body: [box], actions: acts,
+      speak: firstTime ? C.say.picIntro : C.say.picNext,
+      listen: function (t, n) {
+        if (/\b(can't tell|cannot tell|can't see|cannot see|don't know|no idea|not sure|nothing)\b/.test(n)) cant(); else go(t);
+      } });
   }
 
   var SAMPLE = "Lions Services helps people in the Charlotte area live well with vision loss.";
@@ -577,7 +632,8 @@
   function suggestSection(c) {
     var wrap = el("section", { class: "suggest", "aria-labelledby": "suggest-h" }, [el("h2", { id: "suggest-h", text: "Services that can help" })]);
     var mag = c.steps.filter(function (s) { return s.setting === "magnification"; })[0];
-    var needZoom = mag && (mag.flags || []).some(function (f) { return f === "needs_magnifier_or_zoom" || f === "could_not_read_largest"; });
+    var pics = c.steps.filter(function (s) { return s.setting === "pictures"; })[0];
+    var needZoom = (mag && (mag.flags || []).some(function (f) { return f === "needs_magnifier_or_zoom" || f === "could_not_read_largest"; })) || (pics && (pics.flags || []).indexOf("could_not_see_largest_picture") !== -1);
     var cats = needZoom ? ["low_vision_clinic", "assistive_technology"] : ["assistive_technology"];
     fetch("/data/organizations.json").then(function (r) { return r.json(); }).then(function (orgs) {
       function rank(o) {
@@ -639,6 +695,9 @@
     C = all[0];
     natural = !!(all[2].tts && all[2].tts.provider === "elevenlabs");
     if (!(all[1].features && all[1].features.screenCheck)) {
+      // The Vision Assessment never shows a closed page: until the live test
+      // is switched on, it opens the question-and-answer version.
+      if (ASSESS) { location.replace(INTERVIEW_URL); return; }
       screen({ title: "Screen settings check", sub: "This check isn't open yet.", body: [el("p", null, [el("a", { href: "/", text: "Go to the Vision 360 home page" })])], focus: false });
       return;
     }
