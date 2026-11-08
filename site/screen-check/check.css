@@ -19,14 +19,20 @@
 .answer-row label { display: block; font-weight: 700; width: 100%; }
 .answer-row input, .field input, .field select { font: inherit; min-height: 52px; padding: 0.4rem 0.7rem; border: 2px solid var(--line); border-radius: 8px; background: var(--page); color: var(--ink); flex: 1 1 12rem; min-width: 0; }
 
-/* Left-or-right pairs. Each side shows its own fixed colors. */
-.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 0 0 1rem; }
-.pair-side { border: 3px solid var(--line); border-radius: 12px; padding: 0.8rem; min-height: 9rem; display: flex; flex-direction: column; justify-content: center; }
-.pair-tag { font-family: var(--font-heading, inherit); font-weight: 800; font-size: 1rem; margin: 0 0 0.3rem; }
+/* Left-or-right pairs: two big halves, each a button. On phones they stack
+   as top and bottom. Each side shows its own fixed colors. */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 0 0 1rem; min-height: min(55vh, 34rem); }
+.pair-side { font: inherit; text-align: left; cursor: pointer; border: 3px solid var(--line); border-radius: 12px; padding: 0.8rem 1rem; min-height: 9rem; display: flex; flex-direction: column; justify-content: center; background: var(--page); color: var(--ink); }
+.pair-side:hover { border-color: var(--accent); }
+.pair-side:focus-visible, .pair-side:focus { outline: 8px solid #ffd24a; outline-offset: 3px; box-shadow: 0 0 0 14px #000; }
+.pair-side[disabled] { cursor: default; opacity: 0.8; }
+.pair-tag { display: block; font-family: var(--font-heading, inherit); font-weight: 800; font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 0.3rem; }
+.tag-narrow { display: none; }
 .pair-text { margin: 0; font-size: 1.15rem; line-height: 1.45; }
 .theme-high { background: #000; color: #fff; } .theme-high .pair-tag { color: #ffd24a; }
 .theme-dark { background: #11151b; color: #f1f4f8; } .theme-dark .pair-tag { color: #9cc1ff; }
 .theme-standard { background: #fff; color: #16191d; } .theme-standard .pair-tag { color: #051362; }
+.theme-blue { background: #0b2560; color: #fff; } .theme-blue .pair-tag { color: #ffd24a; }
 .weight-regular .pair-text { font-weight: 400; } .weight-bold .pair-text { font-weight: 700; }
 .pointer-art { display: grid; place-items: center; min-height: 10rem; }
 .pointer-art svg { display: block; max-width: 100%; height: auto; }
@@ -52,13 +58,16 @@
 
 @media (max-width: 640px) {
   .stage-h { font-size: 1.3rem; }
-  .pair { gap: 0.5rem; }
+  .pair { gap: 0.5rem; grid-template-columns: 1fr; min-height: 0; }
+  .pair-side { min-height: 26vh; }
+  .tag-wide { display: none; }
+  .tag-narrow { display: inline; }
   .pair-side { padding: 0.5rem; min-height: 7rem; }
   .pair-text { font-size: 1rem; }
   .stage-actions .btn { flex: 1 1 auto; }
 }
 @media print {
-  .sm, .brand-bar, .voice-row, .stage-actions, .skip-link, .check-progress, #rq-root { display: none !important; }
+  .a-top, .a-menu, .sm, .brand-bar, .voice-row, .stage-actions, .skip-link, .check-progress, #rq-root { display: none !important; }
   .results li { break-inside: avoid; }
 }
 
@@ -75,3 +84,52 @@
 .phrase-box .word { min-width: 0; max-width: 100%; text-align: center; overflow-wrap: break-word; white-space: normal; }
 .pic-box { color: var(--ink); min-height: 10rem; }
 .pic-box .pic { display: block; max-width: 100%; height: auto; }
+
+/* ---------------------------------------------------------------- the shell
+   Vision Assessment v2: top bar (steps and Menu), the test, and a caption
+   bar along the bottom. Everything here uses rem, so it follows the text
+   size the person chooses; only the sample halves keep their own colors. */
+body.assess { min-height: 100vh; display: flex; flex-direction: column; }
+body.assess .check-main { flex: 1 0 auto; width: 100%; max-width: 72rem; margin: 0 auto; padding: 1rem 16px 2rem; }
+.a-top { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem 1rem; flex-wrap: wrap; padding: 0.5rem 16px; border-bottom: 2px solid var(--line-soft); background: var(--surface); }
+.a-where { display: flex; align-items: center; gap: 0.4rem 0.9rem; flex-wrap: wrap; min-width: 0; }
+.a-where .check-progress { margin: 0; color: var(--ink); }
+.a-dots { list-style: none; display: flex; gap: 0.35rem; margin: 0; padding: 0; }
+.a-dots li { width: 0.8rem; height: 0.8rem; border-radius: 50%; border: 2px solid var(--ink); }
+.a-dots li.done { background: var(--ink); }
+.a-dots li.now { background: var(--accent); border-color: var(--accent); transform: scale(1.25); }
+.a-menu-btn { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 52px; font-weight: 800; }
+.a-bars { display: inline-flex; flex-direction: column; justify-content: space-between; width: 1.1rem; height: 0.85rem; }
+.a-bars span { display: block; height: 3px; background: currentColor; border-radius: 2px; }
+.a-menu { background: var(--surface); border-bottom: 3px solid var(--accent); outline: none; }
+.a-menu-inner { max-width: 72rem; margin: 0 auto; padding: 0.8rem 16px 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); gap: 0.8rem 1.4rem; align-items: start; }
+.a-menu-inner > h2, .a-menu-inner > .hint { grid-column: 1 / -1; margin: 0; }
+.a-menu-inner > h2 { font-size: 1.3rem; }
+.a-menu-group h3 { font-size: 1rem; margin: 0 0 0.3rem; }
+.a-menu-group .hint { margin: 0 0 0.3rem; }
+.a-swatches .swatch { border-width: 3px; }
+.a-swatches .swatch.theme-standard { background: #fff; color: #16191d; border-color: #16191d; }
+.a-swatches .swatch.theme-blue { background: #0b2560; color: #fff; border-color: #0b2560; }
+.a-swatches .swatch.theme-dark { background: #11151b; color: #f1f4f8; border-color: #11151b; }
+.a-swatches .swatch.theme-high { background: #000; color: #ffd24a; border-color: #000; }
+.a-swatches .swatch[aria-pressed="true"] { outline: 4px solid var(--accent); outline-offset: 2px; box-shadow: none; }
+.a-says summary { font-weight: 700; min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.a-says dt { font-weight: 700; margin-top: 0.4rem; }
+.a-says dd { margin: 0 0 0 1rem; }
+.a-leave .btn { min-height: 52px; }
+#m-close { justify-self: start; min-height: 52px; }
+.a-sub-h { font-size: 1.15rem; margin: 0.8rem 0 0.4rem; }
+.a-not-reached { margin: 0 0 1rem; }
+/* The caption bar: what the voice is saying and what it heard. */
+.a-caption { position: sticky; bottom: 0; z-index: 30; background: var(--surface); border-top: 3px solid var(--line); padding: 0.5rem 16px 0.6rem; display: block; }
+.a-caption-text { max-width: 72rem; margin: 0 auto 0.3rem; font-size: 1.05rem; line-height: 1.4; max-height: 4.3em; overflow-y: auto; }
+.a-caption-row { max-width: 72rem; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+/* At large sizes or on short screens a pinned bar would hide the test and the
+   menu, so it sits at the end of the page instead. */
+html[data-textsize="200"] .a-caption, html[data-textsize="300"] .a-caption { position: static; }
+@media (max-height: 700px) { html[data-textsize="150"] .a-caption { position: static; } }
+@media (max-width: 640px) {
+  .a-top { padding: 0.4rem 12px; }
+  .a-menu-btn { padding: 0.3rem 0.8rem; }
+  body.assess .check-main { padding: 0.8rem 12px 1.5rem; }
+}

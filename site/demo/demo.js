@@ -66,7 +66,7 @@
 
   // Display settings bar: always on screen under the heading, collapsible.
   var BAR_KEY = "v360-demo-bar";
-  var THEME_NAMES = { standard: "Standard colors", dark: "Dark", high: "High contrast" };
+  var THEME_NAMES = { standard: "Standard colors", blue: "Blue", dark: "Dark", high: "High contrast" };
   function syncBar() {
     [].forEach.call(document.querySelectorAll("#display-bar [data-set]"), function (b) {
       b.setAttribute("aria-pressed", String(String(settings[b.getAttribute("data-set")]) === b.getAttribute("data-value")));
@@ -1179,7 +1179,7 @@
   if (ON_ASSESSMENT) fetch("/api/site", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { checkOn = !!(j.features && j.features.screenCheck); }).catch(function () {});
   $("to-check").addEventListener("click", function () {
     try { sessionStorage.setItem("v360-check-from", JSON.stringify({ sessionId: app.sessionId, token: app.token })); } catch (e) {}
-    location.href = "/screen-check/";
+    location.href = "/assessment/";
   });
 
   function finishSession(userEnded) {

@@ -9,6 +9,13 @@
  * Talks first: the welcome plays a few seconds after the page opens, or on
  * the first tap or key press if the browser blocks sound. "I use a screen
  * reader" turns the talking off so the screen reader leads.
+ *
+ * The shell (Vision Assessment v2): a top bar with the steps and a Menu, the
+ * test in the middle (two halves for each pair, top and bottom on phones), and
+ * a caption bar with what was said and heard. Spoken commands
+ * (voice-commands.js) work at any step: bigger, blue background, show menu,
+ * go back, skip, end. Anything changed outside a test is sent to the server
+ * so staff can see what the person reached for.
  */
 (function () {
   "use strict";
@@ -28,6 +35,7 @@
     return n;
   }
   var D = window.V360Display;
+  var K = window.V360Commands || null;
   var html = document.documentElement;
   var KEY = "v360-check";               // this tab's check id and token, to carry on after a reload
   var FROM_KEY = "v360-check-from";     // set by the Vision Assessment's "Check my screen settings" button
@@ -45,7 +53,7 @@
   var canSpeak = "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
   var natural = false;
   var C = null;            // wording (site/data/screen-check.json)
-  var st = { sr: false, listenOn: true, rate: savedRate(), lastSay: "", repeats: 0, trialStart: 0, stepIdx: 0, plan: [], first: {} };
+  var st = { sr: false, listenOn: true, rate: savedRate(), volume: 1, lastSay: "", repeats: 0, trialStart: 0, stepIdx: 0, plan: [], first: {}, phase: "start", resume: null, sides: null, closed: false };
 
   function savedRate() {
     try { var r = (JSON.parse(localStorage.getItem(ASSIST_KEY) || "{}") || {}).rate; return ["0.7", "0.85", "1", "1.2", "1.4"].indexOf(String(r)) !== -1 ? String(r) : "0.85"; } catch (e) { return "0.85"; }
@@ -80,6 +88,7 @@
   function say(text, rate) {
     st.lastSay = text;
     announce(text);
+    if (text) $("caption").textContent = text;
     if (st.sr || !text) return Promise.resolve(false);
     stopListening();
     stopSpeaking();
@@ -90,7 +99,7 @@
       return new Promise(function (resolve) {
         if (!canSpeak || my !== speakToken) return resolve(false);
         var u = new SpeechSynthesisUtterance(text);
-        u.lang = "en-US"; u.rate = Number(r) || 1;
+        u.lang = "en-US"; u.rate = Number(r) || 1; u.volume = st.volume;
         u.onend = function () { resolve(true); };
         u.onerror = function (e) { if (e && e.error === "not-allowed") st.blocked = true; resolve(false); };
         try { window.speechSynthesis.speak(u); } catch (e) { resolve(false); }
@@ -105,6 +114,7 @@
           return new Promise(function (resolve) {
             var url = URL.createObjectURL(blob);
             audio = new Audio(url);
+            audio.volume = st.volume;
             audio.onended = function () { URL.revokeObjectURL(url); resolve(true); };
             audio.play().catch(function (e) { if (e && e.name === "NotAllowedError") st.blocked = true; resolve(false); });
           });
@@ -140,11 +150,14 @@
       var t = heard.trim();
       if (!t) { if (waiting === onText && st.listenOn) setTimeout(function () { if (waiting === onText && !rec) listen(onText); }, 250); return; }
       var n = norm(t);
-      if (/^(repeat|say (that|it) again|again|what)( please)?$/.test(n)) { st.repeats++; return say(st.lastSay).then(function () { listen(onText); }); }
-      if (/\bstop listening\b/.test(n)) { st.listenOn = false; syncListenBtn(); return say(C.say.stopped); }
+      var cmd = K ? K.parse(t) : null;
       setListen("", "Heard: " + t);
+      // The screen's own meaning first ("faster" on the speed test), then
+      // commands that work anywhere, then the screen's answer.
+      if (cmd && st.onCommand && st.onCommand(cmd) === true) return;
+      if (cmd && K.isGlobal(cmd)) return command(cmd, "voice");
       if (st.busy) return;
-      onText(t, n);
+      onText(t, n, cmd);
     };
     try { r.start(); rec = r; setListen("listening", "Listening…"); } catch (e) { setListen("", ""); }
   }
@@ -166,6 +179,8 @@
     st.busy = false;
     st.onN = null;
     st.onDigit = null;
+    st.onCommand = o.onCommand || null;
+    if (o.resume !== undefined) st.resume = o.resume;
     $("stage-h").textContent = o.title;
     $("stage-sub").textContent = o.sub || "";
     $("stage-sub").hidden = !o.sub;
@@ -180,6 +195,9 @@
       acts.appendChild(b);
     });
     $("progress").textContent = o.progress || "";
+    var halves = body.querySelectorAll(".pair > .pair-side");
+    st.sides = halves.length === 2 ? [halves[0], halves[1]] : null;
+    renderDots();
     if (o.focus !== false) { try { (o.focusEl || $("stage")).focus({ preventScroll: false }); } catch (e) {} }
     st.trialStart = Date.now();
     st.repeats = 0;
@@ -189,9 +207,17 @@
 
   // Space presses the main button (unless typing or on another control).
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") { stopSpeaking(); return; }
+    if (e.key === "Escape") { stopSpeaking(); if (!$("a-menu").hidden) closeMenu(false); return; }
     var t = e.target;
     var inField = t && t.closest && t.closest("input, textarea, select, button, a, [contenteditable]");
+    var typing = t && t.closest && t.closest("input, textarea, select, [contenteditable], #a-menu");
+    // Left and right halves: arrow keys, or F and J (the keys with bumps).
+    // They move to a half; Space or Enter picks it.
+    if (st.sides && !typing && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      var k = e.key;
+      var which = /^(ArrowLeft|ArrowUp|f|F)$/.test(k) ? 0 : /^(ArrowRight|ArrowDown|j|J)$/.test(k) ? 1 : -1;
+      if (which !== -1 && !st.sides[which].disabled) { e.preventDefault(); st.sides[which].focus(); return; }
+    }
     if ((e.key === " " || e.code === "Space") && !inField && primary && !primary.disabled) { e.preventDefault(); primary.click(); }
     if ((e.key === "n" || e.key === "N") && !inField && st.onN) { e.preventDefault(); st.onN(); }
     if (/^[1-4]$/.test(e.key) && !inField && st.onDigit) { e.preventDefault(); st.onDigit(Number(e.key)); }
@@ -225,7 +251,8 @@
     ];
     if (resume) actions.unshift({ label: "Carry on where I left off", onClick: function () { carryOn(resume); } });
     if (ASSESS) actions.push({ label: "Answer questions instead", onClick: function () { location.href = INTERVIEW_URL; } });
-    screen({ title: PAGE_NAME,
+    st.phase = "start";
+    screen({ title: PAGE_NAME, resume: null,
       sub: ASSESS
         ? "A live check of what you can see on this screen: read short phrases out loud, name pictures, and pick the colors and pointer that are easiest for you. It takes about ten minutes. Answer by talking, with the keyboard, or by tapping."
         : "Find the text size, colors, speaking speed and pointer that are easiest for you. It takes about ten minutes. Answer by talking, with the keyboard, or by tapping.",
@@ -283,6 +310,7 @@
       var c = j.check;
       st.code = c.code; st.plan = c.plan; st.device = c.device;
       if (c.status !== "started") return showResults(c);
+      st.phase = "test";
       if (canListen || canSpeak) $("voice-row").hidden = false;
       syncListenBtn();
       var i = 0; while (i < c.steps.length && c.steps[i].done) i++;
@@ -291,8 +319,15 @@
   }
 
   function showPractice() {
-    var heard = function () { say(C.say.practiceHeard).then(showDevice); };
-    screen({ title: "A quick practice", sub: "Say \"ready\", press the Space bar, or press the Ready button. You can say \"repeat\" or \"stop listening\" at any time.", actions: [{ label: "Ready", primary: true, keyHint: "Space", onClick: heard }], speak: C.say.practice, listen: function () { heard(); } });
+    st.phase = "pre";
+    var done = false;
+    var heard = function () { if (done) return; done = true; lock(); say(C.say.practiceHeard).then(showDevice); };
+    var phone = !!(window.matchMedia && matchMedia("(max-width: 640px)").matches);
+    var words = phone ? ["top", "bottom"] : ["left", "right"];
+    screen({ title: "A quick practice", sub: "Say \"" + words[0] + "\" or \"" + words[1] + "\"" + (phone ? "," : ", press an arrow key,") + " or tap a box. You can say \"what can I say\" at any time.",
+      body: [pairBox(function (which) { return { kids: [el("p", { class: "pair-text", text: "This is the " + words[which === "left" ? 0 : 1] + " box." })] }; }, heard)],
+      speak: phone ? C.say.practicePhone : C.say.practice, resume: showPractice,
+      listen: function onAns(t, n, cmd) { if (cmd && /^(left|right|yes|same)$/.test(cmd.cmd) || /\b(left|right|top|bottom|ready)\b/.test(n)) heard(); else listen(onAns); } });
   }
 
   function showDevice() {
@@ -300,14 +335,15 @@
     var line = C.say.deviceAsk.replace("{device}", name);
     var yes = function () { showGoal(); };
     var no = function () { fixDevice(); };
-    screen({ title: "Your device", sub: "You're using " + name + ". Is that right?", actions: [{ label: "Yes", primary: true, keyHint: "Space", onClick: yes }, { label: "No", onClick: no }], speak: line, listen: function onAns(t, n) { if (YES.test(n)) yes(); else if (NO.test(n)) no(); else say(C.say.cantHear).then(function () { listen(onAns); }); } });
+    st.phase = "pre";
+    screen({ title: "Your device", sub: "You're using " + name + ". Is that right?", resume: showDevice, actions: [{ label: "Yes", primary: true, keyHint: "Space", onClick: yes }, { label: "No", onClick: no }], speak: line, listen: function onAns(t, n) { if (YES.test(n)) yes(); else if (NO.test(n)) no(); else say(C.say.cantHear).then(function () { listen(onAns); }); } });
   }
   function fixDevice() {
     function pickType(type) {
       var d = Object.assign({}, st.device, { type: type, touchOnly: type !== "computer" });
       api("POST", "/api/check/" + st.id + "/details", { device: d }).then(function (j) { st.device = j.check.device; st.plan = j.check.plan; showGoal(); }).catch(function (e) { alertNow(e.message); });
     }
-    screen({ title: "Which are you using?", actions: [{ label: "A phone", onClick: function () { pickType("phone"); } }, { label: "A tablet", onClick: function () { pickType("tablet"); } }, { label: "A computer", onClick: function () { pickType("computer"); } }], speak: C.say.deviceFix, listen: function (t, n) {
+    screen({ title: "Which are you using?", resume: fixDevice, actions: [{ label: "A phone", onClick: function () { pickType("phone"); } }, { label: "A tablet", onClick: function () { pickType("tablet"); } }, { label: "A computer", onClick: function () { pickType("computer"); } }], speak: C.say.deviceFix, listen: function (t, n) {
       if (/phone|iphone|android/.test(n)) pickType("phone"); else if (/tablet|ipad/.test(n)) pickType("tablet"); else if (/computer|laptop|desktop|mac|windows|chromebook/.test(n)) pickType("computer"); else say(C.say.cantHear).then(fixDevice);
     } });
   }
@@ -319,16 +355,18 @@
       st.goal = g;
       (g ? api("POST", "/api/check/" + st.id + "/details", { goal: g }) : Promise.resolve()).then(function () { runStep(0); }).catch(function () { runStep(0); });
     }
-    screen({ title: "What would you like to do on this device?", sub: "For example: read email, video call family, or read the news. Or skip this.", body: [el("div", { class: "field" }, [el("label", { for: "goal-in", text: "What you'd like to do" }), input])],
+    screen({ title: "What would you like to do on this device?", resume: showGoal, sub: "For example: read email, video call family, or read the news. Or skip this.", body: [el("div", { class: "field" }, [el("label", { for: "goal-in", text: "What you'd like to do" }), input])],
       actions: [{ label: "Next", primary: true, onClick: function () { save(input.value); } }, { label: "Skip", onClick: function () { save(""); } }],
       speak: C.say.goal, listen: function (t, n) { if (/^skip\b/.test(n)) save(""); else { input.value = t; save(t); } } });
   }
 
   // ------------------------------------------------------------- the tests
-  function progressText(i) { return "Step " + (i + 1) + " of " + st.plan.length + ": " + NAMES[st.plan[i]]; }
+  function progressText(i) { return "Step " + (i + 1) + " of " + st.plan.length + " · " + NAMES[st.plan[i]]; }
   function runStep(i) {
     st.stepIdx = i;
     if (i >= st.plan.length) return showReview();
+    st.phase = "test";
+    st.resume = function () { runStep(st.stepIdx); };
     var setting = st.plan[i];
     api("POST", "/api/check/" + st.id + "/step", { setting: setting }).then(function (r) { handle(setting, r); }).catch(function (e) { alertNow(e.message); });
   }
@@ -384,6 +422,12 @@
     screen({ title: "How fast should I talk?", sub: "This is " + (p.atSlowest ? "my slowest speed" : p.atFastest ? "my fastest speed" : "speed " + at + " of " + RATE_LIST.length) + ". Choose faster, slower, or keep this.", progress: progressText(st.stepIdx),
       actions: [{ label: "Keep this speed", primary: true, keyHint: "Space", onClick: function () { go("keep"); } }, { label: "Faster", disabled: p.atFastest, onClick: function () { go("faster"); } }, { label: "Slower", disabled: p.atSlowest, onClick: function () { go("slower"); } }],
       speak: firstTime ? C.say.rateIntro : C.say.rateNow, rate: p.rate,
+      onCommand: function (c) {
+        if (c.cmd === "voice" && c.value === "slower" && !p.atSlowest) { go("slower"); return true; }
+        if (c.cmd === "voice" && c.value === "faster" && !p.atFastest) { go("faster"); return true; }
+        if (c.cmd === "yes" || c.cmd === "same") { go("keep"); return true; }
+        return false;
+      },
       listen: function (t, n) {
         if (/\b(faster|quicker|speed up|quick)\b/.test(n)) go("faster");
         else if (/\b(slower|slow down|too fast)\b/.test(n)) go("slower");
@@ -456,22 +500,22 @@
   }
   function showPair(setting, p, firstTime, kind) {
     var go = function (answer) { send(setting, { answer: answer }); };
-    var side = function (which, value) {
-      var cls = "pair-side";
-      var kids = [el("p", { class: "pair-tag", text: which === "left" ? "Left" : "Right" })];
-      if (kind === "theme") { cls += " theme-" + value; kids.push(el("p", { class: "pair-text", text: SAMPLE })); }
-      if (kind === "bold") { cls += " weight-" + value; kids.push(el("p", { class: "pair-text", text: SAMPLE })); }
-      if (kind === "cursor") kids.push(el("div", { class: "pointer-art" }, [pointerSvg(p.size, value)]));
-      return el("div", { class: cls }, kids);
+    var side = function (which) {
+      var value = which === "left" ? p.left : p.right;
+      if (kind === "theme") return { cls: "sample theme-" + value, kids: [el("p", { class: "pair-text", text: SAMPLE })] };
+      if (kind === "bold") return { cls: "sample weight-" + value, kids: [el("p", { class: "pair-text", text: SAMPLE })] };
+      return { cls: "sample", kids: [el("div", { class: "pointer-art" }, [pointerSvg(p.size, value)])] };
     };
     var title = kind === "cursor" ? "Which pointer is easier to see?" : "Which is easier to read?";
     var speak = kind === "theme" ? (firstTime ? C.say.contrastIntro : C.say.contrastNext) : kind === "bold" ? C.say.boldIntro : C.say.cursorColor;
-    screen({ title: title, sub: "Choose left or right, or \"About the same\".", progress: progressText(st.stepIdx),
-      body: [el("div", { class: "pair" }, [side("left", p.left), side("right", p.right)])],
-      actions: [{ label: "Left", onClick: function () { go("left"); } }, { label: "Right", onClick: function () { go("right"); } }, { label: "About the same", onClick: function () { go("same"); } }],
+    screen({ title: title, sub: "Choose a side, or \"About the same\".", progress: progressText(st.stepIdx),
+      body: [pairBox(side, go)],
+      actions: [{ label: "About the same", onClick: function () { go("same"); } }, { label: "I can't tell", onClick: function () { go("same"); } }],
       speak: speak,
-      listen: function (t, n) {
-        if (/\bleft\b/.test(n)) go("left"); else if (/\bright\b/.test(n)) go("right");
+      listen: function (t, n, cmd) {
+        if (cmd && cmd.cmd === "left") go("left"); else if (cmd && cmd.cmd === "right") go("right");
+        else if (cmd && (cmd.cmd === "same" || cmd.cmd === "cant_tell")) go("same");
+        else if (/\b(left|top)\b/.test(n)) go("left"); else if (/\b(right|bottom)\b/.test(n)) go("right");
         else if (/\b(same|no difference|either|both|can't tell|don't know)\b/.test(n)) go("same");
         else say(C.say.cantHear).then(function () { showPair(setting, p, false, kind); });
       } });
@@ -502,6 +546,8 @@
     }));
   }
   function showReview() {
+    st.phase = "review";
+    st.resume = showReview;
     api("GET", "/api/check/" + st.id).then(function (j) {
       var keep = function () { showContact(j.check); };
       screen({ title: "Your new settings", sub: "These are already on. Keep them, or change any of them later in Display settings.", body: [resultList(j.check)],
@@ -542,7 +588,7 @@
   }
 
   function finish(body) {
-    api("POST", "/api/check/" + st.id + "/finish", body).then(function (j) { showResults(j.check); }).catch(function (e) { alertNow(e.message); });
+    api("POST", "/api/check/" + st.id + "/finish", body).then(function (j) { st.closed = true; showResults(j.check); }).catch(function (e) { alertNow(e.message); });
   }
 
   function summaryText(c) {
@@ -667,6 +713,8 @@
   function showResults(c) {
     try { sessionStorage.removeItem(KEY); } catch (e) {}
     stopListening();
+    st.phase = "post"; st.closed = c.status !== "started";
+    var ended = c.status === "ended";
     var copyMsg = el("p", { class: "hint", role: "status", id: "copy-msg" });
     var body = [
       c.goal ? el("p", null, [el("strong", { text: "What you'd like to do: " }), c.goal]) : null,
@@ -677,13 +725,221 @@
       guideSection(c),
       suggestSection(c),
     ];
-    screen({ title: "Your screen settings", sub: "These settings are on now, on this device. Lions Services staff will see your results" + (c.status === "finished" ? "." : " when you finish."), body: body,
+    screen({ title: ended ? "Your results so far" : "Your screen settings", resume: null,
+      sub: ended ? "You ended early. What you did is saved, and Lions Services staff will see it. These settings are on now, on this device." : "These settings are on now, on this device. Lions Services staff will see your results" + (c.status === "finished" ? "." : " when you finish."), body: body,
       actions: [
         { label: "Print or save as PDF", primary: true, onClick: function () { window.print(); } },
         { label: "Copy to share", onClick: function () { var t = summaryText(c); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { copyMsg.textContent = "✓ Copied. Paste it into an email or message to share it."; }).catch(function () { copyMsg.textContent = t; }); } },
       ],
-      speak: C.say.finished });
+      speak: ended ? null : C.say.finished });
     $("voice-row").hidden = true;
+  }
+
+  // ------------------------------------------------------------- the shell
+  // Two halves to choose from (top and bottom on phones). make(which) gives
+  // { cls, kids } for each half; tapping or clicking a half picks it.
+  function pairBox(make, onPick) {
+    return el("div", { class: "pair" }, ["left", "right"].map(function (which) {
+      var o = make(which) || {};
+      return el("button", { type: "button", class: "pair-side " + (o.cls || ""), "data-side": which, onclick: function () { onPick(which); } },
+        [el("span", { class: "pair-tag" }, [el("span", { class: "tag-wide", text: which === "left" ? "Left" : "Right" }), el("span", { class: "tag-narrow", text: which === "left" ? "Top" : "Bottom" })])].concat(o.kids || []));
+    }));
+  }
+
+  // Step dots in the top bar: one per test, done ones filled.
+  function renderDots() {
+    if (C) syncMenu();
+    var ol = $("a-dots"); ol.textContent = "";
+    if (st.phase !== "test" && st.phase !== "review") return;
+    st.plan.forEach(function (setting, i) {
+      ol.appendChild(el("li", { class: i < st.stepIdx || st.phase === "review" ? "done" : i === st.stepIdx ? "now" : "" }));
+    });
+  }
+
+  // Say a short reply, then go back to listening for the same screen.
+  function after(line) { return say(line).then(function () { if (waiting && !st.busy) listen(waiting); }); }
+
+  var SIZE_STEPS = ["100", "125", "150", "200", "300"];
+  var CURSOR_STEPS = ["default", "large", "xl"];
+  var RATE_STEPS = ["0.7", "0.85", "1", "1.2", "1.4"];
+  var THEME_LINE = { standard: "themeStandard", blue: "themeBlue", dark: "themeDark", high: "themeHigh" };
+
+  // A setting changed outside a test: shown now, and kept for staff.
+  function record(setting, value, via) {
+    if (!st.id || st.closed) return;
+    api("POST", "/api/check/" + st.id + "/setting", { setting: setting, value: String(value), via: via, step: st.phase === "test" ? st.plan[st.stepIdx] : null }).catch(function () {});
+  }
+  function change(patch, via) {
+    var before = D.get(), now = D.set(patch);
+    Object.keys(patch).forEach(function (k) { if (before[k] !== now[k]) record(k, now[k], via); });
+    syncMenu();
+  }
+  function voice(v, via, quiet) {
+    var line;
+    if (v === "louder" || v === "softer") {
+      var was = st.volume;
+      st.volume = Math.round(Math.max(0.4, Math.min(1, st.volume + (v === "louder" ? 0.2 : -0.2))) * 10) / 10;
+      line = st.volume === was ? (v === "louder" ? "voiceLoudest" : "voiceSoftest") : v === "louder" ? "voiceLouder" : "voiceSofter";
+    } else {
+      var i = RATE_STEPS.indexOf(String(st.rate)), j = v === "slower" ? i - 1 : i + 1;
+      if (j < 0) line = "voiceSlowest";
+      else if (j >= RATE_STEPS.length) line = "voiceFastest";
+      else { st.rate = RATE_STEPS[j]; saveRate(st.rate); record("rate", st.rate, via); line = v === "slower" ? "voiceSlower" : "voiceFaster"; }
+    }
+    syncMenu();
+    return quiet ? Promise.resolve() : after(C.say[line]);
+  }
+  // Commands that work at any step.
+  function command(c, via) {
+    var s = D.get(), i, j;
+    switch (c.cmd) {
+      case "repeat": st.repeats++; return after(st.lastSay);
+      case "stop_listening": st.listenOn = false; syncListenBtn(); return say(C.say.stopped);
+      case "help": return after(C.say.help);
+      case "menu": return c.value === "hide" ? closeMenu(true) : openMenu(true);
+      case "end": return askEnd();
+      case "back": return goBack();
+      case "skip": return skipStep();
+      case "voice": return voice(c.value, via);
+      case "bigger": case "smaller":
+        i = SIZE_STEPS.indexOf(s.textSize); j = c.cmd === "bigger" ? i + 1 : i - 1;
+        if (j >= SIZE_STEPS.length) return after(C.say.sizeMax);
+        if (j < 0) return after(C.say.sizeMin);
+        change({ textSize: SIZE_STEPS[j] }, via);
+        return after(C.say[c.cmd === "bigger" ? "sizeUp" : "sizeDown"]);
+      case "too_bright":
+        j = { standard: "blue", blue: "dark" }[s.theme];
+        if (!j) return after(C.say.themeAlready);
+        change({ theme: j }, via);
+        return after(C.say[THEME_LINE[j]]);
+      case "theme":
+        if (s.theme === c.value) return after(C.say.themeAlready);
+        change({ theme: c.value }, via);
+        return after(C.say[THEME_LINE[c.value]]);
+      case "bold":
+        change({ bold: c.value }, via);
+        return after(C.say[c.value === "on" ? "boldOn" : "boldOff"]);
+      case "pointer":
+        i = CURSOR_STEPS.indexOf(s.cursor); j = c.value === "bigger" ? i + 1 : i - 1;
+        if (j >= CURSOR_STEPS.length) return after(C.say.pointerMax);
+        if (j < 0) return after(C.say.pointerMin);
+        change({ cursor: CURSOR_STEPS[j] }, via);
+        return after(C.say[c.value === "bigger" ? "pointerBigger" : "pointerSmaller"]);
+    }
+    return Promise.resolve();
+  }
+
+  // ---- the menu (non-modal: the test keeps listening while it's open)
+  function syncMenu() {
+    var cur = D.get();
+    [].forEach.call(document.querySelectorAll("#a-menu [data-set]"), function (b) {
+      b.setAttribute("aria-pressed", String(String(cur[b.getAttribute("data-set")]) === b.getAttribute("data-value")));
+    });
+    var at = RATE_STEPS.indexOf(String(st.rate));
+    $("m-rate").textContent = "Speed: " + (at <= 0 ? "slowest" : at >= RATE_STEPS.length - 1 ? "fastest" : (at + 1) + " of " + RATE_STEPS.length);
+    $("m-slower").disabled = at <= 0;
+    $("m-faster").disabled = at >= RATE_STEPS.length - 1;
+    $("m-pause").setAttribute("aria-pressed", String(!st.listenOn));
+    $("m-pause").textContent = st.listenOn ? "Pause listening" : "Start listening";
+    $("m-pointer").hidden = !!(st.device && st.device.touchOnly);
+    var inTests = !!st.id && !st.closed && (st.phase === "test" || st.phase === "review");
+    $("m-back").disabled = !inTests || (st.phase === "test" && st.stepIdx === 0);
+    $("m-skip").disabled = !st.id || st.closed || st.phase !== "test";
+  }
+  function openMenu(spoken) {
+    $("a-menu").hidden = false;
+    $("menu-btn").setAttribute("aria-expanded", "true");
+    syncMenu();
+    try { $("a-menu").focus(); } catch (e) {}
+    return spoken ? after(C.say.menuOpen) : Promise.resolve();
+  }
+  function closeMenu(spoken) {
+    var wasOpen = !$("a-menu").hidden;
+    $("a-menu").hidden = true;
+    $("menu-btn").setAttribute("aria-expanded", "false");
+    if (wasOpen) { try { $("menu-btn").focus(); } catch (e) {} }
+    return spoken ? after(C.say.menuClosed) : Promise.resolve();
+  }
+  $("menu-btn").addEventListener("click", function () { if ($("a-menu").hidden) openMenu(false); else closeMenu(false); });
+  $("m-close").addEventListener("click", function () { closeMenu(false); });
+  $("a-menu").addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("[data-set]") : null;
+    if (!b) return;
+    var patch = {}; patch[b.getAttribute("data-set")] = b.getAttribute("data-value");
+    change(patch, "menu");
+  });
+  $("m-slower").addEventListener("click", function () { voice("slower", "menu", true); });
+  $("m-faster").addEventListener("click", function () { voice("faster", "menu", true); });
+  $("m-repeat").addEventListener("click", function () { st.repeats++; after(st.lastSay); });
+  $("m-pause").addEventListener("click", function () { st.listenOn = !st.listenOn; syncListenBtn(); syncMenu(); if (st.listenOn && waiting) listen(waiting); });
+  $("m-end").addEventListener("click", function () { closeMenu(false); askEnd(); });
+  $("m-back").addEventListener("click", function () { closeMenu(false); goBack(); });
+  $("m-skip").addEventListener("click", function () { closeMenu(false); skipStep(); });
+
+  // ---- go back, skip, end
+  function goBack() {
+    var prev = st.phase === "review" ? st.plan.length - 1 : st.phase === "test" ? st.stepIdx - 1 : -1;
+    if (!st.id || st.closed || prev < 0) return after(C.say.backFirst);
+    stopListening();
+    var setting = st.plan[prev];
+    return api("POST", "/api/check/" + st.id + "/back", { setting: setting }).then(function () {
+      st.first[setting] = false;
+      return say(C.say.back);
+    }).then(function () { runStep(prev); }).catch(function (e) { alertNow(e.message); });
+  }
+  function skipStep() {
+    if (!st.id || st.closed || st.phase !== "test") return after(C.say.notInTest);
+    var setting = st.plan[st.stepIdx];
+    stopListening(); lock();
+    return api("POST", "/api/check/" + st.id + "/skip", { setting: setting }).then(function () { return say(C.say.skipped); })
+      .then(function () { runStep(st.stepIdx + 1); })
+      .catch(function (e) { if (e.status === 409) return runStep(st.stepIdx + 1); st.busy = false; alertNow(e.message); });
+  }
+  function askEnd() {
+    if (!st.id || st.closed) return after(C.say.nothingToEnd);
+    closeMenu(false);
+    stopListening();
+    var resume = st.resume;
+    var phase = st.phase;
+    return api("GET", "/api/check/" + st.id).then(function (j) {
+      var c = j.check;
+      var done = c.steps.filter(function (x) { return x.done; });
+      var notYet = c.steps.filter(function (x) { return !x.done; });
+      var keep = function () { st.phase = phase; say(C.say.keepGoing).then(function () { if (resume) resume(); else runStep(st.stepIdx); }); };
+      screen({ title: "End the assessment now?", sub: "Everything you've done so far is saved for Lions Services staff.",
+        body: [
+          el("h2", { class: "a-sub-h", text: "Saved" }),
+          done.length ? resultList(c) : el("p", { text: "No tests finished yet." }),
+          notYet.length ? el("h2", { class: "a-sub-h", text: "Not reached" }) : null,
+          notYet.length ? el("ul", { class: "a-not-reached" }, notYet.map(function (x) { return el("li", { text: NAMES[x.setting] }); })) : null,
+        ],
+        actions: [{ label: "End and save", primary: true, keyHint: "Space", onClick: endNow }, { label: "Keep going", onClick: keep }],
+        speak: C.say.endAsk,
+        onCommand: function (k) {
+          if (k.cmd === "end" || k.cmd === "yes") { endNow(); return true; }
+          if (k.cmd === "no") { keep(); return true; }
+          return false;
+        },
+        listen: function onAns(t, n) { if (/\b(keep going|keep|continue|carry on|go on)\b/.test(n)) keep(); else listen(onAns); } });
+    }).catch(function (e) { alertNow(e.message); });
+  }
+  function endNow() {
+    if (st.busy) return;
+    lock();
+    var at = st.phase === "test" ? st.plan[st.stepIdx] : undefined;
+    api("POST", "/api/check/" + st.id + "/end", { at: at }).then(function (j) {
+      st.closed = true;
+      say(C.say.ended);
+      showResults(j.check);
+    }).catch(function (e) {
+      if (e.status === 409) return api("GET", "/api/check/" + st.id).then(function (j) { showResults(j.check); });
+      st.busy = false; alertNow(e.message);
+    });
+  }
+
+  function listCommands() {
+    var dl = $("m-commands"); dl.textContent = "";
+    (C.commands || []).forEach(function (row) { dl.appendChild(el("dt", { text: row[0] })); dl.appendChild(el("dd", { text: row[1] })); });
   }
 
   // ------------------------------------------------------------- start
@@ -693,6 +949,8 @@
     fetch("/api/health").then(function (r) { return r.json(); }).catch(function () { return {}; }),
   ]).then(function (all) {
     C = all[0];
+    listCommands();
+    syncMenu();
     natural = !!(all[2].tts && all[2].tts.provider === "elevenlabs");
     if (!(all[1].features && all[1].features.screenCheck)) {
       // The Vision Assessment never shows a closed page: until the live test

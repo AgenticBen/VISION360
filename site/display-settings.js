@@ -19,8 +19,8 @@
    so its old key would wrongly override a directory visitor's choice.
 
    Sets on <html>:
-     data-textsize  100 | 125 | 150 | 200
-     data-theme     standard | dark | high   (assistant, home pages)
+     data-textsize  100 | 125 | 150 | 200 | 300
+     data-theme     standard | blue | dark | high   (blue = white on dark blue)
      data-contrast  normal | high            (directory, guide: dark shows as normal)
      data-cursor    default | large | xl     (a bigger pointer, on computers)
      data-cursor-color  black | white | yellow
@@ -32,8 +32,8 @@
   D.KEY = "v360-display";
   D.LEGACY_ASSISTANT = "v360-demo-settings";
   D.LEGACY_DIRECTORY = "vrd-display-v1";
-  D.SIZES = ["100", "125", "150", "200"];
-  D.THEMES = ["standard", "dark", "high"];
+  D.SIZES = ["100", "125", "150", "200", "300"];
+  D.THEMES = ["standard", "blue", "dark", "high"];
   D.CURSORS = ["default", "large", "xl"];
   D.CURSOR_COLORS = ["black", "white", "yellow"];
   D.CURSOR_PX = { large: 64, xl: 128 };

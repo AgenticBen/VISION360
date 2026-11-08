@@ -187,7 +187,7 @@ const CHECKS = [
   },
   {
     id: "FC18",
-    title: "Screen-check results stay private: locked-down tables, off by default, never named by the browser, one display-settings layer",
+    title: "Screen-check results stay private: locked-down tables, off by default, never named by the browser, one display-settings layer, one set of spoken commands",
     run: () => {
       const problems = [];
       const walk = (d, out = []) => { for (const n of readdirSync(d)) { const p = path.join(d, n); if (statSync(p).isDirectory()) walk(p, out); else out.push(p); } return out; };
@@ -210,9 +210,13 @@ const CHECKS = [
       for (const f of walk("site").filter((x) => /\.(js|html)$/.test(x) && !x.endsWith("display-settings.js"))) {
         if (/localStorage\.(get|set)Item\(\s*["']vrd-display-v1/.test(readFileSync(f, "utf8"))) problems.push(`${f} still reads or writes the old directory display settings; use display-settings.js`);
       }
-      for (const f of ["site/index.html", "site/directory/index.html", "site/guide.html", "site/demo/index.html"]) {
+      for (const f of ["site/index.html", "site/directory/index.html", "site/guide.html", "site/demo/index.html", "site/screen-check/index.html"]) {
         if (!/<script src="\/display-settings\.js"[^>]*data-legacy="(assistant|directory)"/.test(readFileSync(f, "utf8"))) problems.push(`${f} doesn't load the shared display settings (with data-legacy)`);
       }
+      // One set of spoken commands: the assessment loads the shared parser
+      // and doesn't keep its own copy of "bigger", "blue background" and so on.
+      const assess = readFileSync(path.join("site", "screen-check", "index.html"), "utf8");
+      if (!/<script src="\/voice-commands\.js"><\/script>/.test(assess)) problems.push("site/screen-check/index.html doesn't load the shared voice commands (voice-commands.js)");
       return problems;
     },
   },
