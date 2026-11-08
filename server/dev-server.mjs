@@ -29,8 +29,10 @@ const server = http.createServer(async (req, res) => {
   if (/^\/f\/[a-z0-9-]{1,40}\/?$/.test(rel)) rel = "/demo/index.html";
   // /home moved to / (Vercel redirects the same way).
   if (/^\/home\/?$/.test(rel)) { res.writeHead(302, { Location: "/" }); return res.end(); }
-  // /assessment opens the assistant for the Vision Assessment (Vercel does the same).
-  if (/^\/assessment\/?$/.test(rel)) rel = "/demo/index.html";
+  // /assessment is the live vision test; /assessment/interview the question-and-answer
+  // version in the assistant (Vercel does the same).
+  if (/^\/assessment\/?$/.test(rel)) rel = "/screen-check/index.html";
+  if (/^\/assessment\/interview\/?$/.test(rel)) rel = "/demo/index.html";
   if (rel.endsWith("/")) rel += "index.html";
   let file = path.join(SITE, rel);
   if (!file.startsWith(SITE)) { res.writeHead(403); return res.end(); }

@@ -35,6 +35,8 @@
   window.addEventListener("load", function () {
     (window.V360SiteFeatures ? window.V360SiteFeatures() : Promise.resolve({})).then(function (f) {
       if (f.screenCheck && $("go-check")) $("go-check").hidden = false;
+      // With the check on, the Vision Assessment is the live test: say so.
+      if (f.screenCheck) ["assess-text", "assess-go-text"].forEach(function (id) { var n = $(id); if (n && n.getAttribute("data-live")) n.textContent = n.getAttribute("data-live"); });
     }).catch(function () {});
   });
 

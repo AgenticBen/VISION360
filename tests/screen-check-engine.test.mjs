@@ -98,14 +98,14 @@ test("cursor: shrinks while found, keeps the last size found, then a color pair;
   assert.deepEqual({ ...out.result.apply }, {}, "nothing changes on the page");
   assert.ok(out.result.flags.includes("could_not_find_largest_pointer"));
   assert.equal(C.next("cursor", [], { ...ctx, device: { skipPointer: true } }).result.recommended_value, "not_tested");
-  assert.deepEqual(C.plan({ skipPointer: true }), ["speech_rate", "magnification", "contrast", "bold"], "screen-reader users skip the mouse test");
+  assert.deepEqual(C.plan({ skipPointer: true }), ["speech_rate", "magnification", "pictures", "contrast", "bold"], "screen-reader users skip the mouse test");
   out = C.next("cursor", [sz("found"), sz("found"), sz("found"), col("left"), col("left")], ctx);
   assert.equal(out.result.recommended_value, "default/black");
   const touch = C.next("cursor", [], { ...ctx, device: { touchOnly: true } });
   assert.equal(touch.done, true);
   assert.equal(touch.result.recommended_value, "not_tested");
-  assert.deepEqual(C.plan({ touchOnly: true }), ["speech_rate", "magnification", "contrast", "bold"]);
-  assert.deepEqual(C.plan({}), ["speech_rate", "magnification", "contrast", "cursor", "bold"]);
+  assert.deepEqual(C.plan({ touchOnly: true }), ["speech_rate", "magnification", "pictures", "contrast", "bold"]);
+  assert.deepEqual(C.plan({}), ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold"]);
 });
 
 test("bold, struggle flags, codes and the trial limit", () => {
@@ -131,4 +131,57 @@ test("describe gives plain words for staff and the results page", () => {
   assert.match(C.describe("contrast", { recommended_value: "high" }), /high contrast/);
   assert.match(C.describe("cursor", { recommended_value: "large/white" }), /large, white/);
   assert.match(C.describe("speech_rate", { recommended_value: "1" }), /1x/);
+});
+
+// ------------------------------------------------- Vision Assessment additions
+test("phrases: read aloud, main words count, small slips allowed", () => {
+  assert.ok(C.phraseMatches("find my glasses", "find my glasses"));
+  assert.ok(C.phraseMatches("Find glasses.", "find my glasses"), "small words don't count");
+  assert.ok(C.phraseMatches("pay the bell", "pay the bill"), "one letter off in a longer word is fine");
+  assert.ok(!C.phraseMatches("pay the rent", "pay the bill"));
+  assert.ok(C.phraseMatches("the water plants", "water the plants"), "order doesn't matter");
+  assert.ok(C.phraseMatches("turn the light", "turn on the light"));
+  assert.ok(!C.phraseMatches("", "pay the bill"));
+  assert.ok(C.phraseMatches("apple", "apple"), "a single word still works");
+});
+
+test("magnification shows phrases when the wording has them", () => {
+  const phrases = ["call my sister", "pay the bill", "open the mail", "feed the dog"];
+  const c2 = { ...ctx, phrases };
+  const trials = [];
+  for (let i = 0; i < 60; i++) {
+    const r = C.next("magnification", trials, c2);
+    if (r.done) { assert.equal(r.result.measured_limit, "24"); assert.equal(r.result.recommended_value, "200"); return; }
+    assert.ok(phrases.includes(r.prompt.word), "a phrase is shown");
+    trials.push(C.cleanTrial("magnification", r.prompt.px >= 24 ? { answer: r.prompt.word } : { cant_tell: true }, r.prompt));
+  }
+  assert.fail("the test never ended");
+});
+
+test("pictures: a staircase over house, apple, circle and square", () => {
+  assert.ok(C.pictureMatches("it's a house", "house"));
+  assert.ok(C.pictureMatches("ball", "circle"));
+  assert.ok(C.pictureMatches("box", "square"));
+  assert.ok(!C.pictureMatches("a house or a circle", "house"), "naming two pictures is a guess");
+  assert.ok(!C.pictureMatches("apple", "house"));
+  const play = (seePx) => {
+    const trials = [];
+    for (let i = 0; i < 60; i++) {
+      const r = C.next("pictures", trials, ctx);
+      if (r.done) return r.result;
+      assert.ok(C.PICTURES.includes(r.prompt.picture));
+      trials.push(C.cleanTrial("pictures", r.prompt.px >= seePx ? { answer: r.prompt.picture } : { cant_tell: true }, r.prompt));
+    }
+    assert.fail("the test never ended");
+  };
+  const a = play(36);
+  assert.equal(a.measured_limit, "36");
+  assert.equal(a.recommended_value, "72");
+  assert.deepEqual(a.apply, {}, "pictures change nothing on the page");
+  const b = play(1000);
+  assert.equal(b.measured_limit, null);
+  assert.ok(b.flags.includes("could_not_see_largest_picture"));
+  assert.ok(C.needsAttention([{ flags: b.flags }]));
+  assert.match(C.describe("pictures", a), /36px.*72px/);
+  assert.match(C.describe("pictures", b), /could not recognize/);
 });

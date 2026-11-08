@@ -1,9 +1,10 @@
 {
-  "_comment": "Wording for the Screen Settings Check (/screen-check/). Draft for Lions Services to approve (Dana). The assistant may voice only the lines under 'say' with the natural voice. Scoring rules live in server/lib/screen-check.mjs, not here. No client data ever goes in this file.",
+  "_comment": "Wording for the live vision test: the Vision Assessment (/assessment/) and the Screen Settings Check (/screen-check/). Draft for Lions Services to approve (Dana). The assistant may voice only the lines under 'say' with the natural voice. Scoring rules live in server/lib/screen-check.mjs, not here. No client data ever goes in this file.",
   "version": 1,
   "status": "draft",
   "say": {
     "intro": "Hi, I'm the Vision 360 screen check. In about ten minutes, we'll find the text size, colors, speaking speed and pointer that are easiest for you, and set them up as we go. Press the Space bar, or say ready, to begin.",
+    "assessIntro": "Hi, I'm the Vision 360 vision assessment. In about ten minutes, I'll ask you to read some short phrases, name some pictures, and pick the colors and pointer that are easiest for you to see. I'll set them up on this page as we go. Press the Space bar, or say ready, to begin.",
     "screenReader": "Okay. I'll stay quiet so your screen reader can lead. Everything on this page works with the keyboard.",
     "practice": "First, a quick practice. You can answer by talking, by pressing a button, or by typing. Say ready, or press the Space bar.",
     "practiceHeard": "Great. That works.",
@@ -15,6 +16,11 @@
     "magIntro": "Now the text size. I'll show a word. Say the word, type it, or say I can't tell. There are no wrong answers.",
     "magWord": "What word do you see?",
     "magDone": "Thank you. I've set the text to a size that should be comfortable.",
+    "readIntro": "Now some reading. I'll show a short phrase. Read it out loud, or type it. If you can't read it, say I can't tell. There are no wrong answers.",
+    "readNext": "Read this out loud.",
+    "picIntro": "Now some pictures. I'll show a house, an apple, a circle or a square. Say which one you see, or press its button. If you can't tell, say I can't tell.",
+    "picNext": "What picture do you see?",
+    "picDone": "Thank you. That tells us how big pictures and icons need to be for you.",
     "contrastIntro": "Now colors. I'll show two choices, one on the left and one on the right. Say left or right for the one that's easier to read, or say same.",
     "contrastNext": "Which is easier to read: left or right?",
     "contrastDone": "Thanks. I've switched to those colors.",
@@ -76,6 +82,24 @@
     "button",
     "doctor",
     "summer"
+  ],
+  "phrases": [
+    "call my sister",
+    "pay the bill",
+    "open the mail",
+    "feed the dog",
+    "make some tea",
+    "read the news",
+    "find my glasses",
+    "take a walk",
+    "water the plants",
+    "lock the door",
+    "turn on the light",
+    "bake a cake",
+    "watch the game",
+    "wash the dishes",
+    "meet at noon",
+    "buy fresh bread"
   ],
   "sounds_like": {
     "bread": [

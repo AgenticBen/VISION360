@@ -218,7 +218,9 @@
 
   // Which workflow this page runs: /f/<id> (a shared link or QR code), ?flow=<id>,
   // or the main workflow the admin picked for the home page.
-  var ON_ASSESSMENT = /^\/assessment\/?$/.test(location.pathname);
+  // The question-and-answer Vision Assessment. /assessment/ itself is now the
+  // live test (site/screen-check/); this version stays at /assessment/interview/.
+  var ON_ASSESSMENT = /^\/assessment\/interview\/?$/.test(location.pathname);
   var FLOW = (ON_ASSESSMENT ? "vision-assessment" : null) || (location.pathname.match(/^\/f\/([a-z0-9-]{1,40})\/?$/) || [])[1] || new URLSearchParams(location.search).get("flow") || null;
   app.flow = { id: FLOW, routing: true };
   // The question on the start screen, which the assistant also asks out loud.

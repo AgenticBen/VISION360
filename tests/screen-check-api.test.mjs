@@ -24,6 +24,7 @@ async function runAll(app, start) {
       const trial =
         setting === "speech_rate" ? { answer: p.rate === "1" ? "keep" : "faster" } :
         setting === "magnification" ? (p.px >= 24 ? { answer: p.word } : { cant_tell: true }) :
+        setting === "pictures" ? (p.px >= 24 ? { answer: p.picture } : { cant_tell: true }) :
         setting === "cursor" ? (p.kind === "find_pointer" ? { answer: p.size === "default" ? "lost" : "found" } : { answer: "right" }) :
         { answer: "left" };
       r = await call(app, "POST", `/api/check/${start.id}/trial`, { setting, trial }, h);
@@ -44,7 +45,7 @@ test("a person runs the whole check, sees only their own result, and settings ar
   const s = await call(app, "POST", "/api/check/start", { device: { type: "computer", os: "mac", screenW: 1440, screenH: 900, dpr: 2 } });
   assert.equal(s.status, 200);
   assert.match(s.json.code, /^[a-z]+ \d{3} [a-z]+$/);
-  assert.deepEqual(s.json.plan, ["speech_rate", "magnification", "contrast", "cursor", "bold"]);
+  assert.deepEqual(s.json.plan, ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold"]);
   assert.equal((await call(app, "POST", `/api/check/${s.json.id}/step`, { setting: "contrast" })).status, 404, "no token, no access");
   assert.equal((await call(app, "POST", `/api/check/${s.json.id}/step`, { setting: "contrast" }, bearer("wrong"))).status, 404);
   // The word is only sent for the trial being shown.
@@ -75,7 +76,7 @@ test("a person runs the whole check, sees only their own result, and settings ar
 test("no consent: no contact details are kept", async () => {
   const app = await appOn();
   const s = (await call(app, "POST", "/api/check/start", { device: { type: "phone", os: "ios" } })).json;
-  assert.deepEqual(s.plan, ["speech_rate", "magnification", "contrast", "bold"], "no pointer test on a phone");
+  assert.deepEqual(s.plan, ["speech_rate", "magnification", "pictures", "contrast", "bold"], "no pointer test on a phone");
   const f = await call(app, "POST", `/api/check/${s.id}/finish`, { consent: false, wants_call: true, contact: { phone: "704-555-0100" }, zip: "not-a-zip" }, bearer(s.token));
   assert.equal(f.status, 200);
   // Look at the stored row through a second check's eyes isn't possible; the staff view (phase 3) shows it.
@@ -102,7 +103,7 @@ test("linked to the Vision Assessment only with that conversation's own token; r
 test("screen-reader users skip the pointer test", async () => {
   const app = await appOn();
   const s = (await call(app, "POST", "/api/check/start", { device: { type: "computer", os: "windows", skipPointer: true } })).json;
-  assert.deepEqual(s.plan, ["speech_rate", "magnification", "contrast", "bold"]);
+  assert.deepEqual(s.plan, ["speech_rate", "magnification", "pictures", "contrast", "bold"]);
 });
 
 test("bad input is refused or cleaned", async () => {

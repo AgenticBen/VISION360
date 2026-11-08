@@ -28,7 +28,7 @@
       "description": "A short, voice-first check of how vision affects everyday tasks (reading, faces, getting around, light, screens, daily living), plus eye-care history and what help the person wants. Answers go to the Lions Services team. Not a medical exam. Starter questions for Lions Services to review.",
       "file": "site/data/flows/vision-assessment.json",
       "usedBy": [
-        "Vision Assessment page (/assessment/)"
+        "Vision Assessment, question-and-answer version (/assessment/interview/)"
       ],
       "routing": false
     }

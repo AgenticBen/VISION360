@@ -18,7 +18,7 @@ async function takeCheck(app, { see = 24, code, contact = true } = {}) {
     let r = await call(app, "POST", `/api/check/${s.id}/step`, { setting }, bearer(s.token));
     while (!r.json.done) {
       const p = r.json.prompt;
-      const trial = setting === "speech_rate" ? { answer: "keep" } : setting === "magnification" ? (p.px >= see ? { answer: p.word } : { cant_tell: true }) : setting === "cursor" ? (p.kind === "find_pointer" ? { answer: p.size === "xl" ? "found" : "lost" } : { answer: "left" }) : { answer: "left" };
+      const trial = setting === "speech_rate" ? { answer: "keep" } : setting === "magnification" ? (p.px >= see ? { answer: p.word } : { cant_tell: true }) : setting === "pictures" ? (p.px >= see ? { answer: p.picture } : { cant_tell: true }) : setting === "cursor" ? (p.kind === "find_pointer" ? { answer: p.size === "xl" ? "found" : "lost" } : { answer: "left" }) : { answer: "left" };
       r = await call(app, "POST", `/api/check/${s.id}/trial`, { setting, trial }, bearer(s.token));
     }
   }
@@ -55,7 +55,7 @@ test("one result: details, review with accept/edit/reject, case note", async () 
   assert.equal(r.status, 200);
   assert.ok(!("token_hash" in r.json.check));
   assert.equal(r.json.check.contact.phone, "704-555-0100", "staff see contact given with permission");
-  assert.deepEqual(r.json.steps.map((x) => x.setting), ["speech_rate", "magnification", "contrast", "cursor", "bold"]);
+  assert.deepEqual(r.json.steps.map((x) => x.setting), ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold"]);
   assert.match(r.json.case_note, /not reviewed yet/);
   assert.match(r.json.case_note, /Goal: Read the news/);
   assert.match(r.json.case_note, /Windows computer, screen 1920×1080/);
