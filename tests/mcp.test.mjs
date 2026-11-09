@@ -129,14 +129,22 @@ test("build a new workflow over MCP: create, sections, questions, check, publish
   t = await tool(app, "set_main_workflow", { flow: "nope" });
   assert.equal(t.isError, true);
   t = await tool(app, "set_main_workflow", { flow: "v360-interest" });
-  assert.equal(t.data.mainFlow, "v360-interest");
+  assert.equal(t.isError, true, "a form keeps its own link; it can't run as the Resource Assistant");
+  t = await tool(app, "set_main_workflow", { flow: "live-test" });
+  assert.equal(t.isError, true, "only Ben makes the full-screen test live");
+  t = await tool(app, "set_main_workflow", { flow: "vision-assessment" });
+  assert.equal(t.isError, false, JSON.stringify(t));
+  assert.equal(t.data.live, "vision-assessment");
+  t = await tool(app, "get_share_links", {});
+  assert.deepEqual(t.data.live, { resourceAssistant: "referral", visionAssessment: "vision-assessment" });
+  assert.equal(t.data.workflows.find((f) => f.id === "vision-assessment").liveInRow, true);
   // Conversations: none have started on the new workflow yet.
   await call(app, "POST", "/api/session", { noticeAccepted: true, mode: "text", flow: "v360-interest" });
   t = await tool(app, "list_conversations", { flow: "v360-interest" });
   assert.equal(t.data.total, 1);
   assert.equal(t.data.conversations[0].workflow, "V360 TECH interest form");
-  // Delete needs the word, and the main workflow is protected.
-  t = await tool(app, "delete_workflow", { flow: "v360-interest", confirm: "DELETE" });
+  // Delete needs the word, and a workflow that's live in its row is protected.
+  t = await tool(app, "delete_workflow", { flow: "vision-assessment", confirm: "DELETE" });
   assert.equal(t.isError, true);
   t = await tool(app, "delete_workflow", { flow: "spring-workshop", confirm: "yes" });
   assert.equal(t.isError, true);

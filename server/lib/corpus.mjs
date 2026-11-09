@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkFlow } from "./flow-check.mjs";
+import { checkFlow, groupOf } from "./flow-check.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const FILES = {
@@ -82,7 +82,7 @@ function loadFlows({ organizations, assessment, questionById }) {
         if (!c.ok) { console.error(`workflow ${m.id} skipped: ${c.errors.map((e) => e.message).join("; ")}`); continue; }
       }
       out.set(m.id, Object.freeze({
-        id: m.id, title: m.title, description: m.description || "", routing: !!m.routing, file: m.file, flow, hash,
+        id: m.id, title: m.title, description: m.description || "", routing: !!m.routing, group: groupOf(m), file: m.file, flow, hash,
         version: `v${flow.version || 1}@${hash}`,
         questionById: flow === assessment ? questionById : new Map(flow.questions.map((q) => [q.id, q])),
       }));

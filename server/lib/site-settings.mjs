@@ -6,10 +6,13 @@
 //                        (scrypt hash, never the password) and the key that
 //                        signs admin sign-in cookies. Changing the password
 //                        makes a new key, which signs everyone out.
-//   settings/site.json  { mainFlow, voice: { elevenlabs }, features: { screenCheck } }
-//                        which workflow the public home page runs, the
-//                        natural-voice switch, and features that are still
-//                        being built (off until switched on).
+//   settings/site.json  { mainFlow, assessmentFlow, voice: { elevenlabs }, features: { screenCheck } }
+//                        what is live in each row of the admin Workflows page:
+//                        mainFlow runs from Resource Assistant in the site menu
+//                        (/demo/); the Vision Assessment item (/assessment/)
+//                        opens the full-screen test when features.screenCheck
+//                        is on, otherwise the assessmentFlow conversation. Plus
+//                        the natural-voice switch.
 //
 // Each server copy caches both for a short while, so a change reaches every
 // copy within ttlMs.
@@ -19,7 +22,7 @@ import { hashPassword } from "./auth.mjs";
 
 export const AUTH_FILE = "settings/auth.json";
 export const SITE_FILE = "settings/site.json";
-export const SITE_DEFAULTS = Object.freeze({ mainFlow: "referral", voice: Object.freeze({ elevenlabs: false }), features: Object.freeze({ screenCheck: false }) });
+export const SITE_DEFAULTS = Object.freeze({ mainFlow: "referral", assessmentFlow: "vision-assessment", voice: Object.freeze({ elevenlabs: false }), features: Object.freeze({ screenCheck: false }) });
 export const MIN_PASSWORD = 8;
 
 export function createSiteSettings({ gh, env = {}, ttlMs = 30000 }) {
@@ -68,6 +71,7 @@ export function createSiteSettings({ gh, env = {}, ttlMs = 30000 }) {
     const doc = (await read(SITE_FILE)) || {};
     return {
       mainFlow: typeof doc.mainFlow === "string" && doc.mainFlow ? doc.mainFlow : SITE_DEFAULTS.mainFlow,
+      assessmentFlow: typeof doc.assessmentFlow === "string" && doc.assessmentFlow ? doc.assessmentFlow : SITE_DEFAULTS.assessmentFlow,
       voice: { elevenlabs: !!(doc.voice && doc.voice.elevenlabs) },
       // Only an explicit true turns a feature on.
       features: { screenCheck: !!(doc.features && doc.features.screenCheck === true) },
@@ -77,6 +81,7 @@ export function createSiteSettings({ gh, env = {}, ttlMs = 30000 }) {
   async function updateSite(patch) {
     const out = await gh.updateJson(DATA_BRANCH, SITE_FILE, (d) => {
       if (patch.mainFlow !== undefined) d.mainFlow = String(patch.mainFlow);
+      if (patch.assessmentFlow !== undefined) d.assessmentFlow = String(patch.assessmentFlow);
       if (patch.voice && patch.voice.elevenlabs !== undefined) d.voice = { ...(d.voice || {}), elevenlabs: !!patch.voice.elevenlabs };
       if (patch.features && patch.features.screenCheck !== undefined) d.features = { ...(d.features || {}), screenCheck: patch.features.screenCheck === true };
       d.updatedAt = new Date().toISOString();

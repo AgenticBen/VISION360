@@ -152,17 +152,33 @@ test("voice switch: can't turn on without a key; usage is counted; off again sto
   assert.equal(r.json.costs.tts.provider, "browser");
 });
 
-test("main workflow setting accepts only a published workflow and logs the change", async () => {
+test("what's live in each row: only a published workflow of that row, and the change is logged", async () => {
   const app = await makeApp();
   let r = await call(app, "PUT", "/api/admin/settings", { mainFlow: "nope" });
   assert.equal(r.status, 400);
+  // The V360 TECH form sits in the Resource Assistant row but keeps its own link.
   r = await call(app, "PUT", "/api/admin/settings", { mainFlow: "v360-interest" });
+  assert.equal(r.status, 400);
+  assert.match(r.json.error, /own link/);
+  r = await call(app, "PUT", "/api/admin/settings", { mainFlow: "vision-assessment" });
+  assert.equal(r.status, 400, "a Vision Assessment workflow can't be the Resource Assistant");
+  r = await call(app, "PUT", "/api/admin/settings", { mainFlow: "referral" });
   assert.equal(r.status, 200);
-  assert.equal(r.json.settings.mainFlow, "v360-interest");
-  r = await call(app, "PUT", "/api/admin/settings", { mainFlow: "v360-interest" }, { origin: "https://evil.example" });
+  assert.equal(r.json.live.assistant.live, "referral");
+  // Vision Assessment row: a workflow of that row, or the full-screen test.
+  r = await call(app, "PUT", "/api/admin/settings", { assessment: "referral" });
+  assert.equal(r.status, 400);
+  r = await call(app, "PUT", "/api/admin/settings", { assessment: "live-test" });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.settings.features.screenCheck, true);
+  assert.equal(r.json.live.assessment.live, "live-test");
+  r = await call(app, "PUT", "/api/admin/settings", { assessment: "vision-assessment" });
+  assert.equal(r.json.settings.features.screenCheck, false);
+  assert.equal(r.json.live.assessment.live, "vision-assessment");
+  r = await call(app, "PUT", "/api/admin/settings", { assessment: "live-test" }, { origin: "https://evil.example" });
   assert.equal(r.status, 403);
   r = await call(app, "GET", "/api/changelog");
-  assert.ok(r.json.entries.some((e) => e.title === "Main workflow changed"));
+  assert.ok(r.json.entries.some((e) => e.title === "Live workflow changed" && /full-screen test/.test(e.summary)));
 });
 
 test("conversations are kept until deleted: no expiry, and the purge leaves them", async () => {

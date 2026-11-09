@@ -10,7 +10,7 @@
 // (who gets different suggestions) before anyone publishes.
 import { createHash } from "node:crypto";
 import { DATA_BRANCH, StoreConflict } from "./gh-store.mjs";
-import { checkFlow, MAX_FLOW_BYTES } from "./flow-check.mjs";
+import { checkFlow, MAX_FLOW_BYTES, GROUPS, groupOf } from "./flow-check.mjs";
 import { impact, routeWith } from "./golden-route.mjs";
 
 // The registry (site/data/flows/index.json on main) lists every workflow.
@@ -153,7 +153,7 @@ export function createFlowRepo({ gh, corpus, requests }) {
     // assistant can run it once the site redeploys.
     if (m.status === "draft") {
       const reg = await mainRegistry();
-      reg.flows = (reg.flows || []).filter((x) => x.id !== id).concat([{ id, title: m.title, description: m.description || "", file: m.file, usedBy: [`Voice and chat assistant (its own link: /f/${id})`], routing: false, status: "published" }]);
+      reg.flows = (reg.flows || []).filter((x) => x.id !== id).concat([{ id, title: m.title, description: m.description || "", file: m.file, usedBy: [`Voice and chat assistant (its own link: /f/${id})`], routing: false, group: groupOf(m), status: "published" }]);
       files.push({ path: REGISTRY_FILE, text: text(reg) });
     }
     let imp = null;
@@ -232,7 +232,7 @@ export function createFlowRepo({ gh, corpus, requests }) {
         const [pub, vs, draft] = await Promise.all([published(m.id), versions(m.id).catch(() => []), readDraft(m.id).catch(() => null)]);
         const shown = pub ? pub.flow : draft ? draft.flow : { blocks: [], questions: [] };
         return {
-          id: m.id, title: m.title, description: m.description, usedBy: m.usedBy || [], routing: !!m.routing, file: m.file,
+          id: m.id, title: m.title, description: m.description, usedBy: m.usedBy || [], routing: !!m.routing, group: groupOf(m), file: m.file,
           status: pub ? "published" : "draft",
           sections: shown.blocks.length, questions: shown.questions.length, followUps: shown.questions.filter((q) => q.ask_if).length,
           version: pub ? vs.length || 1 : 0, lastPublished: vs[0] || null,
@@ -249,7 +249,7 @@ export function createFlowRepo({ gh, corpus, requests }) {
 
     // New form-style workflow: a draft plus a pending registry entry. It runs
     // publicly only after its first publish (and the redeploy that follows).
-    async create({ id, title, description, copyFrom, author }) {
+    async create({ id, title, description, copyFrom, author, group }) {
       id = String(id || "").trim().toLowerCase();
       if (!FLOW_ID.test(id)) throw bad("The workflow id must be 3–40 lowercase letters, numbers and dashes, starting with a letter (for example spring-workshop).");
       const name = clean(title, 120);
@@ -259,11 +259,13 @@ export function createFlowRepo({ gh, corpus, requests }) {
       if (copyFrom) {
         const src = await meta(String(copyFrom));
         if (src.routing) throw bad("Only form-style workflows can be copied. The referral finder ranks services and can't be duplicated.");
+        if (group === undefined) group = groupOf(src);
         const p = await published(src.id);
         const d = await readDraft(src.id).catch(() => null);
         flow = { ...structuredClone((p && p.flow) || (d && d.flow)), version: 1, title: name };
       }
-      const entry = { id, title: name, description: clean(description, 400), file: `site/data/flows/${id}.json`, usedBy: [], routing: false, created_at: new Date().toISOString(), author: clean(author, 60) || "Someone" };
+      if (group !== undefined && !GROUPS.includes(group)) throw bad("Pick a row for the workflow: Resource Assistant or Vision Assessment.");
+      const entry = { id, title: name, description: clean(description, 400), file: `site/data/flows/${id}.json`, usedBy: [], routing: false, group: group || "assistant", created_at: new Date().toISOString(), author: clean(author, 60) || "Someone" };
       await gh.updateJson(DATA_BRANCH, PENDING, (d) => { d.flows = (d.flows || []).filter((x) => x.id !== id).concat([entry]); }, `New workflow: ${name}`, { flows: [] });
       const saved = await this.saveDraft(id, { flow, author });
       if (requests) await requests.logChange({ title: `New workflow: ${name}`, summary: `Created as a draft (${id}). Publish it to get its link and QR code.`, kind: "workflow", highlight: { page: "/admin/workflows/", target: "flow-list" } }).catch(() => {});
@@ -272,10 +274,10 @@ export function createFlowRepo({ gh, corpus, requests }) {
 
     // Deleting a published workflow opens a pull request that marks it retired.
     // A workflow that was never published is simply removed.
-    async remove(id, { name, mainFlow } = {}) {
+    async remove(id, { name, mainFlow, live = [] } = {}) {
       const m = await meta(id);
       if (id === "referral") throw bad("The referral finder can't be deleted: the directory's Find services uses it.", 400);
-      if (id === mainFlow) throw bad("This is the main workflow on the public site. Make another workflow the main one first.", 400);
+      if (id === mainFlow || live.includes(id)) throw bad("This workflow is live on the public site. Make another workflow live in its row first.", 400);
       if (m.status === "draft") {
         await gh.updateJson(DATA_BRANCH, PENDING, (d) => { d.flows = (d.flows || []).filter((x) => x.id !== id); }, `Remove draft workflow: ${id}`, { flows: [] });
         await this.discardDraft(id);

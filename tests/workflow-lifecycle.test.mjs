@@ -40,6 +40,20 @@ test("create a form workflow, edit its draft, publish: it joins the registry", a
   assert.equal(r.json.flows.find((f) => f.id === "spring-workshop").status, "published");
 });
 
+test("new workflows go in a row: Resource Assistant by default, a copy keeps its source's row", async () => {
+  const app = await makeApp();
+  let r = await call(app, "POST", "/api/flows", { id: "eye-check", title: "Eye check", group: "assessment" });
+  assert.equal(r.status, 201, JSON.stringify(r.json));
+  r = await call(app, "POST", "/api/flows", { id: "assess-copy", title: "Assessment copy", copyFrom: "vision-assessment" });
+  assert.equal(r.status, 201, JSON.stringify(r.json));
+  r = await call(app, "POST", "/api/flows", { id: "plain-form", title: "Plain form" });
+  r = await call(app, "POST", "/api/flows", { id: "odd-row", title: "x", group: "elsewhere" });
+  assert.equal(r.status, 400);
+  r = await call(app, "GET", "/api/flows");
+  const g = Object.fromEntries(r.json.flows.map((f) => [f.id, f.group]));
+  assert.deepEqual(g, { referral: "assistant", "v360-interest": "assistant", "vision-assessment": "assessment", "eye-check": "assessment", "assess-copy": "assessment", "plain-form": "assistant" });
+});
+
 test("copy an existing form; the referral finder can't be copied; reserved ids refused", async () => {
   const app = await makeApp();
   let r = await call(app, "POST", "/api/flows", { id: "interest-copy", title: "Interest copy", copyFrom: "v360-interest" });
@@ -54,17 +68,17 @@ test("copy an existing form; the referral finder can't be copied; reserved ids r
   assert.ok(r.json.checks.errors.some((e) => /reserved/.test(e.message)));
 });
 
-test("delete: needs DELETE; refuses referral and the main workflow; a published one is retired, a draft removed", async () => {
+test("delete: needs DELETE; refuses referral and the workflow live in each row; a published one is retired, a draft removed", async () => {
   const app = await makeApp();
   let r = await call(app, "DELETE", "/api/flows/v360-interest", { confirm: "delete" });
   assert.equal(r.status, 400);
   r = await call(app, "DELETE", "/api/flows/referral", { confirm: "DELETE" });
   assert.equal(r.status, 400);
-  await call(app, "PUT", "/api/admin/settings", { mainFlow: "v360-interest" });
-  r = await call(app, "DELETE", "/api/flows/v360-interest", { confirm: "DELETE" });
+  // The Vision Assessment conversation stays protected even while the test is live.
+  await call(app, "PUT", "/api/admin/settings", { assessment: "live-test" });
+  r = await call(app, "DELETE", "/api/flows/vision-assessment", { confirm: "DELETE" });
   assert.equal(r.status, 400);
-  assert.match(r.json.error, /main workflow/);
-  await call(app, "PUT", "/api/admin/settings", { mainFlow: "referral" });
+  assert.match(r.json.error, /live on the public site/);
   r = await call(app, "DELETE", "/api/flows/v360-interest", { confirm: "DELETE", name: "Test" });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   const reg = JSON.parse((await app.ctx.gh.readText("main", "site/data/flows/index.json")).text);
@@ -79,9 +93,17 @@ test("delete: needs DELETE; refuses referral and the main workflow; a published 
   assert.ok(!r.json.flows.some((f) => f.id === "temp-form"));
 });
 
-test("the workflows list marks the main one and gives links and QR codes for published ones", async () => {
+test("the workflows list shows each row's live one, what can go live, and links and QR codes for published ones", async () => {
   const app = await makeApp();
-  const r = await call(app, "GET", "/api/flows");
+  let r = await call(app, "GET", "/api/flows");
+  assert.deepEqual({ a: r.json.rows.assistant.live, b: r.json.rows.assessment.live, url: r.json.rows.assessment.test.url }, { a: "referral", b: "vision-assessment", url: "/assessment/" });
+  const by = Object.fromEntries(r.json.flows.map((f) => [f.id, f]));
+  assert.deepEqual([by.referral.onSite, by["v360-interest"].onSite, by["vision-assessment"].onSite], [true, false, true]);
+  assert.deepEqual([by.referral.canGoLive, by["v360-interest"].canGoLive, by["vision-assessment"].canGoLive], [true, false, true]);
+  await call(app, "PUT", "/api/admin/settings", { assessment: "live-test" });
+  r = await call(app, "GET", "/api/flows");
+  assert.equal(r.json.rows.assessment.live, "live-test");
+  assert.equal(r.json.flows.find((f) => f.id === "vision-assessment").onSite, false);
   const ref = r.json.flows.find((f) => f.id === "referral");
   assert.equal(ref.main, true);
   assert.equal(ref.url, "http://localhost:8360/f/referral");

@@ -1,5 +1,5 @@
 {
-  "_comment": "Workflows the admin editor can open and the assistant can run. `file` is the published copy (a commit on main is a version). `status`: published (default) or retired (kept for old conversations, hidden everywhere else). routing: true = suggests services; false = a form whose answers go to staff.",
+  "_comment": "Workflows the admin editor can open and the assistant can run. `file` is the published copy (a commit on main is a version). `status`: published (default) or retired (kept for old conversations, hidden everywhere else). routing: true = suggests services; false = a form whose answers go to staff. group: the admin Workflows row and site menu item it belongs to, \"assistant\" (Resource Assistant) or \"assessment\" (Vision Assessment).",
   "flows": [
     {
       "id": "referral",
@@ -10,7 +10,8 @@
         "Voice and chat assistant",
         "Directory \u203a Find services"
       ],
-      "routing": true
+      "routing": true,
+      "group": "assistant"
     },
     {
       "id": "v360-interest",
@@ -20,7 +21,8 @@
       "usedBy": [
         "Voice and chat assistant (its own link: /f/v360-interest)"
       ],
-      "routing": false
+      "routing": false,
+      "group": "assistant"
     },
     {
       "id": "vision-assessment",
@@ -30,7 +32,8 @@
       "usedBy": [
         "Vision Assessment, question-and-answer version (/assessment/interview/)"
       ],
-      "routing": false
+      "routing": false,
+      "group": "assessment"
     }
   ]
 }
