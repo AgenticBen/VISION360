@@ -224,4 +224,5 @@ tr.selected td { background: var(--bad-wash); }
 .flow-row-head p { margin: 0 0 12px; max-width: 75ch; }
 .flow-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .flow-card.is-test { border-style: dashed; }
+.flow-card .chip { white-space: normal; }
 .flow-card.is-test.is-main { border-style: solid; }

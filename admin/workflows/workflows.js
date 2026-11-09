@@ -73,7 +73,6 @@
     var head = el("div", { class: "req-head" }, [
       el("h2", { style: "margin:0", text: f.title }),
       f.onSite ? el("span", { class: "chip main-chip", text: "★ Live on the site", title: f.group === "assessment" ? "Vision Assessment in the site menu opens this" : "Resource Assistant in the site menu runs this" }) : null,
-      !f.onSite && rows && f.group === "assessment" && f.id === rows.assessment.flow ? el("span", { class: "chip sky", text: "At /assessment/interview/", title: "The question-and-answer Vision Assessment, while the full-screen test is live" }) : null,
       f.status === "draft" ? el("span", { class: "chip amber", text: "Not published yet" }) : f.draft ? el("span", { class: "chip amber", text: "Unpublished draft" }) : null
     ]);
     var share;
