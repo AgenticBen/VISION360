@@ -140,3 +140,6 @@ html[data-textsize="200"] .a-caption, html[data-textsize="300"] .a-caption { pos
   body.assess .a-menu .seg { flex-wrap: wrap; }
   body.assess .a-menu .seg-btn { flex: 1 1 auto; }
 }
+
+/* "Try it" from the admin Workflows page, before the test is live. */
+.a-preview { margin: 0; padding: 0.5rem 16px; background: #ffd24a; color: #16191d; font-weight: 700; text-align: center; }

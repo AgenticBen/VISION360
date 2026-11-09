@@ -86,6 +86,23 @@ test("an admin can switch it on and off (same-site only); it still answers nothi
   assert.equal(s.voice.elevenlabs, false);
 });
 
+test("before it's live, signed-in staff can try the full-screen test; the public still can't", async () => {
+  const dev = { device: { type: "computer", os: "mac" } };
+  const PREVIEW = { "x-v360-preview": "1" };
+  // Sign-in required (the hosted site): the preview header alone opens nothing.
+  const locked = await makeApp({ V360_ADMIN_SIGNIN: "on" });
+  assert.equal((await call(locked, "POST", "/api/check/start", dev)).status, 404);
+  assert.equal((await call(locked, "POST", "/api/check/start", dev, PREVIEW)).status, 404);
+  // Staff (open admin on a local machine) can try it with the preview header.
+  const app = await makeApp();
+  assert.equal((await call(app, "POST", "/api/check/start", dev)).status, 404, "no header, no test");
+  const s = await call(app, "POST", "/api/check/start", dev, PREVIEW);
+  assert.equal(s.status, 200, JSON.stringify(s.json));
+  // Making it live on the Workflows page opens it for everyone.
+  await call(app, "PUT", "/api/admin/settings", { assessment: "live-test" });
+  assert.equal((await call(app, "POST", "/api/check/start", dev)).status, 200);
+});
+
 test("display settings: blue (white on dark blue) and 300% are real choices everywhere", () => {
   const D = displayCore();
   assert.deepEqual({ ...D.normalize({ textSize: "300", theme: "blue" }, { textSize: "100", theme: "standard" }) }, { textSize: "300", theme: "blue", cursor: "default", cursorColor: "black", bold: "off" });

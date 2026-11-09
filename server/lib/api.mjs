@@ -55,7 +55,7 @@ export async function createApp(opts = {}) {
   const flowRunnable = (id) => !!flowMeta(corpus, id);
   // Feedback people leave after a conversation, kept apart from conversations.
   const feedback = opts.feedback || createFeedbackStore({ env, store, fetch: opts.supabaseFetch || globalThis.fetch });
-  const feedbackTool = (flowId) => flowId === "vision-assessment" ? "assessment" : (flowMeta(corpus, flowId || "referral") || { routing: true }).routing !== false ? "assistant" : "form";
+  const feedbackTool = (flowId) => { const F = flowMeta(corpus, flowId || "referral"); return F && F.group === "assessment" ? "assessment" : (F || { routing: true }).routing !== false ? "assistant" : "form"; };
   ctx.flowRunnable = flowRunnable;
   // Admin storage: GitHub when V360_GITHUB_TOKEN is set, otherwise a local folder.
   const gh = opts.ghStore || createAdminStore(env, { dir: env.V360_ADMIN_STORE_DIR, repoRoot: opts.repoRoot });
@@ -69,15 +69,54 @@ export async function createApp(opts = {}) {
   const access = accessRules(env, gh);
   ctx.access = access;
   const linkOrigin = () => (env.V360_PUBLIC_ORIGIN ? String(env.V360_PUBLIC_ORIGIN).replace(/\/+$/, "") : env.V360_SERVERLESS ? "https://vision360.agenticarc.ai" : "http://localhost:" + (env.PORT || 8360));
+  // What is live in each row of the admin Workflows page, so behind each item
+  // in the site menu. Resource Assistant (/demo/) runs mainFlow. Vision
+  // Assessment (/assessment/) opens the full-screen test when it is live,
+  // otherwise the assessmentFlow conversation (also at /assessment/interview/).
+  const LIVE_TEST = "live-test";
+  const inGroup = (id, group) => { const F = flowMeta(corpus, id); return F && F.group === group ? F : null; };
+  function liveRows(site) {
+    const main = inGroup(site.mainFlow, "assistant") ? site.mainFlow : "referral";
+    const flow = inGroup(site.assessmentFlow, "assessment") ? site.assessmentFlow : "vision-assessment";
+    return { assistant: { live: main }, assessment: { live: site.features.screenCheck ? LIVE_TEST : flow, flow, test: { title: "Full-screen test", url: "/assessment/", results: "/admin/screen-checks/" } } };
+  }
+  // Makes a workflow (or the full-screen test) live in its row. row, when
+  // given, must match: the Resource Assistant row only runs workflows that
+  // suggest services; the V360 TECH form and other forms keep their own links.
+  async function setLive(id, { row, by } = {}) {
+    let patch, what;
+    if (id === LIVE_TEST) {
+      if (row && row !== "assessment") throw httpError(400, "The full-screen test belongs to the Vision Assessment.");
+      patch = { features: { screenCheck: true } };
+      what = "Vision Assessment now opens the full-screen test at /assessment/.";
+    } else {
+      const F = flowMeta(corpus, String(id || ""));
+      if (!F) throw httpError(400, `Only a published workflow can be made live. Published: ${[...corpus.flows.keys()].join(", ")}.`);
+      if (row && row !== F.group) throw httpError(400, `"${F.title}" belongs to the ${F.group === "assessment" ? "Vision Assessment" : "Resource Assistant"} row.`);
+      if (F.group === "assistant") {
+        if (!F.routing) throw httpError(400, `"${F.title}" is a form, so it keeps its own link and QR code. Only a workflow that suggests services can run as the Resource Assistant.`);
+        patch = { mainFlow: F.id };
+        what = `Resource Assistant now runs "${F.title}".`;
+      } else {
+        patch = { assessmentFlow: F.id, features: { screenCheck: false } };
+        what = `Vision Assessment now opens "${F.title}" (questions and answers).`;
+      }
+    }
+    await settings.updateSite(patch);
+    await requests.logChange({ title: "Live workflow changed", summary: what + (by ? ` (set by ${by})` : ""), kind: "app" }).catch(() => {});
+    return { patch, what };
+  }
+  ctx.liveRows = liveRows;
+
   const mcp = createMcp({
     flows, requests, corpus, overview: async () => adminOverview(), canWrite: () => editsOn && access.writesAllowed,
     site: {
       main: async () => (await settings.site()).mainFlow,
+      rows: async () => liveRows(await settings.site()),
       async setMain(id) {
-        if (!flowRunnable(id)) { const e = httpError(400, `Only a published workflow can be the main one. Published: ${[...corpus.flows.keys()].join(", ")}.`); throw e; }
-        await settings.updateSite({ mainFlow: id });
-        await requests.logChange({ title: "Main workflow changed", summary: `Main workflow is now "${id}" (set by Claude).`, kind: "app" }).catch(() => {});
-        return { mainFlow: id };
+        if (id === LIVE_TEST) throw httpError(400, "Only Ben makes the full-screen test live, from the Workflows page.");
+        const { what } = await setLive(id, { by: "Claude" });
+        return { live: id, note: what };
       },
       links(id) {
         const o = linkOrigin();
@@ -474,7 +513,11 @@ export async function createApp(opts = {}) {
   // A named workflow must be published and pass its checks, or the link is
   // refused: a broken link must never collect details into the wrong form.
   // No name means the main workflow (falling back to referral).
-  async function flowForStart(id) {
+  async function flowForStart(id, { row } = {}) {
+    if (row === "assessment" && (id === undefined || id === null || id === "")) {
+      const rows = liveRows(await settings.site().catch(() => ({ mainFlow: "referral", assessmentFlow: "vision-assessment", features: { screenCheck: false } })));
+      return flowMeta(corpus, rows.assessment.flow) || flowMeta(corpus, "vision-assessment") || flowMeta(corpus, "referral");
+    }
     if (id !== undefined && id !== null && id !== "") {
       const name = String(id);
       const F = /^[a-z0-9-]{1,40}$/.test(name) ? flowMeta(corpus, name) : null;
@@ -595,7 +638,7 @@ export async function createApp(opts = {}) {
       if (p === "/api/session" && method === "POST") {
         const body = await readJson(req);
         if (body.noticeAccepted !== true) throw httpError(400, "The demo notice must be accepted first.");
-        const F = await flowForStart(body.flow);
+        const F = await flowForStart(body.flow, { row: body.for === "assessment" ? "assessment" : undefined });
         const token = newToken();
         const { session, turn } = await turns.start({ mode: body.mode, tokenHash: tokenHash(token), flow: { id: F.id, title: F.title, version: F.version } });
         ctx.markDirty(session.id);
@@ -603,7 +646,7 @@ export async function createApp(opts = {}) {
       }
       // Which workflow a public page runs: /f/<id>, or the main one for the home page.
       if (p === "/api/assistant" && method === "GET") {
-        const F = await flowForStart(url.searchParams.get("flow") || undefined);
+        const F = await flowForStart(url.searchParams.get("flow") || undefined, { row: url.searchParams.get("for") === "assessment" ? "assessment" : undefined });
         const main = (await settings.site()).mainFlow;
         return send(res, 200, { flow: { id: F.id, title: F.title, description: F.description, intro: F.flow.intro || null, privacy: F.flow.privacy_notice || null, routing: F.routing, main: F.id === main } });
       }
@@ -617,17 +660,20 @@ export async function createApp(opts = {}) {
         return res.end(svg);
       }
       if (p === "/api/site" && method === "GET") {
-        const main = (await settings.site()).mainFlow;
+        const site = await settings.site();
+        const main = site.mainFlow;
         const origin = publicOrigin(req);
-        const features = (await settings.site()).features;
-        return send(res, 200, { mainFlow: flowRunnable(main) ? main : "referral", features, flows: [...corpus.flows.values()].map((F) => ({ id: F.id, title: F.title, main: F.id === main, url: `${origin}/f/${F.id}` })) });
+        const rows = liveRows(site);
+        return send(res, 200, { mainFlow: flowRunnable(main) ? main : "referral", assessmentFlow: rows.assessment.flow, live: { assistant: rows.assistant.live, assessment: rows.assessment.live }, features: site.features, flows: [...corpus.flows.values()].map((F) => ({ id: F.id, title: F.title, group: F.group, main: F.id === main, url: `${origin}/f/${F.id}` })) });
       }
 
-      // Screen Settings Check: switched off unless an admin turns it on in
-      // Settings. The browser shows the tests; every answer comes here and
-      // the server decides what's next (server/lib/screen-check.mjs).
+      // The full-screen Vision Assessment test (Screen Settings Check): off
+      // until it is made live on the Workflows page. Before that, signed-in
+      // staff can try it ("Try it", which sends X-V360-Preview). The browser
+      // shows the tests; every answer comes here and the server decides
+      // what's next (server/lib/screen-check.mjs).
       if (p === "/api/check" || p.startsWith("/api/check/")) {
-        if (!(await settings.site()).features.screenCheck) throw httpError(404, "Not available.");
+        if (!(await settings.site()).features.screenCheck && !(req.headers["x-v360-preview"] === "1" && (await staffUser(req) || adminOpen))) throw httpError(404, "Not available.");
         return await handleCheck(req, res, p, method, ip);
       }
 
@@ -774,30 +820,31 @@ export async function createApp(opts = {}) {
       // ---------------- site settings (main workflow, voice switch) ----------
       if (p === "/api/admin/settings" && (method === "GET" || method === "PUT")) {
         const u = await requireStaff(req);
-        if (method === "GET") return send(res, 200, { settings: await settings.site(), voiceKeySet: ttsKeySet(env) });
+        if (method === "GET") return send(res, 200, { settings: await settings.site(), live: liveRows(await settings.site()), voiceKeySet: ttsKeySet(env) });
         requireSameSite(req);
         if (!limiter(ip + ":write", 30)) throw httpError(429, "Too many changes at once — please wait a minute.");
         const body = await readJson(req);
-        const patch = {};
-        if (body.mainFlow !== undefined) {
-          const id = String(body.mainFlow);
-          if (!flowRunnable(id)) throw httpError(400, "Only a published workflow can be the main one.");
-          patch.mainFlow = id;
+        // What is live in each Workflows row: mainFlow (Resource Assistant)
+        // or assessment (a Vision Assessment workflow, or "live-test").
+        // features.screenCheck still works: on = the test, off = the conversation.
+        const liveId = body.mainFlow !== undefined ? String(body.mainFlow) : body.assessment !== undefined ? String(body.assessment)
+          : body.features && body.features.screenCheck !== undefined ? (body.features.screenCheck === true ? LIVE_TEST : liveRows(await settings.site()).assessment.flow) : null;
+        if (liveId !== null) {
+          const row = body.mainFlow !== undefined ? "assistant" : "assessment";
+          const out = await setLive(liveId, { row });
+          store.audit("staff:" + u.username, null, "settings_changed", out.patch);
+          return send(res, 200, { settings: await settings.site(), live: liveRows(await settings.site()), note: out.what });
         }
+        const patch = {};
         if (body.voice && body.voice.elevenlabs !== undefined) {
           if (body.voice.elevenlabs && !ttsKeySet(env)) throw httpError(400, "Add ELEVENLABS_API_KEY in Vercel first, then switch natural voice on.");
           patch.voice = { elevenlabs: !!body.voice.elevenlabs };
         }
-        if (body.features && body.features.screenCheck !== undefined) patch.features = { screenCheck: body.features.screenCheck === true };
         if (!Object.keys(patch).length) throw httpError(400, "Nothing to change.");
         await settings.updateSite(patch);
         store.audit("staff:" + u.username, null, "settings_changed", patch);
-        const what = patch.mainFlow ? `Main workflow is now "${patch.mainFlow}".`
-          : patch.voice ? `Natural voice (ElevenLabs) switched ${patch.voice.elevenlabs ? "on" : "off"}.`
-          : `Screen settings check switched ${patch.features.screenCheck ? "on" : "off"}.`;
-        const title = patch.mainFlow ? "Main workflow changed" : patch.voice ? "Voice setting changed" : "Feature switch changed";
-        await requests.logChange({ title, summary: what, kind: "app" }).catch(() => {});
-        return send(res, 200, { settings: await settings.site() });
+        await requests.logChange({ title: "Voice setting changed", summary: `Natural voice (ElevenLabs) switched ${patch.voice.elevenlabs ? "on" : "off"}.`, kind: "app" }).catch(() => {});
+        return send(res, 200, { settings: await settings.site(), live: liveRows(await settings.site()) });
       }
       // ---------------- staff -------------------------------------------
       if (p === "/api/staff/login" && method === "POST") {
@@ -902,14 +949,17 @@ export async function createApp(opts = {}) {
         }
         if (p === "/api/flows" && method === "GET") {
           const main = (await settings.site()).mainFlow;
+          const rows = liveRows(await settings.site());
           const origin = publicOrigin(req);
-          const list = (await flows.list()).map((f) => ({ ...f, main: f.id === main, live: flowRunnable(f.id), url: flowRunnable(f.id) ? `${origin}/f/${f.id}` : null, qr: flowRunnable(f.id) ? `/api/qr/${f.id}.svg` : null }));
-          return send(res, 200, { flows: list, mainFlow: main, storage: gh.kind, editsOn, publishing: access.publishing, keyRequired: access.keyRequired });
+          const onSite = (f) => f.id === (f.group === "assessment" ? rows.assessment.live : rows.assistant.live);
+          const canGoLive = (f) => flowRunnable(f.id) && (f.group === "assessment" || f.routing);
+          const list = (await flows.list()).map((f) => ({ ...f, main: f.id === main, onSite: onSite(f), canGoLive: canGoLive(f), live: flowRunnable(f.id), url: flowRunnable(f.id) ? `${origin}/f/${f.id}` : null, qr: flowRunnable(f.id) ? `/api/qr/${f.id}.svg` : null }));
+          return send(res, 200, { flows: list, mainFlow: main, rows, storage: gh.kind, editsOn, publishing: access.publishing, keyRequired: access.keyRequired });
         }
         if (p === "/api/flows" && method === "POST") {
           const u = await requireStaff(req);
           const b = await readJson(req);
-          return send(res, 201, await flows.create({ id: b.id, title: b.title, description: b.description, copyFrom: b.copyFrom || null, author: b.author || u.username }));
+          return send(res, 201, await flows.create({ id: b.id, title: b.title, description: b.description, copyFrom: b.copyFrom || null, author: b.author || u.username, group: b.group || undefined }));
         }
         const fm = p.match(/^\/api\/flows\/([a-z0-9-]{1,40})(?:\/(draft|check|publish|revert|versions)(?:\/([0-9a-z-]{7,40}))?)?$/);
         if (fm) {
@@ -920,7 +970,8 @@ export async function createApp(opts = {}) {
             if (b.confirm !== "DELETE") throw httpError(400, "Type DELETE to confirm.");
             const m = (await flows.registry()).find((x) => x.id === id);
             if (m && m.status !== "draft") requirePublishKey(req);
-            const out = await flows.remove(id, { name: b.name, mainFlow: (await settings.site()).mainFlow });
+            const rows = liveRows(await settings.site());
+            const out = await flows.remove(id, { name: b.name, mainFlow: (await settings.site()).mainFlow, live: [rows.assistant.live, rows.assessment.flow] });
             return send(res, 200, { ...out, live: out.state === "removed" ? "Removed." : liveMessage(out) });
           }
           if (action === "versions" && arg && method === "GET") return send(res, 200, { flow: await flows.versionAt(id, arg) });

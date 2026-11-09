@@ -180,7 +180,7 @@ const CHECKS = [
       const dialogue = readFileSync(path.join("server", "lib", "dialogue.mjs"), "utf8");
       if (/const \{ corpus \} = ctx/.test(dialogue)) problems.push("dialogue.mjs reads one fixed corpus; each conversation must use C(session)");
       const api = readFileSync(path.join("server", "lib", "api.mjs"), "utf8");
-      if (!/flowForStart\(body\.flow\)[\s\S]{0,300}turns\.start/.test(api)) problems.push("POST /api/session must check the workflow (flowForStart) before starting");
+      if (!/flowForStart\(body\.flow[,)][\s\S]{0,300}turns\.start/.test(api)) problems.push("POST /api/session must check the workflow (flowForStart) before starting");
       if (!/confirm !== "DELETE"/.test(api)) problems.push("deleting conversations must require the word DELETE on the server");
       return problems;
     },
@@ -217,6 +217,21 @@ const CHECKS = [
       // and doesn't keep its own copy of "bigger", "blue background" and so on.
       const assess = readFileSync(path.join("site", "screen-check", "index.html"), "utf8");
       if (!/<script src="\/voice-commands\.js"><\/script>/.test(assess)) problems.push("site/screen-check/index.html doesn't load the shared voice commands (voice-commands.js)");
+      return problems;
+    },
+  },
+  {
+    id: "FC19",
+    title: "Every workflow sits in one Workflows row (a site menu item): Resource Assistant or Vision Assessment, and only the Resource Assistant row ranks services",
+    run: () => {
+      const problems = [];
+      const reg = JSON.parse(readFileSync(path.join("site", "data", "flows", "index.json"), "utf8"));
+      for (const f of reg.flows || []) {
+        if (!["assistant", "assessment"].includes(f.group)) problems.push(`workflow ${f.id} has no row: set "group" to "assistant" or "assessment" in site/data/flows/index.json`);
+        if (f.group === "assessment" && f.routing) problems.push(`workflow ${f.id} ranks services, so it belongs in the Resource Assistant row`);
+      }
+      if (!(reg.flows || []).some((f) => f.group === "assistant" && f.routing && (!f.status || f.status === "published"))) problems.push("the Resource Assistant row needs a published workflow that suggests services");
+      if (!(reg.flows || []).some((f) => f.group === "assessment" && !f.routing && (!f.status || f.status === "published"))) problems.push("the Vision Assessment row needs a published question-and-answer workflow");
       return problems;
     },
   },

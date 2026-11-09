@@ -22,18 +22,37 @@ test("unknown or unpublished workflows are refused; no flow means the main one",
   ({ r } = await startFlow(app));
   assert.equal(r.json.flow.id, "referral");
   assert.equal(app.store.getSession(r.json.sessionId).flow_id, "referral");
-  await call(app, "PUT", "/api/admin/settings", { mainFlow: "v360-interest" });
-  ({ r } = await startFlow(app));
+  ({ r } = await startFlow(app, "v360-interest"));
   assert.equal(r.json.flow.id, "v360-interest");
   const row = app.store.getSession(r.json.sessionId);
   assert.equal(row.flow_title, "V360 TECH interest form");
   assert.match(row.flow_version, /^v\d+@[0-9a-f]{12}$/);
   const a = await call(app, "GET", "/api/assistant?flow=v360-interest");
   assert.equal(a.json.flow.routing, false);
-  assert.equal(a.json.flow.main, true);
+  assert.equal(a.json.flow.main, false);
   const site = await call(app, "GET", "/api/site");
-  assert.equal(site.json.mainFlow, "v360-interest");
+  assert.equal(site.json.mainFlow, "referral");
   assert.ok(site.json.flows.every((f) => /\/f\/[a-z0-9-]+$/.test(f.url)));
+  assert.deepEqual(Object.fromEntries(site.json.flows.map((f) => [f.id, f.group])), { referral: "assistant", "v360-interest": "assistant", "vision-assessment": "assessment" });
+});
+
+test("the Vision Assessment conversation is whichever workflow is live in its row", async () => {
+  const app = await makeApp();
+  const r = await call(app, "POST", "/api/session", { noticeAccepted: true, mode: "text", for: "assessment" });
+  assert.equal(r.status, 201);
+  assert.equal(r.json.flow.id, "vision-assessment");
+  const a = await call(app, "GET", "/api/assistant?for=assessment");
+  assert.equal(a.json.flow.id, "vision-assessment");
+  let site = await call(app, "GET", "/api/site");
+  assert.equal(site.json.assessmentFlow, "vision-assessment");
+  assert.deepEqual(site.json.live, { assistant: "referral", assessment: "vision-assessment" });
+  // Making the full-screen test live keeps the conversation at /assessment/interview/.
+  await call(app, "PUT", "/api/admin/settings", { assessment: "live-test" });
+  site = await call(app, "GET", "/api/site");
+  assert.equal(site.json.live.assessment, "live-test");
+  assert.equal(site.json.features.screenCheck, true);
+  const b = await call(app, "GET", "/api/assistant?for=assessment");
+  assert.equal(b.json.flow.id, "vision-assessment");
 });
 
 test("the interest form runs end to end in chat and goes to staff, with no suggestions", async () => {

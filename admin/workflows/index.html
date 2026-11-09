@@ -18,17 +18,33 @@
   <div>
     <p class="eyebrow">Build</p>
     <h1>Workflows</h1>
-    <p class="sub">The question flows behind the assistant and the directory. The <strong>main site</strong> workflow runs on the public home page; every other one has its own link, QR code and printable flyer to share. Open one to edit it visually; every publish is a version you can revert.</p>
+    <p class="sub">Two rows, one for each item in the public site menu. In each row, the version marked <strong>★ Live on the site</strong> is what people get from that menu item; press <strong>Make live</strong> to switch. Every published workflow also has its own link, QR code and printable flyer. Open one to edit it visually; every publish is a version you can revert.</p>
   </div>
   <div class="page-actions"><button type="button" class="btn primary" id="new-flow" data-tour="new-workflow">+ New workflow</button></div>
 </header>
 <p class="note" id="gh-note" hidden></p>
-<section class="grid" id="flows" data-tour="flow-list" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"><p class="hint">Loading…</p></section>
+<div id="flows" data-tour="flow-list">
+  <section class="flow-row" aria-labelledby="row-assistant-h">
+    <div class="flow-row-head">
+      <h2 id="row-assistant-h">Resource Assistant</h2>
+      <p class="muted">Opens from <strong>Resource Assistant</strong> in the site menu (<a href="/demo/" target="_blank" rel="noopener">/demo/</a>). Only a workflow that suggests services can be live here; forms such as the V360 TECH interest form keep their own link and QR code.</p>
+    </div>
+    <div class="grid flow-grid" id="row-assistant"><p class="hint">Loading…</p></div>
+  </section>
+  <section class="flow-row" aria-labelledby="row-assessment-h">
+    <div class="flow-row-head">
+      <h2 id="row-assessment-h">Vision Assessment</h2>
+      <p class="muted">Opens from <strong>Vision Assessment</strong> in the site menu (<a href="/assessment/" target="_blank" rel="noopener">/assessment/</a>): either the full-screen test or a question-and-answer workflow. The question-and-answer one also stays at <a href="/assessment/interview/" target="_blank" rel="noopener">/assessment/interview/</a>.</p>
+    </div>
+    <div class="grid flow-grid" id="row-assessment"><p class="hint">Loading…</p></div>
+  </section>
+</div>
 </main>
 <dialog id="new-dialog" class="del-dialog" aria-labelledby="new-title">
   <form id="new-form" method="dialog">
     <h2 id="new-title" style="color:var(--accent)">New workflow</h2>
-    <p class="hint">A new form-style workflow: the assistant asks its questions one at a time and sends the answers to the Lions Services team. It starts as a draft; publish it to get its link and QR code.</p>
+    <p class="hint">A new question-and-answer workflow: the assistant asks its questions one at a time and sends the answers to the Lions Services team. It starts as a draft; publish it to get its link and QR code.</p>
+    <label class="fl" for="nf-row">Which row?</label><select class="inp" id="nf-row"><option value="assistant">Resource Assistant (its own link and QR code)</option><option value="assessment">Vision Assessment (can be made live in the menu)</option></select>
     <label class="fl" for="nf-title">Title</label><input class="inp" id="nf-title" required maxlength="120" placeholder="For example: Spring workshop sign-up">
     <label class="fl" for="nf-id">Link name (used in the web address)</label><input class="inp" id="nf-id" required maxlength="40" pattern="[a-z][a-z0-9-]{1,38}[a-z0-9]" placeholder="spring-workshop">
     <p class="hint" id="nf-url"></p>

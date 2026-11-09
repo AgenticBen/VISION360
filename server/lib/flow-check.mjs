@@ -12,6 +12,11 @@ const ID = /^[a-z][a-z0-9_]{0,47}$/;
 const VALUE = /^[a-z0-9][a-z0-9_]{0,47}$/;
 export const MAX_FLOW_BYTES = 450 * 1024;
 
+// The admin Workflows row (and site menu item) a workflow belongs to:
+// assistant = Resource Assistant (/demo/), assessment = Vision Assessment (/assessment/).
+export const GROUPS = Object.freeze(["assistant", "assessment"]);
+export function groupOf(m) { return m && m.group === "assessment" ? "assessment" : "assistant"; }
+
 export function checkFlow(flow, { organizations = [], routing = true } = {}) {
   const errors = [];
   const warnings = [];

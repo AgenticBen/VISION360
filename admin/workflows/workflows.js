@@ -1,12 +1,15 @@
-/* Workflows: one card per workflow. The main one runs on the public home
-   page; every published workflow has its own link, QR code and flyer. New
-   workflows start as drafts; deleting needs the word DELETE. */
+/* Workflows: two rows, one per item in the public site menu. Resource
+   Assistant (/demo/) and Vision Assessment (/assessment/) each have one live
+   version; "Make live" switches it. The Vision Assessment row also has the
+   full-screen test, which isn't a JSON workflow. Every published workflow has
+   its own link, QR code and flyer. New workflows start as drafts; deleting
+   needs the word DELETE. */
 (function () {
   "use strict";
   var A = window.V360Admin, el = A.el;
   var $ = function (id) { return document.getElementById(id); };
   var focusId = new URLSearchParams(location.search).get("flow");
-  var all = [];
+  var all = [], rows = null;
 
   function copyText(btn, text) {
     (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () {
@@ -27,26 +30,60 @@
     });
   }
 
-  function makeMain(f, btn) {
+  // Makes a workflow (or "live-test", the full-screen test) live in its row.
+  function makeLive(id, group, btn) {
     btn.disabled = true;
-    A.api("PUT", "/api/admin/settings", { mainFlow: f.id }).then(load).catch(function (e) { btn.disabled = false; alert(e.message); });
+    A.api("PUT", "/api/admin/settings", group === "assessment" ? { assessment: id } : { mainFlow: id }).then(function (r) {
+      return load().then(function () { var n = $("gh-note"); n.hidden = false; n.className = "note sky"; n.textContent = "✓ " + (r.note || "Done.") + " The site menu shows it within a minute."; });
+    }).catch(function (e) { btn.disabled = false; alert(e.message); });
+  }
+
+  // The full-screen test: not a JSON workflow, so it has no editor or versions.
+  function testCard(t, live) {
+    var actions = [
+      el("a", { class: "btn primary", href: live ? t.url : t.url + "?preview=1", target: "_blank", rel: "noopener", text: live ? "Open it" : "Try it" }),
+      el("a", { class: "btn", href: t.results, text: "See results" })
+    ];
+    if (!live) {
+      var mb = el("button", { type: "button", class: "btn", text: "Make live" });
+      mb.addEventListener("click", function () {
+        if (!window.confirm("Make the full-screen test the Vision Assessment on the public site?\n\nPeople who choose Vision Assessment in the menu will get the test straight away. The hearing and about-you questions, the new color order and the reports aren't built yet. The question-and-answer version stays at /assessment/interview/, and you can switch back here at any time.")) return;
+        makeLive("live-test", "assessment", mb);
+      });
+      actions.push(mb);
+    }
+    return el("article", { class: "card flow-card is-test" + (live ? " is-main" : ""), id: "flow-live-test" }, [
+      el("div", { class: "req-head" }, [
+        el("h2", { style: "margin:0", text: t.title }),
+        live ? el("span", { class: "chip main-chip", text: "★ Live on the site", title: "Vision Assessment in the site menu opens this" }) : el("span", { class: "chip", text: "Not live yet" })
+      ]),
+      el("p", { class: "muted", style: "margin:0", text: "Two big choices at a time, read aloud and answered by voice, keyboard or touch: speaking speed, text size, pictures, colors, pointer and bold. The page takes on each choice as the person makes it, and staff get the results." }),
+      el("p", { class: "hint", style: "margin:0", text: live ? "People get this from Vision Assessment in the site menu." : "Try it opens it just for you; the public doesn't see it until you make it live." }),
+      el("dl", { class: "kv", style: "font-size:14px" }, [
+        el("dt", { text: "Link" }), el("dd", null, [el("a", { href: t.url, target: "_blank", rel: "noopener", text: location.host + t.url })]),
+        el("dt", { text: "Wording" }), el("dd", { text: "site/data/screen-check.json" }),
+        el("dt", { text: "Still to come" }), el("dd", { text: "Hearing and about-you questions, technology inventory, white → blue → black colors, reports" })
+      ]),
+      el("div", { class: "flow-actions" }, actions)
+    ]);
   }
 
   function card(f) {
     var used = f.usedBy.length ? f.usedBy.map(function (u) { return el("span", { class: "chip sky", text: u }); }) : [el("span", { class: "chip", text: "Not used live yet" })];
     var head = el("div", { class: "req-head" }, [
       el("h2", { style: "margin:0", text: f.title }),
-      f.main ? el("span", { class: "chip main-chip", text: "★ Main site", title: "Runs on the public home page" }) : null,
+      f.onSite ? el("span", { class: "chip main-chip", text: "★ Live on the site", title: f.group === "assessment" ? "Vision Assessment in the site menu opens this" : "Resource Assistant in the site menu runs this" }) : null,
+      !f.onSite && rows && f.group === "assessment" && f.id === rows.assessment.flow ? el("span", { class: "chip sky", text: "At /assessment/interview/", title: "The question-and-answer Vision Assessment, while the full-screen test is live" }) : null,
       f.status === "draft" ? el("span", { class: "chip amber", text: "Not published yet" }) : f.draft ? el("span", { class: "chip amber", text: "Unpublished draft" }) : null
     ]);
     var share;
     if (f.url) {
       var copyBtn = el("button", { type: "button", class: "btn sm", text: "Copy link" });
       copyBtn.addEventListener("click", function () { copyText(copyBtn, f.url); });
-      share = el("div", { class: "share", "data-tour": f.main ? "main-flow" : null }, [
+      share = el("div", { class: "share", "data-tour": f.onSite && f.group !== "assessment" ? "main-flow" : null }, [
         el("img", { class: "share-qr", src: f.qr, alt: "QR code for " + f.title, width: "96", height: "96", loading: "lazy" }),
         el("div", { class: "share-body" }, [
-          el("p", { class: "share-label", text: f.main ? "Main site — also at its own link:" : "Share this workflow:" }),
+          el("p", { class: "share-label", text: f.onSite ? "Live on the site — also at its own link:" : "Share this workflow:" }),
           el("a", { class: "share-url", href: f.url, target: "_blank", rel: "noopener", text: f.url.replace(/^https?:\/\//, "") }),
           el("div", { class: "share-actions" }, [
             copyBtn,
@@ -63,9 +100,10 @@
     }
     var actions = [el("a", { class: "btn primary", href: "/admin/workflows/edit/?flow=" + encodeURIComponent(f.id), text: f.status === "draft" ? "Edit draft" : "Open editor" })];
     if (f.status !== "draft") actions.push(el("a", { class: "btn", href: "/" + f.file.replace(/^site\//, ""), text: "View JSON" }));
-    if (!f.main && f.live) { var mb = el("button", { type: "button", class: "btn", text: "Make main site" }); mb.addEventListener("click", function () { makeMain(f, mb); }); actions.push(mb); }
-    if (!f.main && f.id !== "referral") actions.push(el("button", { type: "button", class: "btn danger", text: "Delete", onclick: function () { askDelete(f); } }));
-    var art = el("article", { class: "card flow-card" + (f.main ? " is-main" : ""), id: "flow-" + f.id }, [
+    if (!f.onSite && f.canGoLive) { var mb = el("button", { type: "button", class: "btn", text: "Make live" }); mb.addEventListener("click", function () { makeLive(f.id, f.group, mb); }); actions.push(mb); }
+    var protectedId = rows && (f.id === rows.assistant.live || f.id === rows.assessment.flow);
+    if (!f.onSite && !protectedId && f.id !== "referral") actions.push(el("button", { type: "button", class: "btn danger", text: "Delete", onclick: function () { askDelete(f); } }));
+    var art = el("article", { class: "card flow-card" + (f.onSite ? " is-main" : ""), id: "flow-" + f.id }, [
       head,
       el("p", { class: "muted", style: "margin:0", text: f.description || "" }),
       el("div", { style: "display:flex;gap:6px;flex-wrap:wrap" }, used),
@@ -87,13 +125,19 @@
       note.hidden = true;
       if (j.storage !== "github") { note.hidden = false; note.textContent = "GitHub isn't connected, so published versions are kept on this server only and disappear when it restarts. Add V360_GITHUB_TOKEN in Vercel to save them for good (see Settings)."; }
       if (!j.editsOn) { note.hidden = false; note.textContent = "Editing is switched off on this site (V360_FLOW_EDITS=off)."; }
-      var box = $("flows"); box.textContent = "";
-      // Main site first.
-      j.flows.slice().sort(function (a, b) { return (b.main ? 1 : 0) - (a.main ? 1 : 0); }).forEach(function (f) { box.appendChild(card(f)); });
+      rows = j.rows;
+      var testLive = rows.assessment.live === "live-test";
+      // One row per menu item; the live one first.
+      ["assistant", "assessment"].forEach(function (g) {
+        var box = $("row-" + g); box.textContent = "";
+        var cards = j.flows.filter(function (f) { return f.group === g; }).sort(function (a, b) { return (b.onSite ? 1 : 0) - (a.onSite ? 1 : 0); }).map(card);
+        if (g === "assessment") { var t = testCard(rows.assessment.test, testLive); if (testLive) cards.unshift(t); else cards.push(t); }
+        cards.forEach(function (c) { box.appendChild(c); });
+      });
       var copy = $("nf-copy");
       copy.textContent = "";
       copy.appendChild(el("option", { value: "", text: "A blank form (one name question)" }));
-      j.flows.filter(function (f) { return !f.routing; }).forEach(function (f) { copy.appendChild(el("option", { value: f.id, text: "A copy of " + f.title })); });
+      j.flows.filter(function (f) { return !f.routing; }).forEach(function (f) { copy.appendChild(el("option", { value: f.id, "data-group": f.group, text: "A copy of " + f.title })); });
       if (focusId && $("flow-" + focusId)) { $("flow-" + focusId).classList.add("focus-ring"); $("flow-" + focusId).scrollIntoView({ block: "center" }); focusId = null; }
     }).catch(function (e) { $("flows").textContent = "Couldn't load: " + e.message; });
   }
@@ -108,11 +152,13 @@
   $("nf-title").addEventListener("input", function () { if (!idTouched) { $("nf-id").value = slug(this.value); showUrl(); } });
   $("nf-id").addEventListener("input", function () { idTouched = true; showUrl(); });
   function showUrl() { $("nf-url").textContent = $("nf-id").value ? "Its link will be " + location.origin + "/f/" + $("nf-id").value : ""; }
+  // A copy starts in its source's row.
+  $("nf-copy").addEventListener("change", function () { var o = this.options[this.selectedIndex]; if (o && o.getAttribute("data-group")) $("nf-row").value = o.getAttribute("data-group"); });
   $("nf-cancel").addEventListener("click", function () { $("new-dialog").close(); });
   $("new-form").addEventListener("submit", function (e) {
     e.preventDefault();
     $("nf-go").disabled = true; $("nf-error").hidden = true;
-    A.api("POST", "/api/flows", { id: $("nf-id").value.trim(), title: $("nf-title").value.trim(), description: $("nf-desc").value.trim(), copyFrom: $("nf-copy").value || null })
+    A.api("POST", "/api/flows", { id: $("nf-id").value.trim(), title: $("nf-title").value.trim(), description: $("nf-desc").value.trim(), copyFrom: $("nf-copy").value || null, group: $("nf-row").value })
       .then(function (r) { location.href = "/admin/workflows/edit/?flow=" + encodeURIComponent(r.id); })
       .catch(function (err) { $("nf-error").textContent = "⚠ " + err.message; $("nf-error").hidden = false; $("nf-go").disabled = false; });
   });

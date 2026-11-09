@@ -217,11 +217,11 @@
   };
 
   // Which workflow this page runs: /f/<id> (a shared link or QR code), ?flow=<id>,
-  // or the main workflow the admin picked for the home page.
-  // The question-and-answer Vision Assessment. /assessment/ itself is now the
-  // live test (site/screen-check/); this version stays at /assessment/interview/.
+  // or the one live in its row on the admin Workflows page: Resource Assistant
+  // (/demo/) or, at /assessment/interview/, the Vision Assessment conversation.
+  // (/assessment/ itself opens the full-screen test when that is the live one.)
   var ON_ASSESSMENT = /^\/assessment\/interview\/?$/.test(location.pathname);
-  var FLOW = (ON_ASSESSMENT ? "vision-assessment" : null) || (location.pathname.match(/^\/f\/([a-z0-9-]{1,40})\/?$/) || [])[1] || new URLSearchParams(location.search).get("flow") || null;
+  var FLOW = (ON_ASSESSMENT ? null : (location.pathname.match(/^\/f\/([a-z0-9-]{1,40})\/?$/) || [])[1] || new URLSearchParams(location.search).get("flow")) || null;
   app.flow = { id: FLOW, routing: true };
   // The question on the start screen, which the assistant also asks out loud.
   var PH = window.V360_PHRASES;
@@ -229,7 +229,7 @@
   function setAsk(q, sub) { ASK = { q: q, sub: sub }; $("start-h").textContent = q; $("start-sub").textContent = sub; }
   setAsk(ASK.q, ASK.sub);
   if (ON_ASSESSMENT) { document.title = "Vision Assessment — Vision 360"; $("page-h").textContent = "Vision Assessment"; }
-  fetch("/api/assistant" + (FLOW ? "?flow=" + encodeURIComponent(FLOW) : ""), { cache: "no-store" }).then(function (r) {
+  fetch("/api/assistant" + (FLOW ? "?flow=" + encodeURIComponent(FLOW) : ON_ASSESSMENT ? "?for=assessment" : ""), { cache: "no-store" }).then(function (r) {
     if (r.status === 404) throw new Error("gone");
     return r.json();
   }).then(function (j) {
@@ -452,6 +452,7 @@
     setStatus("connecting");
     var body = { noticeAccepted: true, mode: mode };
     if (FLOW) body.flow = FLOW;
+    else if (ON_ASSESSMENT) body.for = "assessment";
     return api("POST", "/api/session", body).then(function (j) {
       app.sessionId = j.sessionId;
       app.token = j.token;

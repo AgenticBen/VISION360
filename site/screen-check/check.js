@@ -44,6 +44,9 @@
   // The same live test runs as the Vision Assessment (/assessment/). The older
   // question-and-answer version stays at /assessment/interview/.
   var ASSESS = /^\/assessment\/?$/.test(location.pathname);
+  // "Try it" on the admin Workflows page: staff can run the test before it's
+  // made live. The server only allows it for a signed-in admin.
+  var PREVIEW = /(^|[?&])preview=1(&|$)/.test(location.search.slice(1));
   var INTERVIEW_URL = "/assessment/interview/";
   var PAGE_NAME = ASSESS ? "Vision Assessment" : "Screen settings check";
   if (ASSESS) { document.title = "Vision Assessment — Vision 360"; $("stage-h").textContent = PAGE_NAME; }
@@ -68,6 +71,7 @@
   function api(method, path, body) {
     var headers = { "Content-Type": "application/json" };
     if (st.token) headers.Authorization = "Bearer " + st.token;
+    if (PREVIEW) headers["X-V360-Preview"] = "1";
     return fetch(path, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, credentials: "same-origin" }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
         if (!r.ok) { var e = new Error(j.error || ("Server error " + r.status)); e.status = r.status; throw e; }
@@ -947,14 +951,23 @@
     fetch("/data/screen-check.json", { cache: "no-store" }).then(function (r) { return r.json(); }),
     fetch("/api/site", { cache: "no-store" }).then(function (r) { return r.json(); }).catch(function () { return {}; }),
     fetch("/api/health").then(function (r) { return r.json(); }).catch(function () { return {}; }),
+    // Staff trying the test before it's live: are they signed in to the admin?
+    PREVIEW ? fetch("/api/admin/settings", { cache: "no-store", credentials: "same-origin" }).then(function (r) { return r.ok; }).catch(function () { return false; }) : Promise.resolve(false),
   ]).then(function (all) {
     C = all[0];
     listCommands();
     syncMenu();
     natural = !!(all[2].tts && all[2].tts.provider === "elevenlabs");
-    if (!(all[1].features && all[1].features.screenCheck)) {
+    var live = !!(all[1].features && all[1].features.screenCheck);
+    if (!live && PREVIEW && all[3]) {
+      // Try it: a note at the top says the public can't see this yet.
+      var note = el("p", { class: "a-preview", role: "note", text: "Preview for staff: the public still sees the question-and-answer Vision Assessment until you make this test live on the Workflows page." });
+      document.body.insertBefore(note, document.body.firstChild);
+      live = true;
+    }
+    if (!live) {
       // The Vision Assessment never shows a closed page: until the live test
-      // is switched on, it opens the question-and-answer version.
+      // is made live on the Workflows page, it opens the question-and-answer version.
       if (ASSESS) { location.replace(INTERVIEW_URL); return; }
       screen({ title: "Screen settings check", sub: "This check isn't open yet.", body: [el("p", null, [el("a", { href: "/", text: "Go to the Vision 360 home page" })])], focus: false });
       return;

@@ -25,23 +25,12 @@
       .finally(function () { $("pw-save").disabled = false; });
   });
 
-  // Feature switch: screen settings check (off until it's ready).
-  function showFeature(on) {
-    $("screen-check-on").checked = on;
-    $("screen-check-label").textContent = on ? "On" : "Off";
-  }
+  // Which Vision Assessment is live is chosen on the Workflows page.
   A.api("GET", "/api/admin/settings").then(function (r) {
-    showFeature(!!(r.settings.features && r.settings.features.screenCheck));
-    $("screen-check-on").disabled = false;
-  }).catch(function () { $("screen-check-msg").textContent = "Couldn't load this setting."; });
-  $("screen-check-on").addEventListener("change", function () {
-    var want = $("screen-check-on").checked, msg = $("screen-check-msg");
-    $("screen-check-on").disabled = true;
-    A.api("PUT", "/api/admin/settings", { features: { screenCheck: want } })
-      .then(function (r) { showFeature(!!r.settings.features.screenCheck); msg.className = "ok-text"; msg.textContent = "✓ Saved. It can take up to 30 seconds to reach every visitor."; })
-      .catch(function (err) { showFeature(!want); msg.className = "danger-text"; msg.textContent = "⚠ " + err.message; })
-      .finally(function () { $("screen-check-on").disabled = false; });
-  });
+    $("assessment-live").textContent = r.live && r.live.assessment.live === "live-test"
+      ? "Live now: the full-screen test."
+      : "Live now: the question-and-answer version.";
+  }).catch(function () { $("assessment-live").textContent = ""; });
 
   Promise.all([A.api("GET", "/api/admin/overview"), fetch("/api/mcp", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) }).then(function (r) { return r.json(); }).catch(function () { return null; })])
     .then(function (r) {
