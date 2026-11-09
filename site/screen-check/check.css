@@ -132,4 +132,11 @@ html[data-textsize="200"] .a-caption, html[data-textsize="300"] .a-caption { pos
   .a-top { padding: 0.4rem 12px; }
   .a-menu-btn { padding: 0.3rem 0.8rem; }
   body.assess .check-main { padding: 0.8rem 12px 1.5rem; }
+  /* At large text sizes nothing may be wider than the phone: buttons wrap
+     their words and the menu's choices wrap onto more rows. */
+  body.assess .btn, body.assess .seg-btn { max-width: 100%; min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+  body.assess .stage-h, body.assess .a-menu h2, body.assess .a-menu h3 { overflow-wrap: anywhere; hyphens: auto; }
+  body.assess .stage-actions .btn-primary { min-width: min(9rem, 100%); }
+  body.assess .a-menu .seg { flex-wrap: wrap; }
+  body.assess .a-menu .seg-btn { flex: 1 1 auto; }
 }

@@ -177,8 +177,8 @@
   function screen(o) {
     stopListening();
     st.busy = false;
-    st.onN = null;
-    st.onDigit = null;
+    st.onN = o.onN || null;
+    st.onDigit = o.onDigit || null;
     st.onCommand = o.onCommand || null;
     if (o.resume !== undefined) st.resume = o.resume;
     $("stage-h").textContent = o.title;
@@ -357,6 +357,7 @@
     }
     screen({ title: "What would you like to do on this device?", resume: showGoal, sub: "For example: read email, video call family, or read the news. Or skip this.", body: [el("div", { class: "field" }, [el("label", { for: "goal-in", text: "What you'd like to do" }), input])],
       actions: [{ label: "Next", primary: true, onClick: function () { save(input.value); } }, { label: "Skip", onClick: function () { save(""); } }],
+      onCommand: function (c) { if (c.cmd === "skip") { save(""); return true; } return false; },
       speak: C.say.goal, listen: function (t, n) { if (/^skip\b/.test(n)) save(""); else { input.value = t; save(t); } } });
   }
 
@@ -476,9 +477,9 @@
     var box = el("div", { class: "word-box pic-box" }, [pictureSvg(p.picture, p.px)]);
     var acts = (p.choices || ["house", "apple", "circle", "square"]).map(function (c, i) { return { label: PIC_LABEL[c] || c, keyHint: String(i + 1), onClick: function () { go(c); } }; });
     acts.push({ label: "I can't tell", onClick: cant });
-    st.onDigit = function (k) { var c = (p.choices || [])[k - 1]; if (c) go(c); };
     screen({ title: "What picture do you see?", sub: "A house, an apple, a circle or a square. Say it, or press its button. If you can't tell, that's fine: choose \"I can't tell\".", progress: progressText(st.stepIdx) + " — picture " + p.n,
       body: [box], actions: acts,
+      onDigit: function (k) { var c = (p.choices || [])[k - 1]; if (c) go(c); },
       speak: firstTime ? C.say.picIntro : C.say.picNext,
       listen: function (t, n) {
         if (/\b(can't tell|cannot tell|can't see|cannot see|don't know|no idea|not sure|nothing)\b/.test(n)) cant(); else go(t);
@@ -531,8 +532,7 @@
     var target = el("button", { type: "button", class: "target", text: "Click here" });
     target.addEventListener("pointerdown", function (e) { if (e.pointerType === "mouse" || e.pointerType === "pen") { e.preventDefault(); send("cursor", { answer: "found" }); } });
     target.addEventListener("click", function (e) { if (e.detail === 0) alertNow("Use the mouse for this one, or press N if you can't find the pointer."); });
-    st.onN = lost;
-    screen({ title: "Can you find the mouse pointer?", sub: "Move the mouse until you see the pointer, then click the round button. If you can't find it, choose \"I can't find it\" or press N.", progress: progressText(st.stepIdx),
+    screen({ title: "Can you find the mouse pointer?", onN: lost, sub: "Move the mouse until you see the pointer, then click the round button. If you can't find it, choose \"I can't find it\" or press N.", progress: progressText(st.stepIdx),
       body: [el("div", { class: "target-wrap" }, [target])],
       actions: [{ label: "I can't find it", onClick: lost, keyHint: "N" }],
       speak: firstTime ? C.say.cursorIntro : C.say.cursorNext,
