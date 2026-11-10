@@ -158,3 +158,32 @@ html[data-textsize="200"] .a-caption, html[data-textsize="300"] .a-caption, html
 .pick-name { font-weight: 800; }
 .pick-tile .pointer-art { min-height: 0; }
 .pick-tile .pointer-art svg { display: block; max-width: 100%; height: auto; }
+
+/* ---------------------------------------------------------------- following along
+   The word being spoken: black on yellow (14:1) with a thick underline, so it
+   shows in every color scheme. */
+.w.hl { background: #ffd24a; color: #000; border-radius: 0.2em; box-shadow: 0 0.12em 0 #000, 0 -0.06em 0 #ffd24a; text-decoration: underline; text-decoration-thickness: 0.12em; text-underline-offset: 0.15em; }
+.a-script-h { margin: 0 auto 0.1rem; max-width: 72rem; font-size: 0.85rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.a-history { max-width: 72rem; margin: 0 auto 0.3rem; }
+.a-history summary { cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; font-weight: 700; }
+.a-history ol { margin: 0.2rem 0 0.4rem; padding-left: 1.4rem; max-height: 30vh; overflow-y: auto; }
+.a-history li { margin: 0.2rem 0; color: var(--muted); }
+body.script-off .a-script { display: none; }
+/* The highlight test: the side being read glows. */
+.pair-side.playing { outline: 8px solid #ffd24a; outline-offset: 3px; }
+.hl-sample .pair-text { font-size: 1.15rem; line-height: 1.6; }
+/* The results being read aloud: the section being read has a thick outline. */
+.reading { outline: 6px solid var(--accent); outline-offset: 6px; border-radius: 6px; }
+/* Big Up / Pause / Down buttons on the right edge of long pages. */
+.a-side { position: fixed; right: 8px; top: 50%; transform: translateY(-50%); z-index: 35; display: flex; flex-direction: column; gap: 8px; }
+.a-side-btn { font: inherit; font-size: 16px; font-weight: 800; width: 84px; min-height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 3px solid var(--ink); border-radius: 14px; background: var(--page); color: var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,0.25); cursor: pointer; }
+.a-side-btn:hover { background: var(--accent-wash); }
+.a-side-btn:focus-visible { outline: 6px solid #ffd24a; outline-offset: 2px; box-shadow: 0 0 0 10px #000; }
+.a-side-btn .side-icon { font-size: 28px; line-height: 1; }
+body.assess:has(.a-side:not([hidden])) .check-main { padding-right: 104px; }
+@media (max-width: 640px) {
+  .a-side { right: 4px; gap: 6px; }
+  .a-side-btn { width: 64px; min-height: 64px; font-size: 13px; }
+  body.assess:has(.a-side:not([hidden])) .check-main { padding-right: 76px; }
+}
+@media print { .a-side, .a-script { display: none !important; } .reading { outline: none; } }

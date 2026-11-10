@@ -54,6 +54,18 @@
         <button type="button" class="seg-btn swatch theme-high" data-set="theme" data-value="high" aria-pressed="false">Yellow on black</button>
       </div>
     </div>
+    <div class="a-menu-group" role="group" aria-labelledby="m-hl-l">
+      <h3 id="m-hl-l">Highlight each word as I speak</h3>
+      <div class="seg">
+        <button type="button" class="seg-btn" data-set="highlight" data-value="off" aria-pressed="false">Off</button>
+        <button type="button" class="seg-btn" data-set="highlight" data-value="on" aria-pressed="false">On</button>
+      </div>
+      <h3 id="m-script-l">Show what I'm saying at the bottom</h3>
+      <div class="seg" role="group" aria-labelledby="m-script-l">
+        <button type="button" class="seg-btn" data-script="on" aria-pressed="true">Show</button>
+        <button type="button" class="seg-btn" data-script="off" aria-pressed="false">Hide</button>
+      </div>
+    </div>
     <div class="a-menu-group" role="group" aria-labelledby="m-bold-l">
       <h3 id="m-bold-l">Bold text</h3>
       <div class="seg">
@@ -122,12 +134,26 @@
 </main>
 
 <div class="voice-row a-caption" id="voice-row" hidden>
-  <p class="a-caption-text" id="caption" aria-hidden="true"></p>
+  <div class="a-script">
+    <p class="a-script-h" aria-hidden="true">What I'm saying</p>
+    <p class="a-caption-text" id="caption" aria-hidden="true"></p>
+    <details class="a-history">
+      <summary>Show earlier lines</summary>
+      <ol id="script-history" aria-label="Earlier lines"></ol>
+    </details>
+  </div>
   <div class="a-caption-row">
     <p class="listen-status" id="listen-status"><span class="status-dot" aria-hidden="true"></span><span id="listen-text"></span></p>
     <button type="button" class="btn btn-secondary" id="repeat-btn">Repeat</button>
     <button type="button" class="btn btn-secondary" id="listen-btn" aria-pressed="true">Stop listening</button>
   </div>
+</div>
+
+<!-- Long pages: big Up and Down buttons, and pause or carry on reading. -->
+<div class="a-side" id="a-side" hidden>
+  <button type="button" class="a-side-btn" id="side-up"><span class="side-icon" aria-hidden="true">▲</span><span class="side-label">Up</span></button>
+  <button type="button" class="a-side-btn" id="side-read" hidden aria-pressed="true"><span class="side-icon" aria-hidden="true">⏸</span><span class="side-label">Pause</span></button>
+  <button type="button" class="a-side-btn" id="side-down"><span class="side-icon" aria-hidden="true">▼</span><span class="side-label">Down</span></button>
 </div>
 
 <div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>

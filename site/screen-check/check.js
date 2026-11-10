@@ -40,7 +40,7 @@
   var KEY = "v360-check";               // this tab's check id and token, to carry on after a reload
   var FROM_KEY = "v360-check-from";     // set by the Vision Assessment's "Check my screen settings" button
   var ASSIST_KEY = "v360-demo-settings"; // the assistant's own settings (speech rate)
-  var NAMES = { speech_rate: "Speaking speed", magnification: "Text size", pictures: "Pictures", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
+  var NAMES = { speech_rate: "Speaking speed", magnification: "Text size", pictures: "Pictures", contrast: "Colors", cursor: "Pointer", bold: "Text weight", highlight: "Word highlighting" };
   // The same live test runs as the Vision Assessment (/assessment/). The older
   // question-and-answer version stays at /assessment/interview/.
   var ASSESS = /^\/assessment\/?$/.test(location.pathname);
@@ -89,39 +89,110 @@
   }
   // Says a line. Fixed lines use the natural voice when it's on; anything
   // else uses the device's voice. Resolves when finished (or skipped).
-  function say(text, rate) {
+  // ---- the script: each line said, with the word being spoken lit up
+  // when word highlighting is on. Earlier lines are kept to look back at.
+  function wordSpans(target, text) {
+    target.textContent = "";
+    var spans = [], pos = 0;
+    text.split(/(\s+)/).forEach(function (part) {
+      if (!part) return;
+      if (/^\s+$/.test(part)) target.appendChild(document.createTextNode(part));
+      else { var sp = el("span", { class: "w" }, [part]); spans.push({ i: pos, el: sp }); target.appendChild(sp); }
+      pos += part.length;
+    });
+    return spans;
+  }
+  function lighter(spans) {
+    var cur = null;
+    var f = function (charIndex) {
+      var hit = null;
+      for (var k = 0; k < spans.length; k++) { if (spans[k].i <= charIndex) hit = spans[k]; else break; }
+      if (hit === cur) return;
+      if (cur) cur.el.classList.remove("hl");
+      cur = hit; if (cur) cur.el.classList.add("hl");
+    };
+    f.clear = function () { if (cur) cur.el.classList.remove("hl"); cur = null; };
+    return f;
+  }
+  function pushHistory(text) {
+    st.history = (st.history || []).concat([text]).slice(-10);
+    var ol = $("script-history"); if (!ol) return;
+    ol.textContent = "";
+    st.history.slice(0, -1).forEach(function (t) { ol.appendChild(el("li", { text: t })); });
+  }
+  // Says a line. Fixed lines use the natural voice when it's on; anything
+  // else uses the device's voice. Resolves when finished (or skipped).
+  // opts: { target: element to light up (default: the script), hl: true/false
+  // (default: the person's word-highlight setting), device: true to skip the
+  // natural voice (for text that isn't a fixed line) }.
+  function say(text, rate, opts) {
+    var o = opts || {};
     st.lastSay = text;
     announce(text);
-    if (text) $("caption").textContent = text;
+    var hl = o.hl != null ? o.hl : D.get().highlight === "on";
+    var light = null;
+    if (text) {
+      pushHistory(text);
+      var cap = $("caption");
+      if (o.target) cap.textContent = text;
+      var target = o.target || cap;
+      if (hl) light = lighter(wordSpans(target, text));
+      else if (!o.target) cap.textContent = text;
+    }
     if (st.sr || !text) return Promise.resolve(false);
     stopListening();
     stopSpeaking();
     var my = speakToken;
     var r = String(rate || st.rate);
     setListen("speaking", "Speaking…");
+    var done = function () { if (light) light.clear(); };
     function device() {
       return new Promise(function (resolve) {
         if (!canSpeak || my !== speakToken) return resolve(false);
         var u = new SpeechSynthesisUtterance(text);
         u.lang = "en-US"; u.rate = Number(r) || 1; u.volume = st.volume;
-        u.onend = function () { resolve(true); };
-        u.onerror = function (e) { if (e && e.error === "not-allowed") st.blocked = true; resolve(false); };
+        // Word timings: the voice's own "boundary" events, or an estimate
+        // for voices that don't send them.
+        var heard = false, est = null;
+        u.onboundary = function (e) { if (!light || my !== speakToken) return; heard = true; if (est) { clearInterval(est); est = null; } light(e.charIndex || 0); };
+        u.onstart = function () {
+          if (!light) return;
+          var t0 = Date.now();
+          setTimeout(function () {
+            if (heard || my !== speakToken) return;
+            est = setInterval(function () { if (my !== speakToken) { clearInterval(est); return; } light(Math.min(text.length - 1, (Date.now() - t0) / 1000 * 14 * (Number(r) || 1))); }, 120);
+          }, 700);
+        };
+        u.onend = function () { if (est) clearInterval(est); done(); resolve(true); };
+        u.onerror = function (e) { if (est) clearInterval(est); done(); if (e && e.error === "not-allowed") st.blocked = true; resolve(false); };
         try { window.speechSynthesis.speak(u); } catch (e) { resolve(false); }
       });
     }
+    function play(src, words) {
+      if (my !== speakToken) return false;
+      return new Promise(function (resolve) {
+        audio = new Audio(src.url);
+        audio.volume = st.volume;
+        var a1 = audio;
+        if (light) (function tick() {
+          if (my !== speakToken || audio !== a1) return;
+          var t = a1.currentTime, at = null;
+          if (words && words.length) { for (var k = 0; k < words.length; k++) if (words[k].s <= t) at = words[k].i; }
+          else if (a1.duration) at = Math.floor(text.length * t / a1.duration);
+          if (at != null) light(at);
+          requestAnimationFrame(tick);
+        })();
+        a1.onended = function () { if (src.revoke) URL.revokeObjectURL(src.url); done(); resolve(true); };
+        a1.play().catch(function (e) { if (e && e.name === "NotAllowedError") st.blocked = true; done(); resolve(false); });
+      });
+    }
     var p;
-    if (natural) {
-      p = fetch("/api/tts-phrase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: text, rate: Number(r) }) })
-        .then(function (res) { if (!res.ok) throw new Error("tts"); return res.blob(); })
-        .then(function (blob) {
-          if (my !== speakToken) return false;
-          return new Promise(function (resolve) {
-            var url = URL.createObjectURL(blob);
-            audio = new Audio(url);
-            audio.volume = st.volume;
-            audio.onended = function () { URL.revokeObjectURL(url); resolve(true); };
-            audio.play().catch(function (e) { if (e && e.name === "NotAllowedError") st.blocked = true; resolve(false); });
-          });
+    if (natural && !o.device) {
+      p = fetch("/api/tts-phrase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: text, rate: Number(r), timed: !!light }) })
+        .then(function (res) { if (!res.ok) throw new Error("tts"); return light ? res.json() : res.blob(); })
+        .then(function (x) {
+          if (light) return play({ url: "data:audio/mpeg;base64," + x.audio }, x.words || []);
+          return play({ url: URL.createObjectURL(x), revoke: true }, null);
         })
         .catch(function () { return device(); });
     } else p = device();
@@ -202,6 +273,7 @@
     var halves = body.querySelectorAll(".pair > .pair-side");
     st.sides = halves.length === 2 ? [halves[0], halves[1]] : null;
     renderDots();
+    setTimeout(syncSide, 60);
     if (o.focus !== false) { try { (o.focusEl || $("stage")).focus({ preventScroll: false }); } catch (e) {} }
     st.trialStart = Date.now();
     st.repeats = 0;
@@ -215,6 +287,8 @@
     var t = e.target;
     var inField = t && t.closest && t.closest("input, textarea, select, button, a, [contenteditable]");
     var typing = t && t.closest && t.closest("input, textarea, select, [contenteditable], #a-menu");
+    // The results page reading itself: Space pauses and continues.
+    if (st.reader && (e.key === " " || e.code === "Space") && !inField) { e.preventDefault(); if (st.reader.paused) continueReader(); else pauseReader(); return; }
     // Left and right halves: arrow keys, or F and J (the keys with bumps).
     // They move to a half; Space or Enter picks it.
     if (st.sides && !typing && !e.altKey && !e.ctrlKey && !e.metaKey) {
@@ -407,6 +481,7 @@
     if (p.kind === "picture") return showPicture(p, firstTime);
     if (p.kind === "pair_theme") return showPair(setting, p, firstTime, "theme");
     if (p.kind === "pair_bold") return showPair(setting, p, firstTime, "bold");
+    if (p.kind === "pair_highlight") return showHighlightPair(p);
     if (p.kind === "find_pointer") return showFindPointer(p, firstTime);
     if (p.kind === "pair_cursor") return showPair(setting, p, firstTime, "cursor");
     if (p.kind === "pick_cursor_size" || p.kind === "pick_cursor_color") return showPointerTiles(p);
@@ -528,6 +603,37 @@
         else if (/\b(same|no difference|either|both|can't tell|don't know)\b/.test(n)) go("same");
         else say(C.say.cantHear).then(function () { showPair(setting, p, false, kind); });
       } });
+  }
+
+  // Word highlighting: the same paragraph read twice, plain on the left and
+  // with each word lit up on the right. Which was easier to follow?
+  function showHighlightPair(p) {
+    var go = function (answer) { send("highlight", { answer: answer }); };
+    var text = C.say.highlightSample;
+    var box = pairBox(function () { return { cls: "sample hl-sample", kids: [el("p", { class: "pair-text", text: text })] }; }, go);
+    var halves = box.querySelectorAll(".pair-side");
+    var round = 0;
+    function play() {
+      var my = ++round;
+      var leftP = halves[0].querySelector(".pair-text"), rightP = halves[1].querySelector(".pair-text");
+      halves[0].classList.add("playing");
+      return say(C.say.highlightPlain).then(function () { return my === round && say(text, null, { target: leftP, hl: false }); })
+        .then(function () { if (my !== round) return; halves[0].classList.remove("playing"); halves[1].classList.add("playing"); return say(C.say.highlightLit); })
+        .then(function () { return my === round && say(text, null, { target: rightP, hl: true }); })
+        .then(function () { if (my !== round) return; halves[1].classList.remove("playing"); return say(C.say.highlightAsk); });
+    }
+    function onAns(t, n, cmd) {
+      if (cmd && cmd.cmd === "left") go("left"); else if (cmd && cmd.cmd === "right") go("right");
+      else if (cmd && (cmd.cmd === "same" || cmd.cmd === "cant_tell")) go("same");
+      else if (/\b(left|top)\b/.test(n)) go("left"); else if (/\b(right|bottom)\b/.test(n)) go("right");
+      else say(C.say.cantHear).then(function () { listen(onAns); });
+    }
+    screen({ title: "Which is easier to follow?", sub: "I'll read the same words twice: plain on one side, then with each word lit up as I say it.", progress: progressText(st.stepIdx),
+      body: [box],
+      actions: [{ label: "Play it again", onClick: function () { play().then(function () { listen(onAns); }); } }, { label: "About the same", onClick: function () { go("same"); } }],
+      onCommand: function (c) { if (c.cmd === "repeat") { play().then(function () { listen(onAns); }); return true; } return false; } });
+    if (st.sr) return;
+    play().then(function () { listen(onAns); });
   }
 
   // Four pointers at once. Moving the mouse over a tile turns the real
@@ -702,6 +808,7 @@
   }
   // One step at a time: "next" (or Space, or the Next button) moves on.
   function readSteps(steps) {
+    pauseReader(); bargeIn(false);
     var i = 0;
     var bar = el("div", { class: "stage-actions", id: "step-bar" });
     var next = el("button", { type: "button", class: "btn btn-primary", text: "Next step" });
@@ -724,7 +831,6 @@
     }
     next.addEventListener("click", one);
     stop.addEventListener("click", function () { stopSpeaking(); done(); });
-    $("voice-row").hidden = st.sr;
     say(C.say.guideIntro).then(one);
   }
 
@@ -786,8 +892,11 @@
         { label: "Print or save as PDF", primary: true, onClick: function () { window.print(); } },
         { label: "Copy to share", onClick: function () { var t = summaryText(c); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { copyMsg.textContent = "✓ Copied. Paste it into an email or message to share it."; }).catch(function () { copyMsg.textContent = t; }); } },
       ],
-      speak: ended ? null : C.say.finished });
-    $("voice-row").hidden = true;
+      speak: null });
+    // The page reads itself aloud, section by section. "Scroll down",
+    // "pause" and the side buttons work while it reads.
+    if (!st.sr) say(ended ? C.say.ended : C.say.readerIntro).then(function () { startReader(); });
+    syncSide();
   }
 
   // ------------------------------------------------------------- the shell
@@ -855,6 +964,19 @@
       case "end": return askEnd();
       case "back": return goBack();
       case "skip": return skipStep();
+      case "highlight":
+        change({ highlight: c.value }, via);
+        return after(C.say[c.value === "on" ? "highlightOn" : "highlightOff"]);
+      case "scroll":
+        scrollPage(c.value);
+        if (waiting && !st.busy && !st.reader) listen(waiting);
+        return Promise.resolve();
+      case "read":
+        if (c.value === "pause") pauseReader();
+        else if (c.value === "again") readAgain();
+        else continueReader();
+        if (!st.reader && waiting && !st.busy) listen(waiting);
+        return Promise.resolve();
       case "voice": return voice(c.value, via);
       case "bigger": case "smaller":
         i = SIZE_STEPS.indexOf(s.textSize); j = c.cmd === "bigger" ? i + 1 : i - 1;
@@ -895,6 +1017,8 @@
     $("m-slower").disabled = at <= 0;
     $("m-faster").disabled = at >= RATE_STEPS.length - 1;
     $("m-pause").setAttribute("aria-pressed", String(!st.listenOn));
+    var scriptOff = document.body.classList.contains("script-off");
+    [].forEach.call(document.querySelectorAll("[data-script]"), function (b) { b.setAttribute("aria-pressed", String((b.getAttribute("data-script") === "off") === scriptOff)); });
     $("m-pause").textContent = st.listenOn ? "Pause listening" : "Start listening";
     $("m-pointer").hidden = !!(st.device && st.device.touchOnly);
     var inTests = !!st.id && !st.closed && (st.phase === "test" || st.phase === "review");
@@ -929,6 +1053,14 @@
   $("m-pause").addEventListener("click", function () { st.listenOn = !st.listenOn; syncListenBtn(); syncMenu(); if (st.listenOn && waiting) listen(waiting); });
   $("m-end").addEventListener("click", function () { closeMenu(false); askEnd(); });
   $("m-back").addEventListener("click", function () { closeMenu(false); goBack(); });
+  [].forEach.call(document.querySelectorAll("[data-script]"), function (b) {
+    b.addEventListener("click", function () {
+      var off = b.getAttribute("data-script") === "off";
+      document.body.classList.toggle("script-off", off);
+      try { localStorage.setItem("v360-script", off ? "off" : "on"); } catch (e) {}
+      syncMenu();
+    });
+  });
   $("m-reset").addEventListener("click", function () {
     var before = D.get(), now = D.reset();
     Object.keys(now).forEach(function (k) { if (before[k] !== now[k]) record(k, now[k], "menu"); });
@@ -936,6 +1068,135 @@
     announce("Display settings reset to the standard look on this device.");
   });
   $("m-skip").addEventListener("click", function () { closeMenu(false); skipStep(); });
+
+  // ---- long pages: big Up and Down buttons, and the results read aloud
+  function scrollPage(dir) {
+    var root = document.scrollingElement || document.documentElement;
+    if (dir === "top") window.scrollTo({ top: 0, behavior: "smooth" });
+    else if (dir === "bottom") window.scrollTo({ top: root.scrollHeight, behavior: "smooth" });
+    else window.scrollBy({ top: (dir === "up" ? -1 : 1) * Math.round(window.innerHeight * 0.8), behavior: "smooth" });
+    // Reading carries on from where it was; it doesn't jump back.
+    if (st.reader) st.reader.manual = true;
+  }
+  function syncSide() {
+    var side = $("a-side"); if (!side) return;
+    var root = document.scrollingElement || document.documentElement;
+    var long = root.scrollHeight > window.innerHeight + 40;
+    side.hidden = !(long || st.reader);
+    var rd = $("side-read");
+    rd.hidden = !st.reader;
+    if (st.reader) {
+      var paused = st.reader.paused || st.reader.done;
+      rd.setAttribute("aria-pressed", String(!paused));
+      rd.querySelector(".side-label").textContent = paused ? "Read" : "Pause";
+      rd.querySelector(".side-icon").textContent = paused ? "▶" : "⏸";
+    }
+  }
+  window.addEventListener("resize", syncSide);
+  $("side-up").addEventListener("click", function () { scrollPage("up"); });
+  $("side-down").addEventListener("click", function () { scrollPage("down"); });
+  $("side-read").addEventListener("click", function () { if (!st.reader) return; if (st.reader.paused || st.reader.done) continueReader(); else pauseReader(); });
+
+  // The text of a section, sentence by sentence: headings, paragraphs and list items.
+  function linesOf(node) {
+    if (!node || node.hidden) return [];
+    var out = [];
+    var parts = node.matches && node.matches("h1, h2, h3, p, li, dt, dd") ? [node] : [].slice.call(node.querySelectorAll("h1, h2, h3, p, li"));
+    parts.forEach(function (n) {
+      if (n.closest("button") || n.closest(".stage-actions") || n.classList.contains("print-note")) return;
+      if (n.tagName === "P" && n.closest("li")) return;
+      var t = (n.innerText || n.textContent || "").replace(/\s+/g, " ").trim();
+      // "Text size" + "Text size 200% ..." in a result: say the name, then the result.
+      var k = n.querySelector && n.querySelector(":scope > .k");
+      if (k) { var name = k.textContent.trim(); t = name + ". " + t.slice(name.length).trim(); }
+      if (!t) return;
+      t.split(/(?<=[.!?])\s+(?=[A-Z0-9])/).forEach(function (x) { if (x.trim()) out.push(x.trim()); });
+    });
+    return out;
+  }
+  function setReading(node) {
+    [].forEach.call(document.querySelectorAll(".reading"), function (n) { n.classList.remove("reading"); });
+    if (node) node.classList.add("reading");
+  }
+  function startReader() {
+    var sections = [{ el: $("stage-h"), lines: [$("stage-h").textContent, $("stage-sub").textContent].filter(Boolean) }];
+    [].forEach.call($("stage-body").children, function (n) { if (!n.classList.contains("print-note") && (n.textContent || "").trim()) sections.push({ el: n, lines: null }); });
+    st.reader = { sections: sections, si: 0, li: 0, paused: false, done: false, token: 0, manual: false };
+    syncSide();
+    bargeIn(true);
+    readOn();
+  }
+  function readOn() {
+    var R = st.reader; if (!R || R.paused) return;
+    var my = ++R.token;
+    syncSide();
+    (function next() {
+      if (st.reader !== R || R.paused || my !== R.token) return;
+      if (R.si >= R.sections.length) { R.done = true; setReading(null); syncSide(); say(C.say.readerDone); return; }
+      var sec = R.sections[R.si];
+      if (!sec.lines) sec.lines = linesOf(sec.el);
+      if (R.li >= sec.lines.length) { R.si++; R.li = 0; R.manual = false; return next(); }
+      if (R.li === 0 && !R.manual) { try { sec.el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} }
+      setReading(sec.el);
+      say(sec.lines[R.li], null, { device: true }).then(function () {
+        if (st.reader !== R || R.paused || my !== R.token) return;
+        R.li++;
+        next();
+      });
+    })();
+  }
+  function pauseReader() {
+    if (!st.reader) { stopSpeaking(); return; }
+    st.reader.paused = true; st.reader.token++;
+    stopSpeaking(); setListen("", "Paused — say keep reading, or press Space");
+    syncSide();
+  }
+  function continueReader() {
+    var R = st.reader; if (!R) return;
+    if (R.done) { R.done = false; R.si = 0; R.li = 0; }
+    R.paused = false;
+    readOn();
+  }
+  // Start the sentence it was reading again.
+  function readAgain() { var R = st.reader; if (!R) return; R.paused = false; R.token++; stopSpeaking(); readOn(); }
+
+  // While the page reads itself, the microphone stays on for short commands
+  // ("scroll down", "pause"). Words the voice itself is saying are ignored,
+  // so it can't set itself off.
+  var barge = null;
+  function bargeIn(on) {
+    if (barge) { var old = barge; barge = null; try { old.onend = null; old.abort(); } catch (e) {} }
+    if (!on || !canListen || st.sr || !st.listenOn || !K) return;
+    var r = new SR();
+    r.lang = "en-US"; r.continuous = true; r.interimResults = false; r.maxAlternatives = 1;
+    r.onresult = function (ev) {
+      for (var i = ev.resultIndex; i < ev.results.length; i++) {
+        if (!ev.results[i].isFinal) continue;
+        var t = ev.results[i][0].transcript;
+        var c = K.parse(t);
+        if (!c) continue;
+        if (st.lastSay && K.norm(st.lastSay).indexOf(K.norm(t)) !== -1) continue;
+        readerCommand(c);
+      }
+    };
+    r.onerror = function (ev) { if (ev.error === "not-allowed" || ev.error === "service-not-allowed" || ev.error === "audio-capture") { barge = null; } };
+    r.onend = function () { if (barge === r && st.reader) setTimeout(function () { if (barge === r) { try { r.start(); } catch (e) {} } }, 300); };
+    try { r.start(); barge = r; } catch (e) { barge = null; }
+  }
+  function readerCommand(c) {
+    if (c.cmd === "scroll") return scrollPage(c.value);
+    if (c.cmd === "read") return c.value === "pause" ? pauseReader() : c.value === "again" ? readAgain() : continueReader();
+    if (c.cmd === "repeat") return readAgain();
+    if (c.cmd === "stop_listening") { st.listenOn = false; syncListenBtn(); bargeIn(false); return; }
+    if (c.cmd === "menu") return c.value === "hide" ? closeMenu(false) : openMenu(false);
+    // A display change (bigger, blue background, highlight on...): say so,
+    // then carry on reading the same sentence.
+    if (["bigger", "smaller", "too_bright", "theme", "bold", "highlight", "pointer", "voice"].indexOf(c.cmd) !== -1 && st.reader) {
+      var R = st.reader; R.token++; stopSpeaking();
+      var wasPaused = R.paused; R.paused = true;
+      command(c, "voice").then(function () { if (st.reader === R && !wasPaused) { R.paused = false; readOn(); } });
+    }
+  }
 
   // ---- go back, skip, end
   function goBack() {
@@ -978,7 +1239,7 @@
         speak: C.say.endAsk,
         onCommand: function (k) {
           if (k.cmd === "end" || k.cmd === "yes") { endNow(); return true; }
-          if (k.cmd === "no") { keep(); return true; }
+          if (k.cmd === "no" || (k.cmd === "read" && k.value === "continue")) { keep(); return true; }
           return false;
         },
         listen: function onAns(t, n) { if (/\b(keep going|keep|continue|carry on|go on)\b/.test(n)) keep(); else listen(onAns); } });
@@ -1012,6 +1273,9 @@
     PREVIEW ? fetch("/api/admin/settings", { cache: "no-store", credentials: "same-origin" }).then(function (r) { return r.ok; }).catch(function () { return false; }) : Promise.resolve(false),
   ]).then(function (all) {
     C = all[0];
+    // The script (what the voice is saying) shows on every screen.
+    $("voice-row").hidden = false;
+    try { if (localStorage.getItem("v360-script") === "off") document.body.classList.add("script-off"); } catch (e) {}
     listCommands();
     syncMenu();
     natural = !!(all[2].tts && all[2].tts.provider === "elevenlabs");
@@ -1035,5 +1299,5 @@
   }).catch(function () {
     $("stage-sub").textContent = "The check couldn't load. Please try again in a moment.";
   });
-  window.addEventListener("pagehide", function () { stopSpeaking(); stopListening(); });
+  window.addEventListener("pagehide", function () { stopSpeaking(); stopListening(); bargeIn(false); });
 })();

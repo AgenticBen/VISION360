@@ -38,7 +38,7 @@
     "deviceAsk": "You're using {device}. Is that right? Say yes or no.",
     "guideIntro": "Here's how to set this up on your own device. I'll read one step at a time. Say next, or press the Space bar, for the next step.",
     "guideDone": "That's all the steps.",
-    "help": "Here's what you can say at any time. Left, right, or same. I can't tell. Bigger, or smaller. White background, blue background, or black background. Too bright. Bold on, or bold off. Bigger pointer, or smaller pointer. Slower, faster, louder, or softer. Repeat. Go back. Skip. Show menu, or hide menu. Stop listening. And end, to stop and save what you've done.",
+    "help": "Here's what you can say at any time. Left, right, or same. I can't tell. Bigger, or smaller. White background, blue background, or black background. Too bright. Bold on, or bold off. Bigger pointer, or smaller pointer. Slower, faster, louder, or softer. Repeat. Go back. Skip. Highlight on, or highlight off. Scroll down, or scroll up. Pause, or keep reading. Show menu, or hide menu. Stop listening. And end, to stop and save what you've done.",
     "sizeUp": "Done. The text is bigger.",
     "sizeDown": "Done. The text is smaller.",
     "sizeMax": "The text is already at the largest size.",
@@ -74,7 +74,15 @@
     "voiceSoftest": "I'm already at my softest.",
     "practicePhone": "First, a quick practice. There are two boxes on the screen. Say top or bottom, or tap a box.",
     "cursorSizeIntro": "Now the mouse pointer. There are four boxes, numbered one to four. Move the mouse over each one, and the pointer changes size. Click the one that's easiest to see, or say its number. If you can't see any of them, say I can't tell.",
-    "cursorColorIntro": "Now the pointer's color. Move the mouse over each box to try a color. Click the one that's easiest to see, or say its number or its color."
+    "cursorColorIntro": "Now the pointer's color. Move the mouse over each box to try a color. Click the one that's easiest to see, or say its number or its color.",
+    "highlightSample": "Lions Services helps people who are blind or have low vision live with confidence, at home and at work.",
+    "highlightPlain": "One more. I'll read the same sentence twice. First, plain, on the left.",
+    "highlightLit": "Now the same words on the right, with each word lit up as I say it.",
+    "highlightAsk": "Which was easier to follow: left or right? Or say same.",
+    "highlightOn": "Done. Each word will light up as I say it.",
+    "highlightOff": "Done. The words won't light up.",
+    "readerIntro": "Here are your results. I'll read them to you. Say scroll down or scroll up at any time, or pause. You can also use the big buttons on the right.",
+    "readerDone": "That's everything on this page. Say keep reading to hear it again."
   },
   "deviceNames": {
     "iphone": "an iPhone",
@@ -419,6 +427,18 @@
     [
       "Repeat, go back, skip",
       "Hear it again, do the last test again, or skip this test."
+    ],
+    [
+      "Highlight on, highlight off",
+      "Light up each word as I say it."
+    ],
+    [
+      "Scroll down, scroll up, go to the top",
+      "Move around a long page. Reading carries on where it was."
+    ],
+    [
+      "Pause, keep reading, read that again",
+      "The results page reads itself aloud."
     ],
     [
       "Show menu, hide menu",

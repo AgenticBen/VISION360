@@ -45,7 +45,7 @@ test("a person runs the whole check, sees only their own result, and settings ar
   const s = await call(app, "POST", "/api/check/start", { device: { type: "computer", os: "mac", screenW: 1440, screenH: 900, dpr: 2 } });
   assert.equal(s.status, 200);
   assert.match(s.json.code, /^[a-z]+ \d{3} [a-z]+$/);
-  assert.deepEqual(s.json.plan, ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold"]);
+  assert.deepEqual(s.json.plan, ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold", "highlight"]);
   assert.equal((await call(app, "POST", `/api/check/${s.json.id}/step`, { setting: "contrast" })).status, 404, "no token, no access");
   assert.equal((await call(app, "POST", `/api/check/${s.json.id}/step`, { setting: "contrast" }, bearer("wrong"))).status, 404);
   // The word is only sent for the trial being shown.
@@ -61,7 +61,7 @@ test("a person runs the whole check, sees only their own result, and settings ar
   assert.equal(f.status, 200);
   const c = f.json.check;
   assert.equal(c.status, "finished");
-  assert.deepEqual({ ...c.settings }, { rate: "1", textSize: "400", theme: "high", cursor: "xl", cursorColor: "yellow", bold: "off" });
+  assert.deepEqual({ ...c.settings }, { rate: "1", textSize: "400", theme: "high", cursor: "xl", cursorColor: "yellow", bold: "off", highlight: "off" });
   assert.ok(c.steps.every((x) => x.done));
   assert.ok(!("contact" in c), "contact details are not sent back to the browser");
   const later = await call(app, "POST", `/api/check/${s.json.id}/trial`, { setting: "bold", trial: { answer: "left" } }, bearer(s.json.token));
@@ -76,7 +76,7 @@ test("a person runs the whole check, sees only their own result, and settings ar
 test("no consent: no contact details are kept", async () => {
   const app = await appOn();
   const s = (await call(app, "POST", "/api/check/start", { device: { type: "phone", os: "ios" } })).json;
-  assert.deepEqual(s.plan, ["speech_rate", "magnification", "pictures", "contrast", "bold"], "no pointer test on a phone");
+  assert.deepEqual(s.plan, ["speech_rate", "magnification", "pictures", "contrast", "bold", "highlight"], "no pointer test on a phone");
   const f = await call(app, "POST", `/api/check/${s.id}/finish`, { consent: false, wants_call: true, contact: { phone: "704-555-0100" }, zip: "not-a-zip" }, bearer(s.token));
   assert.equal(f.status, 200);
   // Look at the stored row through a second check's eyes isn't possible; the staff view (phase 3) shows it.

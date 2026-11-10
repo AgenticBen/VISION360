@@ -126,12 +126,12 @@ test("cursor: four sizes, then four colors; can't see any changes nothing; skipp
   out = C.next("cursor", [sz("found"), sz("lost"), col("right"), col("right")], ctx);
   assert.equal(out.result.recommended_value, "xxl/yellow", "the old largest (128px) is now called huge");
   assert.equal(C.next("cursor", [], { ...ctx, device: { skipPointer: true } }).result.recommended_value, "not_tested");
-  assert.deepEqual(C.plan({ skipPointer: true }), ["speech_rate", "magnification", "pictures", "contrast", "bold"], "screen-reader users skip the mouse test");
+  assert.deepEqual(C.plan({ skipPointer: true }), ["speech_rate", "magnification", "pictures", "contrast", "bold"], "screen-reader users skip the mouse and highlight tests");
   const touch = C.next("cursor", [], { ...ctx, device: { touchOnly: true } });
   assert.equal(touch.done, true);
   assert.equal(touch.result.recommended_value, "not_tested");
-  assert.deepEqual(C.plan({ touchOnly: true }), ["speech_rate", "magnification", "pictures", "contrast", "bold"]);
-  assert.deepEqual(C.plan({}), ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold"]);
+  assert.deepEqual(C.plan({ touchOnly: true }), ["speech_rate", "magnification", "pictures", "contrast", "bold", "highlight"]);
+  assert.deepEqual(C.plan({}), ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold", "highlight"]);
 });
 
 test("phrases: numbers said as words or digits, kinds take turns", () => {
@@ -225,4 +225,15 @@ test("pictures: a staircase over house, apple, circle and square", () => {
   assert.ok(C.needsAttention([{ flags: b.flags }]));
   assert.match(C.describe("pictures", a), /36px.*72px/);
   assert.match(C.describe("pictures", b), /could not recognize/);
+});
+
+test("word highlighting: plain or lit up, skipped for screen readers", () => {
+  let out = C.next("highlight", [], ctx);
+  assert.equal(out.prompt.kind, "pair_highlight");
+  assert.deepEqual([out.prompt.left, out.prompt.right], ["off", "on"]);
+  out = C.next("highlight", [C.cleanTrial("highlight", { answer: "right" }, out.prompt)], ctx);
+  assert.deepEqual({ ...out.result.apply }, { highlight: "on" });
+  assert.match(C.describe("highlight", out.result), /on, each word lights up/);
+  assert.equal(C.next("highlight", [{ answer: "same" }], ctx).result.recommended_value, "off", "'same' keeps plain text");
+  assert.equal(C.next("highlight", [], { ...ctx, device: { skipPointer: true } }).result.recommended_value, "not_tested");
 });
