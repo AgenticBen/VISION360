@@ -16,7 +16,45 @@
     rows.forEach(function (r) { tb.appendChild(el("tr", null, [el("td", null, [el("strong", { text: r[0] })]), el("td", { text: r[1] }), el("td", { text: r[2] }), el("td", { class: "n", text: usd(r[3]) })])); });
     tb.appendChild(el("tr", null, [el("td", null, [el("strong", { text: "Total" })]), el("td"), el("td"), el("td", { class: "n" }, [el("strong", { text: total == null ? "Needs a price" : usd(total) })])]));
     voice(c.tts);
+    plan(c.tts.plan, o.days);
   }).catch(function (e) { document.querySelector("#cost-table tbody").textContent = "Couldn't load: " + e.message; });
+
+  // ---- The ElevenLabs plan: what a conversation costs, and what a month needs.
+  var P = null;
+  function byId(id) { return document.getElementById(id); }
+  function n(x) { return Math.round(x).toLocaleString(); }
+  function cents(x) { return x < 0.1 ? (x * 100).toFixed(1) + "¢" : "$" + x.toFixed(2); }
+  function plan(p, days) {
+    P = p;
+    var dl = byId("plan-facts"); dl.textContent = "";
+    if (!p) { dl.appendChild(el("dd", { text: "Not available." })); return; }
+    var m = p.measured;
+    var rows = [
+      ["Plan", p.plan.name + " · $" + p.plan.usd + " a month · " + n(p.plan.credits) + " credits · renews on day " + p.plan.renewsDay + " of the month"],
+      ["Rate", "About " + p.plan.creditsPerChar + " credits per character spoken (1 credit ≈ " + Math.round(1 / p.plan.creditsPerChar) + " characters). Measured from your ElevenLabs dashboard, " + m.from + " to " + m.to + ": " + n(m.chars) + " characters used " + n(m.credits) + " credits."],
+      ["In dollars", "1 credit ≈ $" + p.usdPerCredit.toFixed(5) + " · 1,000 characters ≈ " + cents(p.per1kUsd)],
+      ["This site, last " + days + " days", p.period.conversations ? n(p.period.conversations) + (p.period.conversations === 1 ? " conversation · " : " conversations · ") + n(p.period.chars) + " characters spoken · about " + n(p.period.credits) + " credits" : "No conversations yet"],
+      ["Each conversation", "About " + n(p.charsPerConversation) + " characters ≈ " + n(p.creditsPerConversation) + " credits ≈ " + cents(p.usdPerConversation) + (p.perConversationSource === "site" ? " (this site's conversations, last " + days + " days)" : " (from the measured week; this site has no voiced conversations in the last " + days + " days yet)")],
+      ["The plan covers", p.conversationsPerPlan == null ? "—" : "About " + n(p.conversationsPerPlan) + " conversations a month"]
+    ];
+    rows.forEach(function (r) { dl.appendChild(el("dt", { text: r[0] })); dl.appendChild(el("dd", { text: r[1] })); });
+    calc();
+  }
+  function calc() {
+    var out = byId("calc-out"); if (!P) return;
+    var per = P.creditsPerConversation || 250;
+    var conv = Math.max(0, Number(byId("calc-conv").value) || 0);
+    var used = Math.max(0, Number(byId("calc-used").value) || 0);
+    var need = conv * per;
+    var left = P.plan.credits - used;
+    var lines = [];
+    lines.push(n(conv) + " conversations ≈ " + n(need) + " credits (" + Math.round(need / P.plan.credits * 100) + "% of the plan) ≈ " + cents(need * P.usdPerCredit) + " of credits.");
+    if (used) lines.push("Credits left this month: " + n(Math.max(0, left)) + " — about " + n(Math.max(0, left) / per) + " more conversations.");
+    if (need > P.plan.credits) lines.push("⚠ More than the plan holds. Above about " + n(P.plan.credits / per) + " conversations a month, the voice falls back to the browser voice unless you add credits or move up a plan.");
+    out.textContent = lines.join(" ");
+  }
+  byId("calc-conv").addEventListener("input", calc);
+  byId("calc-used").addEventListener("input", calc);
 
   // Natural voice switch. It only works once ELEVENLABS_API_KEY is in Vercel.
   var $ = function (id) { return document.getElementById(id); };
