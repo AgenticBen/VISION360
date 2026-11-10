@@ -14,6 +14,7 @@ import {
 import { RETENTION_DAYS } from "./store.mjs";
 import { flowMeta } from "./corpus.mjs";
 import { ttsEnabled, ttsInfo, ttsKeySet, synthesize, DEFAULT_VOICE_ID, DEFAULT_TTS_MODEL } from "./tts.mjs";
+import { voicePlan } from "./voice-plan.mjs";
 import { voicePhrases } from "./phrases.mjs";
 import { createFeedbackStore, cleanFeedback } from "./feedback-store.mjs";
 import { feedbackMarkdown, feedbackItemMarkdown, TOOL_NAMES } from "./feedback-md.mjs";
@@ -480,7 +481,10 @@ export async function createApp(opts = {}) {
     const ai = aiEnabled(env);
     const perCall = Number(env.V360_COST_PER_AI_CALL_USD);
     const tts = ttsInfo(env, site.voice.elevenlabs).provider;
-    const perK = Number(env.V360_COST_PER_1K_TTS_CHARS);
+    // The natural voice's price: set directly, or worked out from the plan.
+    const plan = voicePlan(env, usage);
+    const perKSet = env.V360_COST_PER_1K_TTS_CHARS !== undefined && env.V360_COST_PER_1K_TTS_CHARS !== "";
+    const perK = perKSet ? Number(env.V360_COST_PER_1K_TTS_CHARS) : plan.per1kUsd;
     return {
           generatedAt: new Date().toISOString(), days, since,
           commit: env.VERCEL_GIT_COMMIT_SHA || "local",
@@ -494,7 +498,7 @@ export async function createApp(opts = {}) {
             tts: {
               provider: tts, keySet: ttsKeySet(env), switchOn: site.voice.elevenlabs,
               voiceId: env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID, model: env.ELEVENLABS_MODEL || DEFAULT_TTS_MODEL,
-              chars: usage.ttsChars, per1kUsd: Number.isFinite(perK) ? perK : null,
+              chars: usage.ttsChars, per1kUsd: Number.isFinite(perK) ? perK : null, plan,
               estimateUsd: !usage.ttsChars ? 0 : (Number.isFinite(perK) ? +(usage.ttsChars / 1000 * perK).toFixed(4) : null),
             },
             email: { transport: ctx.actions.transportName(), estimateUsd: ctx.actions.transportName() === "outbox" ? 0 : null },

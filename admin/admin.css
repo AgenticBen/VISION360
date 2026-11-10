@@ -226,3 +226,7 @@ tr.selected td { background: var(--bad-wash); }
 .flow-card.is-test { border-style: dashed; }
 .flow-card .chip { white-space: normal; }
 .flow-card.is-test.is-main { border-style: solid; }
+
+/* Estimated costs: the voice plan calculator. */
+.calc { display: grid; gap: 0.3rem; max-width: 34rem; }
+.calc-out { font-weight: 700; margin: 0.6rem 0; }
