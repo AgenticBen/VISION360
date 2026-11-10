@@ -19,32 +19,34 @@ function playMag(seePx, { cantTell = false } = {}) {
   throw new Error("never finished");
 }
 
-test("magnification: two right moves smaller, two wrong ends; recommended is about twice the limit", () => {
-  const { out } = playMag(24);
-  assert.equal(out.result.measured_limit, "24");
-  assert.equal(out.result.comfort_px, 48);
-  assert.equal(out.result.recommended_value, "200", "48px needs more than 150% (27px), so 200% (36px)");
-  assert.ok(out.result.flags.includes("needs_magnifier_or_zoom"), "48px is bigger than 200% text");
-  assert.equal(out.result.apply.textSize, "200");
-  const small = playMag(12).out.result;
-  assert.equal(small.measured_limit, "12");
-  assert.equal(small.recommended_value, "150", "24px fits at 150% (27px)");
-  assert.deepEqual(small.flags.filter((f) => f !== "slow_step"), []);
-  const mid = playMag(14).out.result;
-  assert.equal(mid.recommended_value, "200", "28px needs 200%");
-  assert.equal(C.next("magnification", [], ctx).prompt.px, 72, "starts at the largest size");
+test("magnification: starts small and grows until two are read in a row; recommended is about twice that", () => {
+  assert.equal(C.next("magnification", [], ctx).prompt.px, 12, "starts at the smallest size");
+  const { out, trials } = playMag(34);
+  assert.equal(out.result.measured_limit, "34");
+  assert.equal(out.result.comfort_px, 68);
+  assert.equal(out.result.recommended_value, "400", "68px needs 400% (72px)");
+  assert.ok(!out.result.flags.includes("needs_magnifier_or_zoom"), "400% is enough");
+  assert.deepEqual(trials.map((t) => t.px), [12, 15, 18, 22, 28, 34, 34], "one miss at each size below, then two right");
+  const tiny = playMag(12).out.result;
+  assert.equal(tiny.measured_limit, "12");
+  assert.equal(tiny.recommended_value, "150", "24px fits at 150% (27px)");
+  assert.deepEqual(tiny.flags.filter((f) => f !== "slow_step"), []);
+  const big = playMag(100).out.result;
+  assert.equal(big.recommended_value, "400");
+  assert.ok(big.flags.includes("needs_magnifier_or_zoom"), "200px is more than 400% text");
 });
 
-test("magnification: 'I can't tell' counts as wrong; can't read the largest is flagged", () => {
+test("magnification: 'I can't tell' moves up a size; can't read the largest is flagged", () => {
   const { out } = playMag(1000, { cantTell: true });
   assert.equal(out.result.measured_limit, null);
-  assert.equal(out.result.tries, 2, "two wrong at the first size ends it");
+  assert.equal(out.result.tries, C.LADDER_UP.length, "one try at each size");
   assert.ok(out.result.flags.includes("could_not_read_largest"));
   assert.ok(out.result.flags.includes("needs_magnifier_or_zoom"));
-  assert.equal(out.result.recommended_value, "200");
+  assert.equal(out.result.recommended_value, "400");
+  assert.match(C.describe("magnification", out.result), /could not read the largest text \(200px\)/);
 });
 
-test("magnification: a wrong answer resets the two-right run; spoken variants and typing count", () => {
+test("magnification: a miss after one right moves up; spoken variants and typing count", () => {
   assert.ok(C.wordMatches("I see bred", "bread", { bread: ["bred"] }));
   assert.ok(C.wordMatches("  APPLE. ", "apple"));
   assert.ok(C.wordMatches("it says house", "house"));
@@ -52,10 +54,27 @@ test("magnification: a wrong answer resets the two-right run; spoken variants an
   const p1 = C.next("magnification", [], ctx).prompt;
   const t1 = C.cleanTrial("magnification", { answer: p1.word }, p1);
   const p2 = C.next("magnification", [t1], ctx).prompt;
+  assert.equal(p2.px, 12, "one right: the same size again");
   const t2 = C.cleanTrial("magnification", { answer: "nope" }, p2);
   const p3 = C.next("magnification", [t1, t2], ctx).prompt;
-  assert.equal(p3.px, 72, "one right, one wrong: still the same size");
+  assert.equal(p3.px, 15, "then a miss: one size bigger");
   assert.notEqual(p1.word, p2.word, "a new word each time");
+});
+
+test("magnification: a check started with the first, shrinking version still adds up", () => {
+  const old = [{ px: 72, word: "apple", answer: "apple" }, { px: 72, word: "house", answer: "house" }, { px: 60, word: "river", answer: "x" }, { px: 60, word: "green", answer: "y" }];
+  const out = C.next("magnification", old, ctx);
+  assert.equal(out.done, true);
+  assert.equal(out.result.measured_limit, "72");
+  const going = C.next("magnification", old.slice(0, 2), ctx);
+  assert.equal(going.prompt.px, 60, "keeps shrinking");
+});
+
+test("pictures: start small and grow too", () => {
+  const first = C.next("pictures", [], ctx).prompt;
+  assert.equal(first.px, 14);
+  const t = [C.cleanTrial("pictures", { cant_tell: true }, first)];
+  assert.equal(C.next("pictures", t, ctx).prompt.px, 18);
 });
 
 test("speech rate: starts slowest, steps with faster/slower, keeps on 'keep'", () => {
@@ -81,31 +100,52 @@ test("contrast: left-or-right pairs narrow to one scheme", () => {
   assert.equal(C.next("contrast", [{ answer: "same" }, { answer: "same" }]).result.recommended_value, "high", "'same' keeps the left one");
 });
 
-test("cursor: shrinks while found, keeps the last size found, then a color pair; skipped on touch devices", () => {
+test("cursor: four sizes, then four colors; can't see any changes nothing; skipped on touch devices", () => {
   const sz = (a) => ({ kind: "size", answer: a });
   const col = (a) => ({ kind: "color", answer: a });
-  assert.equal(C.next("cursor", [], ctx).prompt.size, "xl");
-  assert.equal(C.next("cursor", [sz("found")], ctx).prompt.size, "large");
-  let out = C.next("cursor", [sz("found"), sz("lost")], ctx);
-  assert.equal(out.prompt.kind, "pair_cursor");
-  assert.equal(out.prompt.size, "xl", "lost at large: keep extra large");
-  out = C.next("cursor", [sz("found"), sz("lost"), col("right"), col("right")], ctx);
-  assert.equal(out.result.recommended_value, "xl/yellow");
-  assert.deepEqual({ ...out.result.apply }, { cursor: "xl", cursorColor: "yellow" });
-  out = C.next("cursor", [sz("lost")], ctx);
-  assert.equal(out.done, true, "can't find even the largest: stop, no colour pair");
+  let out = C.next("cursor", [], ctx);
+  assert.equal(out.prompt.kind, "pick_cursor_size");
+  assert.deepEqual([...out.prompt.choices], ["default", "large", "xl", "xxl"]);
+  out = C.next("cursor", [sz("xl")], ctx);
+  assert.equal(out.prompt.kind, "pick_cursor_color");
+  assert.equal(out.prompt.size, "xl");
+  assert.deepEqual([...out.prompt.choices], ["black", "white", "yellow", "pink"]);
+  out = C.next("cursor", [sz("xxl"), col("pink")], ctx);
+  assert.equal(out.result.recommended_value, "xxl/pink");
+  assert.deepEqual({ ...out.result.apply }, { cursor: "xxl", cursorColor: "pink" });
+  out = C.next("cursor", [sz("default")], ctx);
+  assert.equal(out.done, true, "the normal pointer can't be recolored: no color round");
+  assert.deepEqual({ ...out.result.apply }, { cursor: "default" });
+  out = C.next("cursor", [sz("none")], ctx);
   assert.equal(out.result.recommended_value, "not_found");
   assert.deepEqual({ ...out.result.apply }, {}, "nothing changes on the page");
   assert.ok(out.result.flags.includes("could_not_find_largest_pointer"));
+  assert.equal(C.cleanTrial("cursor", { answer: "giant" }, { kind: "pick_cursor_size" }).answer, "none");
+  assert.equal(C.cleanTrial("cursor", { answer: "pink" }, { kind: "pick_cursor_color", size: "xl" }).answer, "pink");
+  // A check started with the first version (find the pointer, then left or right) still adds up.
+  out = C.next("cursor", [sz("found"), sz("lost"), col("right"), col("right")], ctx);
+  assert.equal(out.result.recommended_value, "xxl/yellow", "the old largest (128px) is now called huge");
   assert.equal(C.next("cursor", [], { ...ctx, device: { skipPointer: true } }).result.recommended_value, "not_tested");
   assert.deepEqual(C.plan({ skipPointer: true }), ["speech_rate", "magnification", "pictures", "contrast", "bold"], "screen-reader users skip the mouse test");
-  out = C.next("cursor", [sz("found"), sz("found"), sz("found"), col("left"), col("left")], ctx);
-  assert.equal(out.result.recommended_value, "default/black");
   const touch = C.next("cursor", [], { ...ctx, device: { touchOnly: true } });
   assert.equal(touch.done, true);
   assert.equal(touch.result.recommended_value, "not_tested");
   assert.deepEqual(C.plan({ touchOnly: true }), ["speech_rate", "magnification", "pictures", "contrast", "bold"]);
   assert.deepEqual(C.plan({}), ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold"]);
+});
+
+test("phrases: numbers said as words or digits, kinds take turns", () => {
+  for (const [said, shown] of [["meet at three thirty", "meet at 3:30"], ["meet at 3:30", "meet at 3:30"], ["room two fourteen", "room 214"], ["room two hundred fourteen", "room 214"], ["pay twelve dollars today", "pay $12 today"], ["doctor Lee at two", "Dr. Lee at 2"], ["bus at ten fifteen", "bus at 10:15"], ["best by May four", "best by May 4"], ["twelve Oak Street", "12 Oak Street"], ["save five dollars now", "save $5 now"]]) {
+    assert.ok(C.phraseMatches(said, shown), `"${said}" reads "${shown}"`);
+  }
+  assert.ok(!C.phraseMatches("take three pills", "take 2 pills"), "a wrong number is wrong");
+  assert.ok(!C.phraseMatches("meet at four", "meet at 3:30"));
+  const phrases = [{ text: "pay the bill", kind: "everyday" }, { text: "feed the dog", kind: "everyday" }, { text: "room 214", kind: "numbers" }, { text: "take 2 pills", kind: "numbers" }, { text: "exit only", kind: "labels" }, { text: "12 Oak Street", kind: "places" }];
+  const list = C.phraseList({ phrases, seed: "abc" });
+  assert.equal(list.length, phrases.length);
+  const kindOf = (t) => phrases.find((p) => p.text === t).kind;
+  assert.equal(new Set(list.slice(0, 4).map(kindOf)).size, 4, "the first four are one of each kind");
+  assert.deepEqual(C.phraseList({ phrases: ["a b", "c d"], seed: "x" }).sort(), ["a b", "c d"], "plain strings still work");
 });
 
 test("bold, struggle flags, codes and the trial limit", () => {
@@ -127,9 +167,10 @@ test("bold, struggle flags, codes and the trial limit", () => {
 });
 
 test("describe gives plain words for staff and the results page", () => {
-  assert.match(C.describe("magnification", { recommended_value: "200", measured_limit: "24" }), /200%.*24px.*48px.*extra zoom/);
+  assert.match(C.describe("magnification", { recommended_value: "400", measured_limit: "40" }), /400%.*40px.*80px.*extra zoom/);
   assert.match(C.describe("contrast", { recommended_value: "high" }), /high contrast/);
-  assert.match(C.describe("cursor", { recommended_value: "large/white" }), /large, white/);
+  assert.match(C.describe("cursor", { recommended_value: "large/white" }), /large \(64px\), white/);
+  assert.match(C.describe("cursor", { recommended_value: "xxl/pink" }), /huge \(128px\), pink/);
   assert.match(C.describe("speech_rate", { recommended_value: "1" }), /1x/);
 });
 
@@ -151,7 +192,7 @@ test("magnification shows phrases when the wording has them", () => {
   const trials = [];
   for (let i = 0; i < 60; i++) {
     const r = C.next("magnification", trials, c2);
-    if (r.done) { assert.equal(r.result.measured_limit, "24"); assert.equal(r.result.recommended_value, "200"); return; }
+    if (r.done) { assert.equal(r.result.measured_limit, "28", "24px is not on the growing ladder: the first size at or above it"); assert.equal(r.result.recommended_value, "400"); return; }
     assert.ok(phrases.includes(r.prompt.word), "a phrase is shown");
     trials.push(C.cleanTrial("magnification", r.prompt.px >= 24 ? { answer: r.prompt.word } : { cant_tell: true }, r.prompt));
   }

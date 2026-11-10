@@ -25,7 +25,7 @@ async function runAll(app, start) {
         setting === "speech_rate" ? { answer: p.rate === "1" ? "keep" : "faster" } :
         setting === "magnification" ? (p.px >= 24 ? { answer: p.word } : { cant_tell: true }) :
         setting === "pictures" ? (p.px >= 24 ? { answer: p.picture } : { cant_tell: true }) :
-        setting === "cursor" ? (p.kind === "find_pointer" ? { answer: p.size === "default" ? "lost" : "found" } : { answer: "right" }) :
+        setting === "cursor" ? { answer: p.kind === "pick_cursor_size" ? "xl" : "yellow" } :
         { answer: "left" };
       r = await call(app, "POST", `/api/check/${start.id}/trial`, { setting, trial }, h);
       assert.equal(r.status, 200, JSON.stringify(r.json));
@@ -50,7 +50,7 @@ test("a person runs the whole check, sees only their own result, and settings ar
   assert.equal((await call(app, "POST", `/api/check/${s.json.id}/step`, { setting: "contrast" }, bearer("wrong"))).status, 404);
   // The word is only sent for the trial being shown.
   const first = await call(app, "POST", `/api/check/${s.json.id}/step`, { setting: "magnification" }, bearer(s.json.token));
-  assert.equal(first.json.prompt.px, 72);
+  assert.equal(first.json.prompt.px, 12, "starts small");
   assert.ok(first.json.prompt.word);
   await runAll(app, s.json);
   const again = await call(app, "POST", `/api/check/${s.json.id}/trial`, { setting: "contrast", trial: { answer: "left" } }, bearer(s.json.token));
@@ -61,7 +61,7 @@ test("a person runs the whole check, sees only their own result, and settings ar
   assert.equal(f.status, 200);
   const c = f.json.check;
   assert.equal(c.status, "finished");
-  assert.deepEqual({ ...c.settings }, { rate: "1", textSize: "200", theme: "high", cursor: "large", cursorColor: "yellow", bold: "off" });
+  assert.deepEqual({ ...c.settings }, { rate: "1", textSize: "400", theme: "high", cursor: "xl", cursorColor: "yellow", bold: "off" });
   assert.ok(c.steps.every((x) => x.done));
   assert.ok(!("contact" in c), "contact details are not sent back to the browser");
   const later = await call(app, "POST", `/api/check/${s.json.id}/trial`, { setting: "bold", trial: { answer: "left" } }, bearer(s.json.token));

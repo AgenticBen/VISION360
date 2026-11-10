@@ -44,7 +44,7 @@ test("display settings: each page carries over only its own older saved choice, 
 
 test("display settings: bad values fall back, and every page gets the right attributes", () => {
   const D = displayCore();
-  const s = D.normalize({ textSize: "999", theme: "neon", cursor: "giant", cursorColor: "pink", bold: "very" }, { textSize: "150", theme: "high" });
+  const s = D.normalize({ textSize: "999", theme: "neon", cursor: "giant", cursorColor: "purple", bold: "very" }, { textSize: "150", theme: "high" });
   assert.deepEqual({ ...s }, { textSize: "150", theme: "high", cursor: "default", cursorColor: "black", bold: "off" });
   assert.equal(D.attributes({ ...s, theme: "high" })["data-contrast"], "high");
   assert.equal(D.attributes({ ...s, theme: "dark" })["data-contrast"], "normal", "the directory shows dark as normal contrast");
@@ -108,6 +108,11 @@ test("display settings: blue (white on dark blue) and 300% are real choices ever
   assert.deepEqual({ ...D.normalize({ textSize: "300", theme: "blue" }, { textSize: "100", theme: "standard" }) }, { textSize: "300", theme: "blue", cursor: "default", cursorColor: "black", bold: "off" });
   assert.equal(D.attributes({ ...D.normalize({ theme: "blue" }), theme: "blue" })["data-contrast"], "normal");
   assert.equal(D.normalize({ textSize: "75" }).textSize, "100", "75% is only a sample size in the test, never a page setting");
+  assert.deepEqual({ ...D.normalize({ textSize: "400", cursor: "xxl", cursorColor: "pink" }) }, { textSize: "400", theme: "standard", cursor: "xxl", cursorColor: "pink", bold: "off" });
+  assert.deepEqual({ ...D.CURSOR_PX }, { large: 64, xl: 96, xxl: 128 }, "128px is the largest pointer browsers allow");
+  const css = D.cursorCss();
+  assert.ok(css.includes("html .cursor-try[data-size='xxl'][data-color='pink']"), "pointer test tiles get their own pointer");
+  for (const file of ["site/demo/demo.css", "site/styles.css"]) assert.match(readFileSync(new URL("../" + file, import.meta.url), "utf8"), /html\[data-textsize="400"\]/, file);
   for (const [file, re] of [["site/demo/demo.css", /html\[data-theme="blue"\]/], ["site/demo/demo.css", /html\[data-textsize="300"\]/], ["site/styles.css", /html\[data-theme="blue"\]/], ["site/styles.css", /html\[data-textsize="300"\]/], ["site/screen-check/check.css", /\.theme-blue/]]) {
     assert.match(readFileSync(new URL("../" + file, import.meta.url), "utf8"), re, file);
   }

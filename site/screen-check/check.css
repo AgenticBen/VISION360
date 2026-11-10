@@ -66,9 +66,14 @@
   .pair-text { font-size: 1rem; }
   .stage-actions .btn { flex: 1 1 auto; }
 }
+/* No white paper border around a dark page: the page itself sets the margin. */
+@page { margin: 0; }
 @media print {
   .a-top, .a-menu, .sm, .brand-bar, .voice-row, .stage-actions, .skip-link, .check-progress, #rq-root { display: none !important; }
-  .results li { break-inside: avoid; }
+  .results li, .guide ol li, .suggest li { break-inside: avoid; }
+  .guide h2, .guide h3, .suggest h2 { break-after: avoid; }
+  body.assess .check-main { padding: 0.5in !important; max-width: none; }
+  .print-note { display: none; }
 }
 
 /* Results: setup steps and services */
@@ -126,7 +131,7 @@ body.assess .check-main { flex: 1 0 auto; width: 100%; max-width: 72rem; margin:
 .a-caption-row { max-width: 72rem; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 /* At large sizes or on short screens a pinned bar would hide the test and the
    menu, so it sits at the end of the page instead. */
-html[data-textsize="200"] .a-caption, html[data-textsize="300"] .a-caption { position: static; }
+html[data-textsize="200"] .a-caption, html[data-textsize="300"] .a-caption, html[data-textsize="400"] .a-caption { position: static; }
 @media (max-height: 700px) { html[data-textsize="150"] .a-caption { position: static; } }
 @media (max-width: 640px) {
   .a-top { padding: 0.4rem 12px; }
@@ -143,3 +148,13 @@ html[data-textsize="200"] .a-caption, html[data-textsize="300"] .a-caption { pos
 
 /* "Try it" from the admin Workflows page, before the test is live. */
 .a-preview { margin: 0; padding: 0.5rem 16px; background: #ffd24a; color: #16191d; font-weight: 700; text-align: center; }
+
+/* Pointer test: four tiles; the real pointer changes over each one. */
+.pick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 0 0 1rem; }
+.pick-tile { font: inherit; display: grid; grid-template-rows: auto auto 1fr; justify-items: center; align-items: center; gap: 0.3rem; min-height: min(36vh, 20rem); padding: 0.8rem; border: 3px solid var(--line); border-radius: 12px; background: var(--page); color: var(--ink); }
+.pick-tile:hover { border-color: var(--accent); background: var(--accent-wash); }
+.pick-tile:focus-visible { outline: 8px solid #ffd24a; outline-offset: 3px; box-shadow: 0 0 0 14px #000; }
+.pick-num { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.pick-name { font-weight: 800; }
+.pick-tile .pointer-art { min-height: 0; }
+.pick-tile .pointer-art svg { display: block; max-width: 100%; height: auto; }

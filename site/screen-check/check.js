@@ -409,6 +409,7 @@
     if (p.kind === "pair_bold") return showPair(setting, p, firstTime, "bold");
     if (p.kind === "find_pointer") return showFindPointer(p, firstTime);
     if (p.kind === "pair_cursor") return showPair(setting, p, firstTime, "cursor");
+    if (p.kind === "pick_cursor_size" || p.kind === "pick_cursor_color") return showPointerTiles(p);
   }
   function applyResult(res) {
     var a = res.apply || {};
@@ -453,6 +454,8 @@
       body: [box, el("form", { class: "answer-row", onsubmit: function (e) { e.preventDefault(); if (input.value.trim()) go(input.value); } }, [el("label", { for: "word-in", text: "Type the " + what }), input, el("button", { type: "submit", class: "btn btn-primary", text: "Done" })])],
       actions: [{ label: "I can't tell", onClick: cant }],
       speak: phrase ? (firstTime ? C.say.readIntro : C.say.readNext) : (firstTime ? C.say.magIntro + " " + C.say.magWord : C.say.magWord),
+      // Here "bigger" means "I can't read this one yet": the next one is bigger.
+      onCommand: function (c) { if (c.cmd === "bigger" || c.cmd === "cant_tell") { cant(); return true; } return false; },
       listen: function (t, n) { if (/\b(can't tell|cannot tell|can't see|cannot see|can't read|don't know|no idea|not sure|nothing)\b/.test(n)) cant(); else go(t); } });
   }
 
@@ -485,6 +488,7 @@
       body: [box], actions: acts,
       onDigit: function (k) { var c = (p.choices || [])[k - 1]; if (c) go(c); },
       speak: firstTime ? C.say.picIntro : C.say.picNext,
+      onCommand: function (c) { if (c.cmd === "bigger" || c.cmd === "cant_tell") { cant(); return true; } return false; },
       listen: function (t, n) {
         if (/\b(can't tell|cannot tell|can't see|cannot see|don't know|no idea|not sure|nothing)\b/.test(n)) cant(); else go(t);
       } });
@@ -523,6 +527,52 @@
         else if (/\b(left|top)\b/.test(n)) go("left"); else if (/\b(right|bottom)\b/.test(n)) go("right");
         else if (/\b(same|no difference|either|both|can't tell|don't know)\b/.test(n)) go("same");
         else say(C.say.cantHear).then(function () { showPair(setting, p, false, kind); });
+      } });
+  }
+
+  // Four pointers at once. Moving the mouse over a tile turns the real
+  // pointer into that one; click a tile, press 1 to 4, or say its number or
+  // name. Round 1 is sizes, round 2 is colors for the chosen size.
+  var POINTER_NAMES = { "default": "Normal", large: "Large", xl: "Extra large", xxl: "Huge", black: "Black", white: "White", yellow: "Yellow", pink: "Pink" };
+  var NUMBER_WORDS = { one: 1, first: 1, two: 2, second: 2, three: 3, third: 3, four: 4, fourth: 4 };
+  function showPointerTiles(p) {
+    var sizes = p.kind === "pick_cursor_size";
+    var choices = p.choices || [];
+    var dark = html.getAttribute("data-theme") !== "standard";
+    var go = function (answer) { send("cursor", { answer: answer }); };
+    var Core = window.V360DisplayCore;
+    var tiles = choices.map(function (c, i) {
+      var size = sizes ? c : p.size, color = sizes ? (dark ? "white" : "black") : c;
+      var art = el("span", { class: "pointer-art", "aria-hidden": "true" });
+      var px = Core.CURSOR_PX[size] || 32;
+      art.innerHTML = Core.cursorSvg(Math.min(px, 128), color);
+      return el("button", { type: "button", class: "cursor-try pick-tile" + (sizes ? "" : " pick-color-" + c), "data-size": size, "data-color": color, onclick: function () { go(c); } },
+        [el("span", { class: "pick-num", text: String(i + 1) }), el("span", { class: "pick-name", text: POINTER_NAMES[c] || c }), art]);
+    });
+    var acts = sizes ? [{ label: "I can't see any of them", keyHint: "N", onClick: function () { go("none"); } }] : [];
+    screen({ title: sizes ? "Which pointer size is easiest to see?" : "Which pointer color is easiest to see?",
+      sub: "Move the mouse over each box: the pointer changes to that one. Then click the one you like, press its number, or say it.",
+      progress: progressText(st.stepIdx),
+      body: [el("div", { class: "pick-grid" }, tiles)], actions: acts,
+      onN: sizes ? function () { go("none"); } : null,
+      onDigit: function (k) { if (choices[k - 1]) go(choices[k - 1]); },
+      speak: sizes ? C.say.cursorSizeIntro : C.say.cursorColorIntro,
+      onCommand: function (c) { if (sizes && c.cmd === "cant_tell") { go("none"); return true; } return false; },
+      listen: function onAns(t, n) {
+        var words = n.split(" ");
+        for (var i = 0; i < words.length; i++) if (NUMBER_WORDS[words[i]] && choices[NUMBER_WORDS[words[i]] - 1]) return go(choices[NUMBER_WORDS[words[i]] - 1]);
+        var m = n.match(/\b([1-4])\b/); if (m && choices[Number(m[1]) - 1]) return go(choices[Number(m[1]) - 1]);
+        if (sizes) {
+          if (/\bhuge\b|\bbiggest\b|\blargest\b/.test(n)) return go("xxl");
+          if (/\bextra large\b|\bextra\b/.test(n)) return go("xl");
+          if (/\blarge\b|\bbig\b/.test(n)) return go("large");
+          if (/\bnormal\b|\bsmall\b|\bregular\b/.test(n)) return go("default");
+          if (/\b(can't see|cannot see|none|neither|nothing)\b/.test(n)) return go("none");
+        } else {
+          for (var j = 0; j < choices.length; j++) if (new RegExp("\\b" + choices[j] + "\\b").test(n)) return go(choices[j]);
+          if (/\bpurple\b|\bmagenta\b/.test(n)) return go("pink");
+        }
+        say(C.say.cantHear).then(function () { listen(onAns); });
       } });
   }
 
@@ -726,6 +776,7 @@
       el("p", { text: "Your code for next time (to take the check again and see what changed):" }),
       el("p", { class: "code-box", text: c.code }),
       copyMsg,
+      el("p", { class: "hint print-note", text: "Printing or saving as a PDF uses your colors and text size." }),
       guideSection(c),
       suggestSection(c),
     ];
@@ -763,7 +814,7 @@
   // Say a short reply, then go back to listening for the same screen.
   function after(line) { return say(line).then(function () { if (waiting && !st.busy) listen(waiting); }); }
 
-  var SIZE_STEPS = ["100", "125", "150", "200", "300"];
+  var SIZE_STEPS = ["100", "125", "150", "200", "300", "400"];
   var CURSOR_STEPS = ["default", "large", "xl"];
   var RATE_STEPS = ["0.7", "0.85", "1", "1.2", "1.4"];
   var THEME_LINE = { standard: "themeStandard", blue: "themeBlue", dark: "themeDark", high: "themeHigh" };
@@ -878,6 +929,12 @@
   $("m-pause").addEventListener("click", function () { st.listenOn = !st.listenOn; syncListenBtn(); syncMenu(); if (st.listenOn && waiting) listen(waiting); });
   $("m-end").addEventListener("click", function () { closeMenu(false); askEnd(); });
   $("m-back").addEventListener("click", function () { closeMenu(false); goBack(); });
+  $("m-reset").addEventListener("click", function () {
+    var before = D.get(), now = D.reset();
+    Object.keys(now).forEach(function (k) { if (before[k] !== now[k]) record(k, now[k], "menu"); });
+    syncMenu();
+    announce("Display settings reset to the standard look on this device.");
+  });
   $("m-skip").addEventListener("click", function () { closeMenu(false); skipStep(); });
 
   // ---- go back, skip, end

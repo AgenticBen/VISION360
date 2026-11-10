@@ -19,11 +19,11 @@
    so its old key would wrongly override a directory visitor's choice.
 
    Sets on <html>:
-     data-textsize  100 | 125 | 150 | 200 | 300
+     data-textsize  100 | 125 | 150 | 200 | 300 | 400
      data-theme     standard | blue | dark | high   (blue = white on dark blue)
      data-contrast  normal | high            (directory, guide: dark shows as normal)
-     data-cursor    default | large | xl     (a bigger pointer, on computers)
-     data-cursor-color  black | white | yellow
+     data-cursor    default | large | xl | xxl   (pointer 64, 96 or 128px, on computers)
+     data-cursor-color  black | white | yellow | pink
      data-bold      off | on                  (heavier text, from the screen check)
 */
 (function (root) {
@@ -32,11 +32,12 @@
   D.KEY = "v360-display";
   D.LEGACY_ASSISTANT = "v360-demo-settings";
   D.LEGACY_DIRECTORY = "vrd-display-v1";
-  D.SIZES = ["100", "125", "150", "200", "300"];
+  D.SIZES = ["100", "125", "150", "200", "300", "400"];
   D.THEMES = ["standard", "blue", "dark", "high"];
-  D.CURSORS = ["default", "large", "xl"];
-  D.CURSOR_COLORS = ["black", "white", "yellow"];
-  D.CURSOR_PX = { large: 64, xl: 128 };
+  D.CURSORS = ["default", "large", "xl", "xxl"];
+  D.CURSOR_COLORS = ["black", "white", "yellow", "pink"];
+  // 128px is the largest custom pointer browsers allow.
+  D.CURSOR_PX = { large: 64, xl: 96, xxl: 128 };
   D.BOLDS = ["off", "on"];
 
   function pick(v, list, dflt) { v = v == null ? "" : String(v); return list.indexOf(v) !== -1 ? v : dflt; }
@@ -88,19 +89,26 @@
 
   // A plain arrow pointer drawn at the chosen size, with an outline in the
   // opposite color so it shows on any background.
+  D.CURSOR_FILLS = { black: ["#000000", "#ffffff"], white: ["#ffffff", "#000000"], yellow: ["#ffd24a", "#000000"], pink: ["#ff2bd6", "#000000"] };
+  D.cursorSvg = function (px, color) {
+    var f = D.CURSOR_FILLS[color] || D.CURSOR_FILLS.black;
+    return "<svg xmlns='http://www.w3.org/2000/svg' width='" + px + "' height='" + px + "' viewBox='0 0 32 32'>" +
+      "<path d='M2 2 L2 26 L8.5 20 L13 30 L17 28 L12.5 18.5 L21 18.5 Z' fill='" + f[0] + "' stroke='" + f[1] + "' stroke-width='2' stroke-linejoin='round'/></svg>";
+  };
+  D.cursorUrl = function (size, color) {
+    return "url(\"data:image/svg+xml," + encodeURIComponent(D.cursorSvg(D.CURSOR_PX[size], color)) + "\") 1 1, auto";
+  };
   D.cursorCss = function () {
-    var fills = { black: ["#000000", "#ffffff"], white: ["#ffffff", "#000000"], yellow: ["#ffd24a", "#000000"] };
     var css = "";
     Object.keys(D.CURSOR_PX).forEach(function (size) {
-      var px = D.CURSOR_PX[size];
       D.CURSOR_COLORS.forEach(function (color) {
-        var f = fills[color];
-        var svg = "<svg xmlns='http://www.w3.org/2000/svg' width='" + px + "' height='" + px + "' viewBox='0 0 32 32'>" +
-          "<path d='M2 2 L2 26 L8.5 20 L13 30 L17 28 L12.5 18.5 L21 18.5 Z' fill='" + f[0] + "' stroke='" + f[1] + "' stroke-width='2' stroke-linejoin='round'/></svg>";
-        var url = "url(\"data:image/svg+xml," + encodeURIComponent(svg) + "\") 1 1, auto";
+        var url = D.cursorUrl(size, color);
         css += "html[data-cursor='" + size + "'][data-cursor-color='" + color + "'], html[data-cursor='" + size + "'][data-cursor-color='" + color + "'] * { cursor: " + url + " !important; }\n";
+        // Tiles in the pointer test: moving over one shows that pointer.
+        css += "html .cursor-try[data-size='" + size + "'][data-color='" + color + "'], html .cursor-try[data-size='" + size + "'][data-color='" + color + "'] * { cursor: " + url + " !important; }\n";
       });
     });
+    css += "html .cursor-try[data-size='default'], html .cursor-try[data-size='default'] * { cursor: default !important; }\n";
     // Heavier text everywhere (headings are already bold).
     css += "html[data-bold='on'] body, html[data-bold='on'] body :is(p, li, a, span, label, button, input, select, textarea, td, th, dd, dt, summary, legend) { font-weight: 700 !important; }\n";
     return css;
@@ -145,7 +153,25 @@
       listeners.forEach(function (fn) { try { fn(Object.assign({}, current)); } catch (e) {} });
       return Object.assign({}, current);
     },
-    onChange: function (fn) { listeners.push(fn); }
+    onChange: function (fn) { listeners.push(fn); },
+    // Back to the page's standard look, and forget what this device saved.
+    // Settings are kept in this browser on this device only (localStorage),
+    // never on the server, so another device always starts fresh.
+    reset: function () {
+      [D.KEY, D.LEGACY_ASSISTANT, D.LEGACY_DIRECTORY].forEach(function (k) {
+        try {
+          if (k === D.LEGACY_ASSISTANT) {
+            // The assistant keeps its voice there too: drop only size and colors.
+            var a = parse(window.localStorage.getItem(k));
+            if (a) { delete a.textSize; delete a.theme; window.localStorage.setItem(k, JSON.stringify(a)); }
+          } else window.localStorage.removeItem(k);
+        } catch (e) {}
+      });
+      current = D.normalize(null, defaults);
+      apply();
+      listeners.forEach(function (fn) { try { fn(Object.assign({}, current)); } catch (e) {} });
+      return Object.assign({}, current);
+    }
   };
   // Another tab changed them: follow along.
   window.addEventListener("storage", function (e) {

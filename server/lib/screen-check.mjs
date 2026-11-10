@@ -28,9 +28,14 @@
 export const SETTINGS = ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold"];
 
 export const RATES = ["0.7", "0.85", "1", "1.2", "1.4"];
-// Word sizes shown, in CSS pixels, largest first.
+// Phrase sizes shown, in CSS pixels, smallest first: the test starts small
+// and grows (about 1.25x a step) until the person reads two in a row.
+export const LADDER_UP = [12, 15, 18, 22, 28, 34, 42, 52, 64, 80, 100, 128, 160, 200];
+// Picture sizes shown, smallest first.
+export const PICTURE_LADDER_UP = [14, 18, 22, 28, 36, 44, 56, 72, 96, 120, 160, 200];
+// The first version shrank from large to small. Checks started before the
+// change (their first trial was at the old largest size) keep that order.
 export const LADDER = [72, 60, 48, 40, 34, 28, 24, 20, 18, 16, 14, 12];
-// Picture sizes shown, in CSS pixels, largest first.
 export const PICTURE_LADDER = [120, 96, 72, 56, 44, 36, 28, 22, 18, 14];
 export const PICTURES = ["house", "apple", "circle", "square"];
 // Other words people use for each picture.
@@ -42,10 +47,13 @@ export const PICTURE_WORDS = {
 };
 // The page's text at 100% is 18px; the display settings offer these sizes.
 export const BASE_PX = 18;
-export const TEXT_SIZES = [100, 125, 150, 200];
+export const TEXT_SIZES = [100, 125, 150, 200, 300, 400];
 export const THEMES = ["high", "dark", "standard"];
-export const CURSOR_SIZES = ["xl", "large", "default"];
-export const CURSOR_COLORS = ["black", "white", "yellow"];
+// Pointer sizes, smallest first: the system pointer, then 64, 96 and 128px
+// (128px is the largest custom pointer browsers allow).
+export const CURSOR_SIZES = ["default", "large", "xl", "xxl"];
+export const CURSOR_COLORS = ["black", "white", "yellow", "pink"];
+const CURSOR_PX = { default: null, large: 64, xl: 96, xxl: 128 };
 export const MAX_TRIALS = 40;
 
 function norm(t) {
@@ -77,16 +85,58 @@ function close(heard, want) {
   if (heard.replace(/(es|s)$/, "") === want.replace(/(es|s)$/, "")) return true;
   return heard.length >= 4 && want.length >= 4 && editDistance(heard, want) <= 1;
 }
+// Numbers can be said as words: "three thirty" is 3:30, "twenty five" is 25,
+// "two fourteen" is 214. These turn every number in a phrase into its digits,
+// so "meet at 3:30" and "meet at three thirty" have the same digits ("330").
+const UNITS = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
+const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+// Words around numbers that don't need saying: "$12" is "twelve dollars", "3:30" may be "three thirty p m".
+const NUMBER_FILLER = new Set(["dollar", "dollars", "cent", "cents", "oclock", "o", "clock", "am", "pm", "a", "p", "m", "and", "number"]);
+export function numberDigits(text) {
+  const out = [];
+  let cur = null;
+  const flush = () => { if (cur != null) { out.push(String(cur)); cur = null; } };
+  for (const w of norm(text).replace(/'/g, "").split(" ")) {
+    if (/^\d+$/.test(w)) { flush(); out.push(w); continue; }
+    if (w in TENS) { flush(); cur = TENS[w]; continue; }
+    if (w in UNITS) {
+      if (cur != null && cur % 10 === 0 && cur >= 20 && UNITS[w] < 10) { cur += UNITS[w]; flush(); continue; }
+      flush(); cur = UNITS[w]; continue;
+    }
+    if (w === "hundred" && (cur != null || out.length)) { const base = cur != null ? cur : Number(out.pop()); cur = base * 100; continue; }
+    if (cur != null && cur >= 100 && cur % 100 === 0 && (w in UNITS || w in TENS)) continue;
+    flush();
+  }
+  flush();
+  // "two hundred fourteen": join a hundreds value with what follows it.
+  const joined = [];
+  for (const d of out) {
+    const prev = joined[joined.length - 1];
+    if (prev && /00$/.test(prev) && Number(prev) >= 100 && Number(d) < 100) joined[joined.length - 1] = String(Number(prev) + Number(d));
+    else joined.push(d);
+  }
+  return joined.join("");
+}
+// Short forms people read either way.
+const ALIASES = { dr: "doctor", st: "street", rd: "road", ave: "avenue", mr: "mister", mrs: "missus" };
+const alias = (w) => ALIASES[w] || w;
+const isNumberWord = (w) => /^\d+$/.test(w) || w in UNITS || w in TENS || w === "hundred";
+
 // A spoken or typed answer to "read this out loud". A single word is checked
 // with wordMatches; a phrase needs its main words (not "the", "my", ...):
-// all of them for two, all but one for three or more, in any order.
+// all of them for two, all but one for three or more, in any order. Any
+// numbers in the phrase must all be there, said as digits or as words.
 export function phraseMatches(answer, target, soundsLike = {}) {
-  const t = norm(target).split(" ").filter(Boolean);
-  if (t.length <= 1) return wordMatches(answer, target, soundsLike);
-  const heard = norm(answer).split(" ").filter(Boolean);
+  const t = norm(target).replace(/'/g, "").split(" ").filter(Boolean).map(alias);
+  const wantDigits = numberDigits(target);
+  if (wantDigits && numberDigits(answer) !== wantDigits) return false;
+  if (t.length <= 1 && !wantDigits) return wordMatches(answer, target, soundsLike);
+  const heard = norm(answer).replace(/'/g, "").split(" ").filter(Boolean).map(alias).filter((w) => !NUMBER_FILLER.has(w) || !wantDigits);
   if (!heard.length) return false;
-  const content = t.filter((w) => !STOP.has(w));
-  const need = content.length ? content : t;
+  const words = t.filter((w) => !isNumberWord(w) && !(wantDigits && NUMBER_FILLER.has(w)));
+  if (!words.length) return true; // only numbers, and they matched
+  const content = words.filter((w) => !STOP.has(w));
+  const need = content.length ? content : words;
   const hit = need.filter((w) => heard.some((h) => close(h, w) || (soundsLike[w] || []).map(norm).includes(h))).length;
   return hit >= need.length - (need.length >= 3 ? 1 : 0);
 }
@@ -107,6 +157,21 @@ export function wordFor(seed, n, words) {
   for (const c of String(seed)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
   const order = words.map((w, i) => ({ w, k: Math.imul((h ^ (i + 1) * 2654435761) >>> 0, 2246822519) >>> 0 })).sort((a, b) => a.k - b.k).map((x) => x.w);
   return order[n % order.length];
+}
+
+// The phrases to read, taking turns between kinds (everyday, numbers,
+// labels, places) so each person sees a mix. Each kind is shuffled by the
+// check id. Phrases may be plain strings (older wording files) or
+// { text, kind }.
+export function phraseList(ctx) {
+  const raw = ctx.phrases && ctx.phrases.length ? ctx.phrases : ctx.words;
+  const items = raw.map((p) => (typeof p === "string" ? { text: p, kind: "any" } : { text: String(p.text || ""), kind: String(p.kind || "any") })).filter((p) => p.text);
+  const kinds = [...new Set(items.map((p) => p.kind))];
+  const groups = kinds.map((k) => { const list = items.filter((p) => p.kind === k).map((p) => p.text); return list.map((_, i) => wordFor(ctx.seed + "/" + k, i, list)); });
+  const order = kinds.map((_, i) => i).map((i) => groups[wordFor(ctx.seed + "/kinds", i, kinds.map((_, j) => j))]);
+  const out = [];
+  for (let i = 0; out.length < items.length; i++) for (const g of order) if (i < g.length) out.push(g[i]);
+  return out;
 }
 
 // Shared struggle signals: lots of repeats or "can't tell", or a slow step.
@@ -144,12 +209,53 @@ export function textSizeFor(px) {
   return { textSize: String(TEXT_SIZES[TEXT_SIZES.length - 1]), extraZoom: Math.round((px / biggest) * 10) / 10 };
 }
 
-function magnification(trials, ctx) {
+// A growing size test: start at the smallest size; a miss (or "I can't
+// tell") moves up one size; two right in a row at a size is the smallest size
+// the person can read, and the test ends. Missing the largest ends it too.
+function growing(trials, ladder, isRight) {
+  let level = 0, rightRun = 0;
+  for (const t of trials) {
+    if (isRight(t)) {
+      rightRun++;
+      if (rightRun >= 2) return { done: true, smallestOk: ladder[level] };
+    } else {
+      rightRun = 0;
+      if (level === ladder.length - 1) return { done: true, smallestOk: null };
+      level++;
+    }
+  }
+  return { done: false, level };
+}
+// The first version: start large, shrink after two right, stop after two wrong.
+function shrinking(trials, ladder, isRight) {
   let level = 0, rightRun = 0, wrongHere = 0, smallestOk = null;
-  const end = (reason) => {
+  for (const t of trials) {
+    if (isRight(t)) {
+      rightRun++;
+      if (rightRun >= 2) {
+        smallestOk = ladder[level];
+        if (level === ladder.length - 1) return { done: true, smallestOk };
+        level++; rightRun = 0; wrongHere = 0;
+      }
+    } else {
+      rightRun = 0; wrongHere++;
+      if (wrongHere >= 2) return { done: true, smallestOk };
+    }
+  }
+  return { done: false, level };
+}
+const startedShrinking = (trials, oldTop) => trials.length > 0 && Number(trials[0].px) === oldTop;
+
+function magnification(trials, ctx) {
+  const old = startedShrinking(trials, LADDER[0]);
+  const ladder = old ? LADDER : LADDER_UP;
+  const biggest = old ? LADDER[0] : LADDER_UP[LADDER_UP.length - 1];
+  const isRight = (t) => !t.cant_tell && phraseMatches(t.answer, t.word, ctx.soundsLike);
+  const r = (old ? shrinking : growing)(trials, ladder, isRight);
+  const end = (smallestOk, reason) => {
     const flags = struggleFlags(trials);
     if (smallestOk == null) flags.push("could_not_read_largest");
-    const comfortPx = smallestOk == null ? LADDER[0] * 2 : smallestOk * 2;
+    const comfortPx = smallestOk == null ? biggest * 2 : smallestOk * 2;
     const ts = textSizeFor(comfortPx);
     if (ts.extraZoom > 1) flags.push("needs_magnifier_or_zoom");
     if (reason === "max") flags.push("stopped_at_trial_limit");
@@ -163,55 +269,33 @@ function magnification(trials, ctx) {
         flags,
         comfort_px: comfortPx,
         extra_zoom: ts.extraZoom,
+        largest_px: biggest,
         apply: { textSize: ts.textSize },
       },
     };
   };
-  for (const t of trials) {
-    const ok = !t.cant_tell && phraseMatches(t.answer, t.word, ctx.soundsLike);
-    if (ok) {
-      rightRun++;
-      if (rightRun >= 2) {
-        smallestOk = LADDER[level];
-        if (level === LADDER.length - 1) return end("bottom");
-        level++; rightRun = 0; wrongHere = 0;
-      }
-    } else {
-      rightRun = 0; wrongHere++;
-      if (wrongHere >= 2) return end("limit");
-    }
-  }
-  if (trials.length >= MAX_TRIALS) return end("max");
-  const list = ctx.phrases && ctx.phrases.length ? ctx.phrases : ctx.words;
-  return { done: false, prompt: { kind: "word", px: LADDER[level], word: wordFor(ctx.seed, trials.length, list), n: trials.length + 1 } };
+  if (r.done) return end(r.smallestOk);
+  if (trials.length >= MAX_TRIALS) return end(null, "max");
+  const list = phraseList(ctx);
+  return { done: false, prompt: { kind: "word", px: ladder[r.level], word: list[trials.length % list.length], n: trials.length + 1 } };
 }
 
 // ------------------------------------------------------------------- pictures
 function pictures(trials, ctx) {
-  let level = 0, rightRun = 0, wrongHere = 0, smallestOk = null;
-  const end = (reason) => {
+  const old = startedShrinking(trials, PICTURE_LADDER[0]);
+  const ladder = old ? PICTURE_LADDER : PICTURE_LADDER_UP;
+  const biggest = old ? PICTURE_LADDER[0] : PICTURE_LADDER_UP[PICTURE_LADDER_UP.length - 1];
+  const r = (old ? shrinking : growing)(trials, ladder, (t) => !t.cant_tell && pictureMatches(t.answer, t.picture));
+  const end = (smallestOk, reason) => {
     const flags = struggleFlags(trials);
     if (smallestOk == null) flags.push("could_not_see_largest_picture");
     if (reason === "max") flags.push("stopped_at_trial_limit");
-    const comfortPx = smallestOk == null ? PICTURE_LADDER[0] * 2 : smallestOk * 2;
-    return { done: true, result: { measured_limit: smallestOk == null ? null : String(smallestOk), recommended_value: String(comfortPx), unit: "px", tries: trials.length, flags, comfort_px: comfortPx, apply: {} } };
+    const comfortPx = smallestOk == null ? biggest * 2 : smallestOk * 2;
+    return { done: true, result: { measured_limit: smallestOk == null ? null : String(smallestOk), recommended_value: String(comfortPx), unit: "px", tries: trials.length, flags, comfort_px: comfortPx, largest_px: biggest, apply: {} } };
   };
-  for (const t of trials) {
-    const ok = !t.cant_tell && pictureMatches(t.answer, t.picture);
-    if (ok) {
-      rightRun++;
-      if (rightRun >= 2) {
-        smallestOk = PICTURE_LADDER[level];
-        if (level === PICTURE_LADDER.length - 1) return end("bottom");
-        level++; rightRun = 0; wrongHere = 0;
-      }
-    } else {
-      rightRun = 0; wrongHere++;
-      if (wrongHere >= 2) return end("limit");
-    }
-  }
-  if (trials.length >= MAX_TRIALS) return end("max");
-  return { done: false, prompt: { kind: "picture", px: PICTURE_LADDER[level], picture: wordFor(ctx.seed + "/pictures", trials.length, PICTURES), choices: PICTURES, n: trials.length + 1 } };
+  if (r.done) return end(r.smallestOk);
+  if (trials.length >= MAX_TRIALS) return end(null, "max");
+  return { done: false, prompt: { kind: "picture", px: ladder[r.level], picture: wordFor(ctx.seed + "/pictures", trials.length, PICTURES), choices: PICTURES, n: trials.length + 1 } };
 }
 
 // ---------------------------------------------------------- left-or-right pairs
@@ -243,29 +327,49 @@ function bold(trials) {
 }
 
 // ---------------------------------------------------------------- cursor
+// Four pointers on screen at once. Round 1: four sizes (moving the mouse over
+// a tile changes the real pointer to that size); round 2: the chosen size in
+// four colors. "none" in round 1 means they couldn't see any of them.
 function cursor(trials, ctx) {
   if (ctx.device && (ctx.device.touchOnly || ctx.device.skipPointer)) {
     return { done: true, result: { measured_limit: null, recommended_value: "not_tested", unit: "pointer", tries: 0, flags: ["no_pointer_on_this_device"], apply: {} } };
   }
+  // Checks started before this version: find the pointer, then left or right.
+  if (trials.some((t) => t.answer === "found" || t.answer === "lost" || (t.kind === "color" && ["left", "right", "same"].includes(t.answer)))) return cursorFirstVersion(trials);
+  const size = trials.find((t) => t.kind === "size");
+  const color = trials.find((t) => t.kind === "color");
+  const flags = struggleFlags(trials);
+  const done = (value, limit, apply) => ({ done: true, result: { measured_limit: limit, recommended_value: value, unit: "pointer", tries: trials.length, flags, apply } });
+  if (!size) return { done: false, prompt: { kind: "pick_cursor_size", choices: CURSOR_SIZES } };
+  if (size.answer === "none") { flags.push("could_not_find_largest_pointer"); return done("not_found", null, {}); }
+  // The system pointer can't be recolored, so choosing it ends the test.
+  if (size.answer === "default") return done("default", "default", { cursor: "default" });
+  if (!color) return { done: false, prompt: { kind: "pick_cursor_color", size: size.answer, choices: CURSOR_COLORS } };
+  return done(size.answer + "/" + color.answer, size.answer, { cursor: size.answer, cursorColor: color.answer });
+}
+// The first version (kept so checks already under way still add up): its
+// largest pointer "xl" was 128px, which is now "xxl".
+function cursorFirstVersion(trials) {
+  const OLD_SIZES = ["xl", "large", "default"];
+  const OLD_COLORS = ["black", "white", "yellow"];
   const sizeTrials = trials.filter((t) => t.kind !== "color");
   const colorTrials = trials.filter((t) => t.kind === "color");
   let i = 0, kept = null, sizeDone = false;
   for (const t of sizeTrials) {
-    if (t.answer === "found") { kept = CURSOR_SIZES[i]; if (i === CURSOR_SIZES.length - 1) { sizeDone = true; break; } i++; }
+    if (t.answer === "found") { kept = OLD_SIZES[i]; if (i === OLD_SIZES.length - 1) { sizeDone = true; break; } i++; }
     else { sizeDone = true; break; }
   }
   if (!sizeDone && sizeTrials.length >= MAX_TRIALS) sizeDone = true;
-  if (!sizeDone) return { done: false, prompt: { kind: "find_pointer", size: CURSOR_SIZES[i] } };
+  if (!sizeDone) return { done: false, prompt: { kind: "find_pointer", size: OLD_SIZES[i] } };
   const flags = struggleFlags(trials);
-  // Couldn't find even the largest pointer (or uses the keyboard): change
-  // nothing on the page, and tell staff.
   if (kept == null) {
     flags.push("could_not_find_largest_pointer");
     return { done: true, result: { measured_limit: null, recommended_value: "not_found", unit: "pointer", tries: trials.length, flags, apply: {} } };
   }
-  const c = tournament(CURSOR_COLORS, colorTrials, "pair_cursor");
+  const now = kept === "xl" ? "xxl" : kept;
+  const c = tournament(OLD_COLORS, colorTrials, "pair_cursor");
   if (!c.done) return { done: false, prompt: { ...c.prompt, size: kept } };
-  return { done: true, result: { measured_limit: kept, recommended_value: kept + "/" + c.winner, unit: "pointer", tries: trials.length, flags, apply: { cursor: kept, cursorColor: c.winner } } };
+  return { done: true, result: { measured_limit: now, recommended_value: now + "/" + c.winner, unit: "pointer", tries: trials.length, flags, apply: { cursor: now, cursorColor: c.winner } } };
 }
 
 // One step of a test: what to show next, or the result.
@@ -295,6 +399,8 @@ export function cleanTrial(setting, raw, prompt) {
   if (setting === "pictures") return { ...base, picture: prompt.picture, px: prompt.px, answer: String(r.answer || "").slice(0, 60), cant_tell: !!r.cant_tell };
   if (setting === "contrast" || setting === "bold") return { ...base, left: prompt.left, right: prompt.right, answer: ["left", "right", "same"].includes(r.answer) ? r.answer : "same" };
   if (setting === "cursor") {
+    if (prompt.kind === "pick_cursor_size") return { ...base, kind: "size", answer: [...CURSOR_SIZES, "none"].includes(r.answer) ? r.answer : "none" };
+    if (prompt.kind === "pick_cursor_color") return { ...base, kind: "color", size: prompt.size, answer: CURSOR_COLORS.includes(r.answer) ? r.answer : "black" };
     if (prompt.kind === "pair_cursor") return { ...base, kind: "color", left: prompt.left, right: prompt.right, answer: ["left", "right", "same"].includes(r.answer) ? r.answer : "same" };
     return { ...base, kind: "size", size: prompt.size, answer: r.answer === "found" ? "found" : "lost" };
   }
@@ -309,15 +415,20 @@ export function describe(setting, result) {
   if (v == null) return `${PRETTY[setting] || setting}: started, not finished`;
   if (setting === "speech_rate") return `Speech rate ${v}x (started at the slowest, ${RATES[0]}x)`;
   if (setting === "magnification") {
-    const comfort = result.comfort_px || (result.measured_limit ? Number(result.measured_limit) * 2 : LADDER[0] * 2);
+    const comfort = result.comfort_px || (result.measured_limit ? Number(result.measured_limit) * 2 : LADDER_UP[LADDER_UP.length - 1] * 2);
     const extra = result.extra_zoom || textSizeFor(comfort).extraZoom;
-    const lim = result.measured_limit ? `smallest text read correctly: ${result.measured_limit}px` : `could not read the largest text (${LADDER[0]}px)`;
+    const lim = result.measured_limit ? `smallest text read correctly: ${result.measured_limit}px` : `could not read the largest text (${result.largest_px || LADDER_UP[LADDER_UP.length - 1]}px)`;
     return `Text size ${v}% (${lim}; comfortable size about ${comfort}px${extra > 1 ? `, needs about ${extra}x extra zoom or a magnifier` : ""})`;
   }
-  if (setting === "pictures") return result.measured_limit ? `Pictures: smallest picture recognized ${result.measured_limit}px; icons and pictures about ${v}px should be comfortable` : `Pictures: could not recognize the largest picture (${PICTURE_LADDER[0]}px)`;
+  if (setting === "pictures") return result.measured_limit ? `Pictures: smallest picture recognized ${result.measured_limit}px; icons and pictures about ${v}px should be comfortable` : `Pictures: could not recognize the largest picture (${result.largest_px || PICTURE_LADDER_UP[PICTURE_LADDER_UP.length - 1]}px)`;
   if (setting === "contrast") return `Colors: ${{ high: "high contrast (yellow and white on black)", dark: "light text on dark", standard: "dark text on white" }[v] || v}`;
-  if (setting === "cursor" && v === "not_found") return "Pointer: couldn't find the largest pointer (128px); no change made";
-  if (setting === "cursor") return v === "not_tested" ? "Pointer: not tested (no pointer on this device, or uses the keyboard)" : `Pointer: ${String(v).split("/")[0] === "xl" ? "extra large" : String(v).split("/")[0] === "large" ? "large" : "normal size"}, ${String(v).split("/")[1]}`;
+  if (setting === "cursor" && v === "not_found") return "Pointer: couldn't see any of the pointers, up to 128px; no change made";
+  if (setting === "cursor") {
+    if (v === "not_tested") return "Pointer: not tested (no pointer on this device, or uses the keyboard)";
+    const [size, color] = String(v).split("/");
+    const SIZE_WORDS = { default: "normal size", large: "large (64px)", xl: "extra large (96px)", xxl: "huge (128px)" };
+    return `Pointer: ${SIZE_WORDS[size] || size}${color ? ", " + color : ""}`;
+  }
   if (setting === "bold") return `Text weight: ${v}`;
   return String(v);
 }
@@ -360,11 +471,11 @@ export const STATE_WORDS = { finished: "Finished", ended: "Ended early", left: "
 
 // What the person may change outside a test, from the menu or by voice.
 export const LIVE_SETTINGS = {
-  textSize: ["100", "125", "150", "200", "300"],
+  textSize: ["100", "125", "150", "200", "300", "400"],
   theme: ["standard", "blue", "dark", "high"],
   bold: ["off", "on"],
-  cursor: ["default", "large", "xl"],
-  cursorColor: ["black", "white", "yellow"],
+  cursor: CURSOR_SIZES,
+  cursorColor: CURSOR_COLORS,
   rate: RATES.map(String),
 };
 const LIVE_WORDS = { textSize: "text size", theme: "colors", bold: "bold", cursor: "pointer size", cursorColor: "pointer color", rate: "speaking speed" };

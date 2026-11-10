@@ -114,3 +114,14 @@ test("Left without ending is worked out from two hours with no activity", () => 
 test("a test left halfway reads as started, not finished", () => {
   assert.equal(check.describe("contrast", { trials: [{ answer: "left" }], recommended_value: null }), "Colors: started, not finished");
 });
+
+test("the sidebar badge gets just the number of checks waiting for review, for staff only", async () => {
+  const app = await appOn();
+  const s = await start(app);
+  await call(app, "POST", `/api/check/${s.id}/end`, {}, s.h);
+  const r = await call(app, "GET", "/api/admin/checks/counts");
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.json, { needs_review: 1, call: 0 });
+  const locked = await makeApp({ V360_ADMIN_SIGNIN: "on" });
+  assert.notEqual((await call(locked, "GET", "/api/admin/checks/counts")).status, 200);
+});

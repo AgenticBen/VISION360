@@ -58,7 +58,7 @@ test("global commands are separate from answers", () => {
 
 test("no word or phrase people read aloud in the test is also a command", () => {
   const c = JSON.parse(readFileSync(new URL("../site/data/screen-check.json", import.meta.url), "utf8"));
-  for (const w of [...c.words, ...c.phrases, "house", "apple", "circle", "square"]) assert.equal(C.parse(w), null, `"${w}" would be taken as a command`);
+  for (const w of [...c.words, ...c.phrases.map((p) => (typeof p === "string" ? p : p.text)), "house", "apple", "circle", "square"]) assert.equal(C.parse(w), null, `"${w}" would be taken as a command`);
 });
 
 test("every spoken reply the commands use is in the wording file", () => {

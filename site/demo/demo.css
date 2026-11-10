@@ -41,6 +41,7 @@ html[data-textsize="125"] { font-size: 22.5px; }
 html[data-textsize="150"] { font-size: 27px; }
 html[data-textsize="200"] { font-size: 36px; }
 html[data-textsize="300"] { font-size: 54px; }
+html[data-textsize="400"] { font-size: 72px; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -95,7 +96,7 @@ html[data-theme="blue"], html[data-theme="dark"], html[data-theme="high"] { --bt
 
 .log-wrap { position: relative; }
 .log { list-style: none; margin: 0; padding: 0.4rem; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--page); max-height: 55vh; overflow-y: auto; }
-html[data-textsize="200"] .log, html[data-textsize="300"] .log { max-height: none; }
+html[data-textsize="200"] .log, html[data-textsize="300"] .log, html[data-textsize="400"] .log { max-height: none; }
 .msg { margin: 0.5rem 0; padding: 0.6rem 0.85rem; border-radius: 10px; max-width: 100%; overflow-wrap: anywhere; }
 .msg .who { display: block; font-weight: 700; font-size: 0.9rem; color: var(--muted); margin-bottom: 0.15rem; }
 .msg.bot { background: var(--bot-bg); border: 1px solid var(--line-soft); }
@@ -226,7 +227,7 @@ kbd { font: inherit; font-weight: 800; font-size: 0.95rem; padding: 0.1rem 0.6re
   #start .btn-big { min-height: 4.6rem; align-items: center; justify-content: center; text-align: center; padding: 0.6rem; }
   #start .big-sub { display: none; }
 }
-html[data-textsize="200"] .seg, html[data-textsize="300"] .seg { flex-wrap: wrap; }
+html[data-textsize="200"] .seg, html[data-textsize="300"] .seg, html[data-textsize="400"] .seg { flex-wrap: wrap; }
 
 /* The welcome question is the page's main text. */
 #start .ask { font-size: 1.6rem; line-height: 1.3; margin: 0.6rem 0 0.3rem; }
@@ -271,3 +272,13 @@ html[data-textsize="200"] .seg, html[data-textsize="300"] .seg { flex-wrap: wrap
 .step-n { font-weight: 800; grid-row: span 2; }
 .step-l { font-weight: 700; }
 .step-v { font-weight: 400; color: var(--ink); grid-column: 2; overflow-wrap: anywhere; }
+
+/* Printing or saving as PDF keeps the person's colors and text size: browsers
+   drop backgrounds when printing unless told to keep them exactly. */
+@media print {
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: var(--page) !important; color: var(--ink) !important; }
+  html *, html *::before, html *::after { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* No mouse, no pointer to change. */
+@media (hover: none) and (pointer: coarse) { .dbar-pointer, #m-pointer, #m-pcolor { display: none !important; } }

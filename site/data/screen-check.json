@@ -16,9 +16,9 @@
     "magIntro": "Now the text size. I'll show a word. Say the word, type it, or say I can't tell. There are no wrong answers.",
     "magWord": "What word do you see?",
     "magDone": "Thank you. I've set the text to a size that should be comfortable.",
-    "readIntro": "Now some reading. I'll show a short phrase. Read it out loud, or type it. If you can't read it, say I can't tell. There are no wrong answers.",
+    "readIntro": "Now some reading. I'll show a short phrase, starting small. Read it out loud, or type it. If you can't read it, say I can't tell, and I'll make it bigger. There are no wrong answers.",
     "readNext": "Read this out loud.",
-    "picIntro": "Now some pictures. I'll show a house, an apple, a circle or a square. Say which one you see, or press its button. If you can't tell, say I can't tell.",
+    "picIntro": "Now some pictures. I'll show a house, an apple, a circle or a square, starting small. Say which one you see, or press its number. If you can't tell, say I can't tell, and I'll make it bigger.",
     "picNext": "What picture do you see?",
     "picDone": "Thank you. That tells us how big pictures and icons need to be for you.",
     "contrastIntro": "Now colors. I'll show two choices, one on the left and one on the right. Say left or right for the one that's easier to read, or say same.",
@@ -72,7 +72,9 @@
     "nothingToEnd": "We haven't started yet, so there's nothing to save. You can just close this page.",
     "voiceLoudest": "I'm already as loud as I can be. Turn up your device's volume for more.",
     "voiceSoftest": "I'm already at my softest.",
-    "practicePhone": "First, a quick practice. There are two boxes on the screen. Say top or bottom, or tap a box."
+    "practicePhone": "First, a quick practice. There are two boxes on the screen. Say top or bottom, or tap a box.",
+    "cursorSizeIntro": "Now the mouse pointer. There are four boxes, numbered one to four. Move the mouse over each one, and the pointer changes size. Click the one that's easiest to see, or say its number. If you can't see any of them, say I can't tell.",
+    "cursorColorIntro": "Now the pointer's color. Move the mouse over each box to try a color. Click the one that's easiest to see, or say its number or its color."
   },
   "deviceNames": {
     "iphone": "an iPhone",
@@ -119,22 +121,102 @@
     "summer"
   ],
   "phrases": [
-    "call my sister",
-    "pay the bill",
-    "open the mail",
-    "feed the dog",
-    "make some tea",
-    "read the news",
-    "find my glasses",
-    "take a walk",
-    "water the plants",
-    "lock the door",
-    "turn on the light",
-    "bake a cake",
-    "watch the game",
-    "wash the dishes",
-    "meet at noon",
-    "buy fresh bread"
+    {
+      "text": "pay the bill",
+      "kind": "everyday"
+    },
+    {
+      "text": "feed the dog",
+      "kind": "everyday"
+    },
+    {
+      "text": "water the plants",
+      "kind": "everyday"
+    },
+    {
+      "text": "lock the door",
+      "kind": "everyday"
+    },
+    {
+      "text": "find my glasses",
+      "kind": "everyday"
+    },
+    {
+      "text": "buy fresh bread",
+      "kind": "everyday"
+    },
+    {
+      "text": "meet at 3:30",
+      "kind": "numbers"
+    },
+    {
+      "text": "take 2 pills",
+      "kind": "numbers"
+    },
+    {
+      "text": "bus at 10:15",
+      "kind": "numbers"
+    },
+    {
+      "text": "room 214",
+      "kind": "numbers"
+    },
+    {
+      "text": "pay $12 today",
+      "kind": "numbers"
+    },
+    {
+      "text": "save $5 now",
+      "kind": "numbers"
+    },
+    {
+      "text": "take with food",
+      "kind": "labels"
+    },
+    {
+      "text": "do not freeze",
+      "kind": "labels"
+    },
+    {
+      "text": "push to open",
+      "kind": "labels"
+    },
+    {
+      "text": "exit only",
+      "kind": "labels"
+    },
+    {
+      "text": "best by May 4",
+      "kind": "labels"
+    },
+    {
+      "text": "shake well",
+      "kind": "labels"
+    },
+    {
+      "text": "12 Oak Street",
+      "kind": "places"
+    },
+    {
+      "text": "Dr. Lee at 2",
+      "kind": "places"
+    },
+    {
+      "text": "Tryon Street bus",
+      "kind": "places"
+    },
+    {
+      "text": "Main Street Library",
+      "kind": "places"
+    },
+    {
+      "text": "Park Road Pharmacy",
+      "kind": "places"
+    },
+    {
+      "text": "call Lions Services",
+      "kind": "places"
+    }
   ],
   "sounds_like": {
     "bread": [
@@ -354,5 +436,6 @@
       "End",
       "Stop now. What you've done is saved."
     ]
-  ]
+  ],
+  "_phrases_comment": "Phrases for the reading test, read out loud at growing sizes. Four kinds take turns: everyday tasks, numbers (prices and times, said as words or digits), labels and signs, and names and places. Staff may edit them; keep them short (2-4 words) and never the same as a spoken command."
 }

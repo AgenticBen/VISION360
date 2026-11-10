@@ -18,7 +18,7 @@ async function takeCheck(app, { see = 24, code, contact = true } = {}) {
     let r = await call(app, "POST", `/api/check/${s.id}/step`, { setting }, bearer(s.token));
     while (!r.json.done) {
       const p = r.json.prompt;
-      const trial = setting === "speech_rate" ? { answer: "keep" } : setting === "magnification" ? (p.px >= see ? { answer: p.word } : { cant_tell: true }) : setting === "pictures" ? (p.px >= see ? { answer: p.picture } : { cant_tell: true }) : setting === "cursor" ? (p.kind === "find_pointer" ? { answer: p.size === "xl" ? "found" : "lost" } : { answer: "left" }) : { answer: "left" };
+      const trial = setting === "speech_rate" ? { answer: "keep" } : setting === "magnification" ? (p.px >= see ? { answer: p.word } : { cant_tell: true }) : setting === "pictures" ? (p.px >= see ? { answer: p.picture } : { cant_tell: true }) : setting === "cursor" ? { answer: p.kind === "pick_cursor_size" ? (see >= 72 ? "none" : "large") : "black" } : { answer: "left" };
       r = await call(app, "POST", `/api/check/${s.id}/trial`, { setting, trial }, bearer(s.token));
     }
   }
@@ -69,7 +69,7 @@ test("one result: details, review with accept/edit/reject, case note", async () 
   });
   assert.equal(r.status, 200);
   assert.equal(r.json.staff_status, "reviewed");
-  assert.match(r.json.case_note, /Text size 200%.* — accepted/);
+  assert.match(r.json.case_note, /Text size 400%.* — accepted/);
   assert.match(r.json.case_note, /changed to: Dark, light text on black/);
   assert.match(r.json.case_note, /Text weight: regular — not recommended/);
   assert.match(r.json.case_note, /Next steps: Bring to Lion's Den/);
