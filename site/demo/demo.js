@@ -68,8 +68,11 @@
   var BAR_KEY = "v360-demo-bar";
   var THEME_NAMES = { standard: "Standard colors", blue: "Blue", dark: "Dark", high: "High contrast" };
   function syncBar() {
+    var shared = window.V360Display ? window.V360Display.get() : {};
     [].forEach.call(document.querySelectorAll("#display-bar [data-set]"), function (b) {
-      b.setAttribute("aria-pressed", String(String(settings[b.getAttribute("data-set")]) === b.getAttribute("data-value")));
+      var k = b.getAttribute("data-set");
+      var v = k === "cursor" || k === "cursorColor" ? shared[k] : settings[k];
+      b.setAttribute("aria-pressed", String(String(v) === b.getAttribute("data-value")));
     });
     var sum = $("dbar-summary");
     if (sum) sum.textContent = "Text " + settings.textSize + "% · " + (THEME_NAMES[settings.theme] || "") + " · Read aloud " + (settings.readAloud ? "on" : "off");
@@ -88,9 +91,22 @@
   })();
   $("dbar-toggle").addEventListener("click", function () { setBarOpen($("dbar-toggle").getAttribute("aria-expanded") !== "true", true); });
   $("display-bar").addEventListener("click", function (e) {
+    var r = e.target.closest ? e.target.closest("[data-reset-display]") : null;
+    if (r && window.V360Display) {
+      var d = window.V360Display.reset();
+      settings.textSize = d.textSize; settings.theme = d.theme; syncBar();
+      announce("Display settings reset to the standard look on this device.", true);
+      return;
+    }
     var b = e.target.closest ? e.target.closest("[data-set]") : null;
     if (!b) return;
     var key = b.getAttribute("data-set"), v = b.getAttribute("data-value");
+    // The pointer goes straight to the shared settings.
+    if ((key === "cursor" || key === "cursorColor") && window.V360Display) {
+      var p = {}; p[key] = v; window.V360Display.set(p); syncBar();
+      announce(b.closest(".dbar-group").querySelector(".dbar-label").textContent + ": " + b.textContent, true);
+      return;
+    }
     settings[key] = key === "readAloud" ? v === "true" : v;
     saveSettings();
     if (key === "readAloud" && !settings.readAloud) stopSpeaking("settings");

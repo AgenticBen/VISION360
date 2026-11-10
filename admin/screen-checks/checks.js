@@ -46,6 +46,7 @@
       if (!j.checks.length) tb.appendChild(el("tr", null, [el("td", { colspan: "8", class: "hint", text: j.total ? "No checks match this filter." : "No screen checks yet." })]));
       $("totals").textContent = j.total + " check" + (j.total === 1 ? "" : "s") + " in all · " + j.counts.needs_review + " to review · " + j.counts.unfinished + " not finished (" + (j.counts.ended || 0) + " ended early, " + (j.counts.left || 0) + " left without ending) · " + j.counts.call + " asked for a call" + (j.avgMinutes != null ? " · about " + j.avgMinutes + " min to finish on average" : "");
       A.setBadge("/admin/screen-checks/", j.counts.needs_review);
+      if (A.refreshCheckBadge) A.refreshCheckBadge();
     }).catch(function (e) { $("totals").textContent = "⚠ " + e.message; });
   }
   function syncBulk() {

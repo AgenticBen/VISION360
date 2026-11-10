@@ -1048,6 +1048,13 @@ export async function createApp(opts = {}) {
         const finished = rows.filter((r) => r.minutes != null);
         return send(res, 200, { checks: out, total: rows.length, counts: { needs_review: rows.filter((r) => (r.state === "finished" || r.state === "ended") && r.staff_status === "needs_review").length, ended: rows.filter((r) => r.state === "ended").length, left: rows.filter((r) => r.state === "left").length, unfinished: rows.filter((r) => r.status !== "finished").length, call: rows.filter((r) => r.wants_call).length }, avgMinutes: finished.length ? Math.round(finished.reduce((n, r) => n + r.minutes, 0) / finished.length) : null });
       }
+      // Just the numbers for the sidebar badge, polled from every admin page.
+      if (p === "/api/admin/checks/counts" && method === "GET") {
+        await requireStaff(req);
+        const rows = await checks.listChecks({ limit: 1000 });
+        const states = rows.map((c) => ({ state: check.checkState(c), staff: c.staff_status, call: !!c.wants_call }));
+        return send(res, 200, { needs_review: states.filter((r) => (r.state === "finished" || r.state === "ended") && r.staff === "needs_review").length, call: states.filter((r) => r.call && r.staff === "needs_review").length });
+      }
       if (p === "/api/admin/checks/delete" && method === "POST") {
         const u = await requireStaff(req);
         requireSameSite(req);

@@ -167,6 +167,22 @@
       var seen = ""; try { seen = localStorage.getItem("v360-feedback-seen") || ""; } catch (e) {}
       setBadge("/admin/feedback/", j.items.filter(function (f) { return f.created_at > seen; }).length, "sky");
     }).catch(function () {});
+    // Screen checks waiting for review: shown on every admin page, refreshed
+    // every minute and whenever the browser tab comes back, and counted in the
+    // tab's title so it shows even while the tab is in the background.
+    var baseTitle = document.title.replace(/^\(\d+\+?\) /, "");
+    function checkBadge() {
+      api("GET", "/api/admin/checks/counts").then(function (j) {
+        var n = j.needs_review || 0;
+        setBadge("/admin/screen-checks/", n);
+        document.title = (n ? "(" + (n > 99 ? "99+" : n) + ") " : "") + baseTitle;
+      }).catch(function () {});
+    }
+    checkBadge();
+    setInterval(checkBadge, 60000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) checkBadge(); });
+    window.addEventListener("focus", checkBadge);
+    window.V360Admin.refreshCheckBadge = checkBadge;
     api("GET", "/api/changelog").then(function (j) {
       var seen = ""; try { seen = localStorage.getItem("v360-changelog-seen") || ""; } catch (e) {}
       var unread = j.entries.filter(function (e) { return e.at > seen; }).length;

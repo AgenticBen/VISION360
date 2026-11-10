@@ -13,9 +13,10 @@
     [].forEach.call(document.querySelectorAll("#display-bar [data-set]"), function (b) {
       b.setAttribute("aria-pressed", String(settings[b.getAttribute("data-set")] === b.getAttribute("data-value")));
     });
-    $("dbar-summary").textContent = "Text " + settings.textSize + "% · " + THEME_NAMES[settings.theme];
+    $("dbar-summary").textContent = "Text " + settings.textSize + "% · " + THEME_NAMES[settings.theme] + " · " + POINTER[settings.cursor || "default"];
   }
   function save() { settings = D.set({ textSize: settings.textSize, theme: settings.theme }); }
+  var POINTER = { "default": "Normal pointer", large: "Large pointer", xl: "Extra large pointer", xxl: "Huge pointer" };
   D.onChange(function (d) { settings = d; apply(); });
   function setOpen(open, remember) {
     $("dbar-toggle").setAttribute("aria-expanded", String(open));
@@ -42,10 +43,15 @@
 
   $("dbar-toggle").addEventListener("click", function () { setOpen($("dbar-toggle").getAttribute("aria-expanded") !== "true", true); });
   $("display-bar").addEventListener("click", function (e) {
+    var r = e.target.closest ? e.target.closest("[data-reset-display]") : null;
+    if (r) { settings = D.reset(); apply(); var an = $("announcer"); an.textContent = ""; setTimeout(function () { an.textContent = "Display settings reset to the standard look on this device."; }, 60); return; }
     var b = e.target.closest ? e.target.closest("[data-set]") : null;
     if (!b) return;
-    settings[b.getAttribute("data-set")] = b.getAttribute("data-value");
-    apply(); save();
+    var key = b.getAttribute("data-set");
+    settings[key] = b.getAttribute("data-value");
+    // The pointer is saved straight to the shared settings.
+    if (key === "cursor" || key === "cursorColor") { var patch = {}; patch[key] = settings[key]; settings = D.set(patch); apply(); }
+    else { apply(); save(); }
     var a = $("announcer"); a.textContent = "";
     setTimeout(function () { a.textContent = b.closest(".dbar-group").querySelector(".dbar-label").textContent + ": " + b.textContent; }, 60);
   });
