@@ -32,8 +32,21 @@
   </div>
   <p class="hint" id="voice-help"></p>
 </section>
+<section class="card" id="plan-card"><h2>Natural voice: your ElevenLabs plan</h2>
+  <p class="hint">ElevenLabs charges in credits. The plan buys a set number of credits each month, and every character the voice speaks uses some of them.</p>
+  <dl class="kv" id="plan-facts"><dt>Plan</dt><dd>Loading…</dd></dl>
+  <h3>Plan ahead</h3>
+  <div class="calc">
+    <label class="fl" for="calc-conv">Conversations a month</label>
+    <input class="inp" id="calc-conv" type="number" min="0" step="10" value="100" inputmode="numeric">
+    <label class="fl" for="calc-used">Credits already used this month (from the ElevenLabs Developers page)</label>
+    <input class="inp" id="calc-used" type="number" min="0" step="100" inputmode="numeric" placeholder="For example 13035">
+  </div>
+  <p id="calc-out" role="status" class="calc-out"></p>
+  <p class="hint">When the credits run out, ElevenLabs stops answering and the assistant switches to the listener's own browser voice until the plan renews or credits are added. Nothing breaks, the voice just changes.</p>
+</section>
 <section class="card" data-tour="cost-table"><div class="table-wrap"><table class="t" id="cost-table"><thead><tr><th>Service</th><th>What it's using</th><th>Usage</th><th class="n">Estimate</th></tr></thead><tbody></tbody></table></div>
-<p class="hint">Estimates only. Hosting (Vercel) is billed on the plan, not per conversation. Set <code>V360_COST_PER_AI_CALL_USD</code> in Vercel to price AI calls, and <code>V360_COST_PER_1K_TTS_CHARS</code> to price natural voice (your ElevenLabs plan's cost per 1,000 characters).</p></section>
+<p class="hint">Estimates only. Hosting (Vercel) is billed on the plan, not per conversation. Set <code>V360_COST_PER_AI_CALL_USD</code> in Vercel to price AI calls. Natural voice is priced from your ElevenLabs plan (set <code>V360_TTS_PLAN_USD</code>, <code>V360_TTS_PLAN_CREDITS</code> or <code>V360_TTS_CREDITS_PER_CHAR</code> if the plan changes), and the estimate is the value of the credits used: on a flat plan you pay the plan price either way.</p></section>
 </main>
 </div>
 <script src="/admin/shell.js"></script>
