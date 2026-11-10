@@ -11,6 +11,9 @@
      theme: standard | blue | dark | high    "white / blue / black background", "yellow on black"
      too_bright
      bold: on | off
+     highlight: on | off                    light up each word as it's spoken
+     scroll: down | up | top | bottom
+     read: pause | continue | again         the page being read aloud
      pointer: bigger | smaller
      voice: slower | faster | louder | softer
      repeat | back | skip | help | stop_listening | end
@@ -71,6 +74,19 @@
     [/^((a |the )?(black|dark) (background|screen|page)|white (text |letters |writing )?on black|dark mode|dark colou?rs)$/, "theme", "dark"],
     [/^(yellow (text |letters |writing )?on black|high contrast|yellow)$/, "theme", "high"],
 
+    // Word highlighting.
+    [/^((turn )?(word )?highlight(ing|s)?( (the )?words?)? on|(turn on|use) (word )?highlight(ing)?|highlight (the )?words?|light up (the )?words?)$/, "highlight", "on"],
+    [/^((turn )?(word )?highlight(ing|s)?( (the )?words?)? off|(turn off|no|stop) (word )?highlight(ing)?)$/, "highlight", "off"],
+
+    // Moving around a long page, and the page being read aloud.
+    [/^(scroll down|page down|down|go down|move down|scroll|next page|further down)$/, "scroll", "down"],
+    [/^(scroll up|page up|up|go up|move up|back up|previous page|further up)$/, "scroll", "up"],
+    [/^((go )?(to )?the top|top of (the )?page|start of (the )?page|scroll to (the )?top)$/, "scroll", "top"],
+    [/^((go )?(to )?the bottom|bottom of (the )?page|end of (the )?page|scroll to (the )?bottom)$/, "scroll", "bottom"],
+    [/^(pause|stop|stop reading|stop talking|be quiet|quiet|hush|hold on|wait a (second|minute|moment))$/, "read", "pause"],
+    [/^(continue|keep reading|carry on|go on|resume|read on|keep going reading|start reading|read it|read (it|them|the results|this)( to me)?)$/, "read", "continue"],
+    [/^(read (that|it) again|read again|say (the|that) (line|sentence) again|start (that|the) (line|sentence) again)$/, "read", "again"],
+
     // Bold.
     [/^((turn )?bold( text)? on|(turn on|use|make it|make the text) bold( text)?|bold( text)?|thicker( text| letters)?|heavier( text)?)$/, "bold", "on"],
     [/^((turn )?bold( text)? off|(turn off|no) bold( text)?|not bold|regular( text)?|thinner( text| letters)?|plain( text)?)$/, "bold", "off"],
@@ -95,7 +111,7 @@
   };
 
   // Commands that work at any step (the rest are answers).
-  C.GLOBAL = ["end", "help", "menu", "stop_listening", "repeat", "back", "skip", "pointer", "voice", "bigger", "smaller", "too_bright", "theme", "bold"];
+  C.GLOBAL = ["end", "help", "menu", "stop_listening", "repeat", "back", "skip", "pointer", "voice", "bigger", "smaller", "too_bright", "theme", "bold", "highlight", "scroll", "read"];
   C.isGlobal = function (c) { return !!c && C.GLOBAL.indexOf(c.cmd) !== -1; };
 
   root.V360Commands = C;

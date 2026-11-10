@@ -25,6 +25,7 @@
      data-cursor    default | large | xl | xxl   (pointer 64, 96 or 128px, on computers)
      data-cursor-color  black | white | yellow | pink
      data-bold      off | on                  (heavier text, from the screen check)
+     data-highlight off | on                  (light up each word as it's spoken)
 */
 (function (root) {
   "use strict";
@@ -39,6 +40,7 @@
   // 128px is the largest custom pointer browsers allow.
   D.CURSOR_PX = { large: 64, xl: 96, xxl: 128 };
   D.BOLDS = ["off", "on"];
+  D.HIGHLIGHTS = ["off", "on"];
 
   function pick(v, list, dflt) { v = v == null ? "" : String(v); return list.indexOf(v) !== -1 ? v : dflt; }
 
@@ -50,7 +52,8 @@
       theme: pick(raw.theme, D.THEMES, pick(defaults.theme, D.THEMES, "standard")),
       cursor: pick(raw.cursor, D.CURSORS, "default"),
       cursorColor: pick(raw.cursorColor, D.CURSOR_COLORS, "black"),
-      bold: pick(raw.bold, D.BOLDS, "off")
+      bold: pick(raw.bold, D.BOLDS, "off"),
+      highlight: pick(raw.highlight, D.HIGHLIGHTS, "off")
     };
   };
 
@@ -83,7 +86,8 @@
       "data-contrast": s.theme === "high" ? "high" : "normal",
       "data-cursor": s.cursor,
       "data-cursor-color": s.cursorColor,
-      "data-bold": s.bold
+      "data-bold": s.bold,
+      "data-highlight": s.highlight
     };
   };
 

@@ -17,10 +17,10 @@ const store = (map) => (k) => (k in map ? map[k] : null);
 test("display settings: page defaults until someone chooses, then their choice everywhere", () => {
   const D = displayCore();
   assert.equal(D.saved(store({})), null, "nothing chosen yet");
-  assert.deepEqual({ ...D.normalize(null, { textSize: "150", theme: "high" }) }, { textSize: "150", theme: "high", cursor: "default", cursorColor: "black", bold: "off" });
-  assert.deepEqual({ ...D.normalize(null, { textSize: "100", theme: "standard" }) }, { textSize: "100", theme: "standard", cursor: "default", cursorColor: "black", bold: "off" });
+  assert.deepEqual({ ...D.normalize(null, { textSize: "150", theme: "high" }) }, { textSize: "150", theme: "high", cursor: "default", cursorColor: "black", bold: "off", highlight: "off" });
+  assert.deepEqual({ ...D.normalize(null, { textSize: "100", theme: "standard" }) }, { textSize: "100", theme: "standard", cursor: "default", cursorColor: "black", bold: "off", highlight: "off" });
   const chosen = store({ "v360-display": JSON.stringify({ textSize: "200", theme: "dark", cursor: "xl", cursorColor: "yellow", bold: "on" }) });
-  assert.deepEqual({ ...D.normalize(D.saved(chosen), { textSize: "100", theme: "standard" }) }, { textSize: "200", theme: "dark", cursor: "xl", cursorColor: "yellow", bold: "on" });
+  assert.deepEqual({ ...D.normalize(D.saved(chosen), { textSize: "100", theme: "standard" }) }, { textSize: "200", theme: "dark", cursor: "xl", cursorColor: "yellow", bold: "on", highlight: "off" });
 });
 
 test("display settings: each page carries over only its own older saved choice, once", () => {
@@ -45,7 +45,7 @@ test("display settings: each page carries over only its own older saved choice, 
 test("display settings: bad values fall back, and every page gets the right attributes", () => {
   const D = displayCore();
   const s = D.normalize({ textSize: "999", theme: "neon", cursor: "giant", cursorColor: "purple", bold: "very" }, { textSize: "150", theme: "high" });
-  assert.deepEqual({ ...s }, { textSize: "150", theme: "high", cursor: "default", cursorColor: "black", bold: "off" });
+  assert.deepEqual({ ...s }, { textSize: "150", theme: "high", cursor: "default", cursorColor: "black", bold: "off", highlight: "off" });
   assert.equal(D.attributes({ ...s, theme: "high" })["data-contrast"], "high");
   assert.equal(D.attributes({ ...s, theme: "dark" })["data-contrast"], "normal", "the directory shows dark as normal contrast");
   assert.equal(D.attributes(s)["data-cursor"], "default");
@@ -105,10 +105,10 @@ test("before it's live, signed-in staff can try the full-screen test; the public
 
 test("display settings: blue (white on dark blue) and 300% are real choices everywhere", () => {
   const D = displayCore();
-  assert.deepEqual({ ...D.normalize({ textSize: "300", theme: "blue" }, { textSize: "100", theme: "standard" }) }, { textSize: "300", theme: "blue", cursor: "default", cursorColor: "black", bold: "off" });
+  assert.deepEqual({ ...D.normalize({ textSize: "300", theme: "blue" }, { textSize: "100", theme: "standard" }) }, { textSize: "300", theme: "blue", cursor: "default", cursorColor: "black", bold: "off", highlight: "off" });
   assert.equal(D.attributes({ ...D.normalize({ theme: "blue" }), theme: "blue" })["data-contrast"], "normal");
   assert.equal(D.normalize({ textSize: "75" }).textSize, "100", "75% is only a sample size in the test, never a page setting");
-  assert.deepEqual({ ...D.normalize({ textSize: "400", cursor: "xxl", cursorColor: "pink" }) }, { textSize: "400", theme: "standard", cursor: "xxl", cursorColor: "pink", bold: "off" });
+  assert.deepEqual({ ...D.normalize({ textSize: "400", cursor: "xxl", cursorColor: "pink" }) }, { textSize: "400", theme: "standard", cursor: "xxl", cursorColor: "pink", bold: "off", highlight: "off" });
   assert.deepEqual({ ...D.CURSOR_PX }, { large: 64, xl: 96, xxl: 128 }, "128px is the largest pointer browsers allow");
   const css = D.cursorCss();
   assert.ok(css.includes("html .cursor-try[data-size='xxl'][data-color='pink']"), "pointer test tiles get their own pointer");

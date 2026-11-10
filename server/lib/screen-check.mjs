@@ -25,7 +25,7 @@
 //                  while it's found; the last size found is kept; then a
 //                  color pair
 //   bold           one left-or-right pair: regular or bold text
-export const SETTINGS = ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold"];
+export const SETTINGS = ["speech_rate", "magnification", "pictures", "contrast", "cursor", "bold", "highlight"];
 
 export const RATES = ["0.7", "0.85", "1", "1.2", "1.4"];
 // Phrase sizes shown, in CSS pixels, smallest first: the test starts small
@@ -320,6 +320,17 @@ function contrast(trials) {
   return { done: true, result: { measured_limit: null, recommended_value: r.winner, unit: "theme", tries: trials.length, flags: struggleFlags(trials), apply: { theme: r.winner } } };
 }
 
+// Word highlighting: the same short paragraph read twice, first plain, then
+// with each word lit up as it's spoken. Which was easier to follow?
+function highlight(trials, ctx) {
+  if (ctx.device && ctx.device.skipPointer) {
+    return { done: true, result: { measured_limit: null, recommended_value: "not_tested", unit: "highlight", tries: 0, flags: ["uses_screen_reader"], apply: {} } };
+  }
+  const r = tournament(["off", "on"], trials, "pair_highlight");
+  if (!r.done) return r;
+  return { done: true, result: { measured_limit: null, recommended_value: r.winner, unit: "highlight", tries: trials.length, flags: struggleFlags(trials), apply: { highlight: r.winner } } };
+}
+
 function bold(trials) {
   const r = tournament(["regular", "bold"], trials, "pair_bold");
   if (!r.done) return r;
@@ -383,6 +394,7 @@ export function next(setting, trials = [], ctx = {}) {
   else if (setting === "contrast") out = contrast(t);
   else if (setting === "cursor") out = cursor(t, c);
   else if (setting === "bold") out = bold(t);
+  else if (setting === "highlight") out = highlight(t, c);
   else throw new Error("Unknown setting: " + setting);
   if (out.done) out.result.duration_ms = totalMs(t);
   return out;
@@ -397,7 +409,7 @@ export function cleanTrial(setting, raw, prompt) {
   if (setting === "speech_rate") return { ...base, answer: ["faster", "slower", "keep"].includes(r.answer) ? r.answer : "keep", rate: prompt.rate };
   if (setting === "magnification") return { ...base, word: prompt.word, px: prompt.px, answer: String(r.answer || "").slice(0, 120), cant_tell: !!r.cant_tell };
   if (setting === "pictures") return { ...base, picture: prompt.picture, px: prompt.px, answer: String(r.answer || "").slice(0, 60), cant_tell: !!r.cant_tell };
-  if (setting === "contrast" || setting === "bold") return { ...base, left: prompt.left, right: prompt.right, answer: ["left", "right", "same"].includes(r.answer) ? r.answer : "same" };
+  if (setting === "contrast" || setting === "bold" || setting === "highlight") return { ...base, left: prompt.left, right: prompt.right, answer: ["left", "right", "same"].includes(r.answer) ? r.answer : "same" };
   if (setting === "cursor") {
     if (prompt.kind === "pick_cursor_size") return { ...base, kind: "size", answer: [...CURSOR_SIZES, "none"].includes(r.answer) ? r.answer : "none" };
     if (prompt.kind === "pick_cursor_color") return { ...base, kind: "color", size: prompt.size, answer: CURSOR_COLORS.includes(r.answer) ? r.answer : "black" };
@@ -430,6 +442,7 @@ export function describe(setting, result) {
     return `Pointer: ${SIZE_WORDS[size] || size}${color ? ", " + color : ""}`;
   }
   if (setting === "bold") return `Text weight: ${v}`;
+  if (setting === "highlight") return v === "not_tested" ? "Word highlighting: not tested (uses a screen reader)" : `Word highlighting: ${v === "on" ? "on, each word lights up as it's spoken" : "off, plain text was easier"}`;
   return String(v);
 }
 
@@ -453,6 +466,8 @@ export function plan(device = {}) {
   const steps = ["speech_rate", "magnification", "pictures", "contrast"];
   if (!device.touchOnly && !device.skipPointer) steps.push("cursor");
   steps.push("bold");
+  // Screen-reader users hear everything already; the highlight is for eyes.
+  if (!device.skipPointer) steps.push("highlight");
   return steps;
 }
 
@@ -474,11 +489,12 @@ export const LIVE_SETTINGS = {
   textSize: ["100", "125", "150", "200", "300", "400"],
   theme: ["standard", "blue", "dark", "high"],
   bold: ["off", "on"],
+  highlight: ["off", "on"],
   cursor: CURSOR_SIZES,
   cursorColor: CURSOR_COLORS,
   rate: RATES.map(String),
 };
-const LIVE_WORDS = { textSize: "text size", theme: "colors", bold: "bold", cursor: "pointer size", cursorColor: "pointer color", rate: "speaking speed" };
+const LIVE_WORDS = { textSize: "text size", theme: "colors", bold: "bold", cursor: "pointer size", cursorColor: "pointer color", rate: "speaking speed", highlight: "word highlighting" };
 const VALUE_WORDS = { standard: "dark on white", blue: "white on dark blue", dark: "light on dark", high: "yellow and white on black", xl: "extra large" };
 export function settingChangeWords(ch) {
   const v = ch.setting === "textSize" ? `${ch.value}%` : ch.setting === "rate" ? `${ch.value}x` : VALUE_WORDS[ch.value] || ch.value;
@@ -487,7 +503,7 @@ export function settingChangeWords(ch) {
 
 // ---------------------------------------------------------------- staff side
 export const DECISIONS = ["accept", "edit", "reject"];
-const PRETTY = { speech_rate: "Speaking speed", magnification: "Text size", pictures: "Pictures", contrast: "Colors", cursor: "Pointer", bold: "Text weight" };
+const PRETTY = { speech_rate: "Speaking speed", magnification: "Text size", pictures: "Pictures", contrast: "Colors", cursor: "Pointer", bold: "Text weight", highlight: "Word highlighting" };
 const FLAG_WORDS = {
   needs_magnifier_or_zoom: "needs a magnifier or screen zoom beyond 200% text",
   could_not_read_largest: "could not read the largest text",

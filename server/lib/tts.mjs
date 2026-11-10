@@ -58,3 +58,42 @@ export async function synthesize(env, fetchImpl, { text, rate }) {
   }
   return Buffer.from(await res.arrayBuffer());
 }
+
+// Word timings for the word highlighter: ElevenLabs' "with timestamps"
+// endpoint returns the audio (base64) plus when each character is spoken.
+// Each word becomes { i: index of its first character, s: start in seconds }.
+export function wordsFromAlignment(text, alignment) {
+  const chars = (alignment && alignment.characters) || [];
+  const starts = (alignment && alignment.character_start_times_seconds) || [];
+  const words = [];
+  let inWord = false;
+  for (let k = 0; k < chars.length; k++) {
+    const space = /\s/.test(chars[k]);
+    if (!space && !inWord) words.push({ i: k, s: Math.round((Number(starts[k]) || 0) * 1000) / 1000 });
+    inWord = !space;
+  }
+  // The alignment follows the text it was given; if it doesn't, give no timings.
+  return chars.join("") === String(text) ? words : [];
+}
+
+export async function synthesizeTimed(env, fetchImpl, { text, rate }) {
+  const voice = env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
+  const res = await fetchImpl(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}/with-timestamps?output_format=mp3_44100_128`, {
+    method: "POST",
+    headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      text: String(text).slice(0, 2500),
+      model_id: env.ELEVENLABS_MODEL || DEFAULT_TTS_MODEL,
+      voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: speedFor(rate) },
+    }),
+    signal: AbortSignal.timeout(Number(env.V360_TTS_TIMEOUT_MS || 12000)),
+  });
+  if (!res.ok) {
+    const e = new Error("ElevenLabs timed " + res.status);
+    e.status = res.status;
+    console.error("[tts] " + e.message);
+    throw e;
+  }
+  const j = await res.json();
+  return { audio: String(j.audio_base64 || ""), words: wordsFromAlignment(String(text).slice(0, 2500), j.alignment) };
+}

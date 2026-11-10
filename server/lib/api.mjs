@@ -13,7 +13,7 @@ import {
 } from "./auth.mjs";
 import { RETENTION_DAYS } from "./store.mjs";
 import { flowMeta } from "./corpus.mjs";
-import { ttsEnabled, ttsInfo, ttsKeySet, synthesize, DEFAULT_VOICE_ID, DEFAULT_TTS_MODEL } from "./tts.mjs";
+import { ttsEnabled, ttsInfo, ttsKeySet, synthesize, synthesizeTimed, DEFAULT_VOICE_ID, DEFAULT_TTS_MODEL } from "./tts.mjs";
 import { voicePhrases } from "./phrases.mjs";
 import { createFeedbackStore, cleanFeedback } from "./feedback-store.mjs";
 import { feedbackMarkdown, feedbackItemMarkdown, TOOL_NAMES } from "./feedback-md.mjs";
@@ -614,6 +614,16 @@ export async function createApp(opts = {}) {
         const text = String(body.text || "");
         if (!voicePhrases().allowed.has(text)) throw httpError(404, "That line isn't one the assistant says");
         const rate = [0.7, 0.85, 1, 1.2, 1.4].includes(Number(body.rate)) ? Number(body.rate) : 1;
+        // With word timings, for the word highlighter: JSON { audio, words }.
+        if (body.timed === true) {
+          const tkey = "timed|" + rate + "|" + text;
+          if (!phraseCache.has(tkey)) {
+            if (phraseCache.size > 400) phraseCache.clear();
+            phraseCache.set(tkey, await synthesizeTimed(env, ttsFetch, { text, rate }));
+            store.audit("system", null, "tts", { chars: text.length, timed: true });
+          }
+          return send(res, 200, phraseCache.get(tkey));
+        }
         const key = rate + "|" + text;
         if (!phraseCache.has(key)) {
           if (phraseCache.size > 400) phraseCache.clear();
