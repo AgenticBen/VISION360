@@ -654,7 +654,7 @@ export async function createApp(opts = {}) {
         if (body.noticeAccepted !== true) throw httpError(400, "The demo notice must be accepted first.");
         const F = await flowForStart(body.flow, { row: body.for === "assessment" ? "assessment" : undefined });
         const token = newToken();
-        const { session, turn } = await turns.start({ mode: body.mode, tokenHash: tokenHash(token), flow: { id: F.id, title: F.title, version: F.version } });
+        const { session, turn } = await turns.start({ mode: body.mode, tokenHash: tokenHash(token), flow: { id: F.id, title: F.title, version: F.version }, display: body.display });
         ctx.markDirty(session.id);
         return send(res, 201, { sessionId: session.id, token, flow: { id: F.id, title: F.title }, ...turnResponse(session, turn) });
       }

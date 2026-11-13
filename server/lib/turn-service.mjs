@@ -7,6 +7,7 @@
 import { aiEnabled, interpretWithAI, extractWithAI, extractEmailWithAI } from "./ai-understanding.mjs";
 import { interpretAnswer, detectGlobal, looksLikeCorrection, parseEmail } from "./understand.mjs";
 import { newDialogueState } from "./dialogue.mjs";
+import { normalizeDisplay } from "./email-style.mjs";
 
 function fail(status, message) {
   const e = new Error(message);
@@ -51,8 +52,10 @@ export function createTurnService({ corpus, store, repo, dialogue, actions, env,
     if (awaitIt) await job;
   }
 
-  async function start({ mode, tokenHash, flow }) {
-    const id = store.createSession({ tokenHash, corpusVersion: corpus.version, state: newDialogueState(), flow });
+  async function start({ mode, tokenHash, flow, display }) {
+    const state = newDialogueState();
+    if (display && typeof display === "object") state.display = normalizeDisplay(display);
+    const id = store.createSession({ tokenHash, corpusVersion: corpus.version, state, flow });
     const s = await repo.load(id);
     s.notice_ack_at = new Date().toISOString();
     s.channels = [{ mode: mode === "voice" ? "voice" : "text", at: s.notice_ack_at }];
@@ -73,6 +76,7 @@ export function createTurnService({ corpus, store, repo, dialogue, actions, env,
       action: typeof body.action === "string" ? body.action : null,
       questionId: typeof body.questionId === "string" ? body.questionId : null,
       revision: body.revision === undefined ? null : Number(body.revision),
+      display: body.display && typeof body.display === "object" ? { textSize: body.display.textSize, theme: body.display.theme } : null,
       mode,
     };
     input.interpretations = await interpret(s, input);

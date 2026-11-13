@@ -22,6 +22,7 @@ import {
 import { corpusView, flowMeta } from "./corpus.mjs";
 import { buildResults, resultsSpeech } from "./results.mjs";
 import { buildPlan } from "./plan.mjs";
+import { normalizeDisplay, emailStyle } from "./email-style.mjs";
 import { who, askOpen, askWithChoices, sectionIntro, ack, recapLine, screenLabel, greetingText, joinList, noConcernTopic } from "./phrasing.mjs";
 
 export const POLICY_VERSION = "dialogue-2026-11-04.1";
@@ -574,6 +575,8 @@ export function createDialogue(ctx) {
     const text = String(input.text || "").slice(0, 1000);
     const st = session.state;
     if (!st.names) st.names = { caller: null, subject: null };
+    // The text size and colors the person chose on screen, used to style emails.
+    if (input.display) st.display = normalizeDisplay(input.display);
     const g = detectGlobal(text);
     // While a free-text question is open ("anything else we should know?"),
     // words like "start over" or "a real person" inside a longer answer are
@@ -1165,14 +1168,18 @@ export function createDialogue(ctx) {
       if (!strictConfirm(text)) return reply(session, [`Is ${st.email.address} exactly right? Say yes, or tell me the correct address.`], { expect: "yes_no" });
       const allowed = ctx.actions.recipientAllowed(st.email.address);
       if (!allowed.ok) return leaveEmail(session, [allowed.reason, "Everything is still on the screen."]);
-      const plan = buildPlan(corpus, results, { name: st.names.caller });
+      // The look is fixed at consent, so changing the screen afterwards
+      // doesn't alter what was agreed.
+      st.email.display = st.display || null;
+      const plan = buildPlan(corpus, results, { name: st.names.caller, display: st.email.display });
       st.email.payloadHash = plan.hash;
       st.email.matchCount = results.matches.length;
       st.email.step = "consent";
       st.email.consentRevision = session.revision;
       st.phase = "email_consent";
-      const consent = `Great. Here's exactly what I'll do: send one email to ${st.email.address} with the ${results.matches.length} suggested services, their contact details and next steps. It won't include your answers about health, money or anything else personal. Shall I send it?`;
-      return reply(session, [consent], { expect: "consent", consent: { recipient: st.email.address, matchCount: results.matches.length, payloadHash: plan.hash, revision: session.revision } });
+      const look = st.email.display ? ` It'll use the same text size and colors you picked on screen (${emailStyle(st.email.display).describe}).` : "";
+      const consent = `Great. Here's exactly what I'll do: send one email to ${st.email.address} with your ${results.matches.length} suggested services, best match first. For each one: how well it matches, their phone, email and online form, and what to do first.${look} It won't include your answers about health, money or anything else personal. Shall I send it?`;
+      return reply(session, [consent], { expect: "consent", consent: { recipient: st.email.address, matchCount: results.matches.length, payloadHash: plan.hash, revision: session.revision, look: st.email.display ? emailStyle(st.email.display).describe : null } });
     }
     if (st.phase === "email_consent") {
       if (st.email.consentInterrupted) {
@@ -1193,7 +1200,7 @@ export function createDialogue(ctx) {
         return reply(session, ["I just need a clear yes to send it. Shall I send the email?"], { expect: "consent" });
       }
       if (st.email.consentRevision !== session.revision) return leaveEmail(session, ["Your answers changed after I asked, so I haven't sent anything."]);
-      const plan = buildPlan(corpus, results, { name: st.names.caller });
+      const plan = buildPlan(corpus, results, { name: st.names.caller, display: st.email.display || null });
       if (plan.hash !== st.email.payloadHash) return leaveEmail(session, ["The plan changed after I asked, so I haven't sent anything."]);
       const res = session.work.enqueueEmail(session, { recipient: st.email.address, plan, recommendationId: results.recommendationId, method: "explicit_yes" });
       const addr = st.email.address;

@@ -73,12 +73,13 @@ export function buildResults(corpus, engineState, answers) {
   const ranked = E.score(engineState, corpus.organizations, corpus.geoRank);
   const { top: chosen, floor } = E.selectResults(ranked, "conversation", corpus.assessment.settings);
 
+  const topPoints = chosen[0] ? chosen[0].points : 0;
   const matches = chosen.map((r, i) => {
     const view = recordView(corpus, r.org);
     const seen = new Set();
     const reasons = r.reasons.filter((x) => x.weight > 0).sort((a, b) => b.weight - a.weight).filter((x) => !seen.has(x.text) && seen.add(x.text)).map((x) => x.text);
     const cautions = r.reasons.filter((x) => x.weight < 0).map((x) => x.text);
-    return { rank: i + 1, points: r.points, reasons, cautions, ...view };
+    return { rank: i + 1, points: r.points, strength: E.matchStrength(r.points, topPoints, i + 1), reasons, cautions, ...view };
   });
 
   const handoffs = E.handoffs(engineState).map((h) => ({

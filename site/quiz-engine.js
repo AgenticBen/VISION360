@@ -330,6 +330,16 @@
     return { top: hits.slice(0, p.max), rest: p.showRest ? hits.slice(p.max) : [], floor: floor, policy: p };
   }
 
+  /* How strongly a shown result matches, in words people can use. The top
+     result is the best match; others are "strong" at 70% or more of the top
+     score, otherwise "good" (selection already drops anything below 40%). */
+  var STRONG_RATIO = 0.7;
+  function matchStrength(points, topPoints, rank) {
+    if (rank === 1) return { key: "best", words: "Best match" };
+    var ratio = topPoints > 0 ? points / topPoints : 0;
+    return ratio >= STRONG_RATIO ? { key: "strong", words: "Strong match" } : { key: "good", words: "Good match" };
+  }
+
   return {
     create: create,
     nextQuestion: nextQuestion,
@@ -346,6 +356,7 @@
     geoTier: geoTier,
     geoRank: geoRank,
     resultPolicy: resultPolicy,
-    selectResults: selectResults
+    selectResults: selectResults,
+    matchStrength: matchStrength
   };
 });

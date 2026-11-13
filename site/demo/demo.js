@@ -466,7 +466,7 @@
     $("convo").hidden = false;
     $("ended").hidden = true;
     setStatus("connecting");
-    var body = { noticeAccepted: true, mode: mode };
+    var body = { noticeAccepted: true, mode: mode, display: currentDisplay() };
     if (FLOW) body.flow = FLOW;
     else if (ON_ASSESSMENT) body.for = "assessment";
     return api("POST", "/api/session", body).then(function (j) {
@@ -503,6 +503,7 @@
     payload.clientTurnId = uid();
     payload.mode = app.mode;
     payload.revision = app.revision;
+    payload.display = currentDisplay();
     if (display) addMessage("you", display.text, { voice: display.voice });
     app.queue.push(payload);
     pump();
@@ -702,10 +703,13 @@
     return card;
   }
 
+  // The text size and colors on screen, so an emailed plan can match them.
+  function currentDisplay() { return { textSize: String(settings.textSize), theme: String(settings.theme) }; }
+
   function consentCard(c) {
     var card = el("section", { class: "card recap", "aria-labelledby": "ch" });
     card.appendChild(el("h3", { id: "ch", text: "Send this email?" }));
-    card.appendChild(el("p", { text: "One email to " + c.recipient + " with " + c.matchCount + " suggested services, their contact details and next steps. Your answers about health, money, housing and other personal matters are not included." }));
+    card.appendChild(el("p", { text: "One email to " + c.recipient + " with your " + c.matchCount + " suggested services, best match first: how well each one matches, their phone, email and online form, and what to do first." + (c.look ? " It will use your screen's look (" + c.look + ")." : "") + " Your answers about health, money, housing and other personal matters are not included." }));
     card.appendChild(el("div", { class: "action-row" }, [
       el("button", { type: "button", class: "btn btn-primary", text: "Yes, send it", onclick: function () { sendTurn({ text: "yes" }, { text: "Yes, send it" }); } }),
       el("button", { type: "button", class: "btn", text: "No, don't send", onclick: function () { sendTurn({ text: "no" }, { text: "No, don't send" }); } }),
@@ -791,6 +795,7 @@
   function matchCard(m) {
     var card = el("article", { class: "card", "aria-labelledby": "m-" + m.id });
     card.appendChild(el("h3", { id: "m-" + m.id, text: m.rank + ". " + m.name }));
+    if (m.strength) card.appendChild(el("p", { class: "match-strength match-" + m.strength.key, text: "#" + m.rank + " · " + m.strength.words }));
     if (m.parent) card.appendChild(el("p", { class: "hint", text: "Part of " + m.parent.name }));
     card.appendChild(el("p", { text: m.oneLine }));
     if (m.reasons.length) {
