@@ -237,7 +237,7 @@ const CHECKS = [
   },
   {
     id: "FC20",
-    title: "Contacting organizations for people is off by default, stays a pure conversation step, and never says someone qualifies",
+    title: "Contacting organizations for people is off by default, stays a pure conversation step, never says someone qualifies, and reaches the form browser only through form-runner.mjs",
     run: () => {
       const problems = [];
       const settings = readFileSync(path.join("server", "lib", "site-settings.mjs"), "utf8");
@@ -248,8 +248,17 @@ const CHECKS = [
         /\bstore\./,
         /\bfetch\(/,
       ]));
-      const mail = readFileSync(path.join("server", "lib", "outreach-mail.mjs"), "utf8").replace(/^\s*\/\/.*$/gm, "");
-      if (/qualif/i.test(mail)) problems.push("server/lib/outreach-mail.mjs says someone qualifies; say they may be eligible");
+      for (const f of ["outreach-mail.mjs", "form-recipes.mjs", "dialogue-outreach.mjs"]) {
+        const text = readFileSync(path.join("server", "lib", f), "utf8").replace(/^\s*\/\/.*$/gm, "");
+        if (/qualif/i.test(text)) problems.push(`server/lib/${f} says someone qualifies; say they may be eligible`);
+      }
+      // The browser (Vercel Sandbox) is reached only through form-runner.mjs,
+      // and form jobs only run from an approved recipe.
+      for (const f of sourceFiles(["server", "api", "site"])) {
+        if (f.endsWith("form-runner.mjs")) continue;
+        if (/@vercel\/sandbox|Sandbox\.create\(/.test(readFileSync(f, "utf8"))) problems.push(`${f} reaches Vercel Sandbox directly; go through server/lib/form-runner.mjs`);
+      }
+      if (!/recipe_changed/.test(readFileSync(path.join("server", "lib", "form-runner.mjs"), "utf8"))) problems.push("form-runner.mjs must refuse a recipe that isn't approved or changed after the person agreed");
       return problems;
     },
   },

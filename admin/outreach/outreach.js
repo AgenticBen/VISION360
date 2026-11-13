@@ -4,10 +4,10 @@
   "use strict";
   var A = window.V360Admin, el = A.el;
   var data = null, filter = "all";
-  var CHIP = { mock_written: ["Test outbox", "ok"], provider_accepted: ["Accepted by email service", "ok"], delivered: ["Delivered", "ok"], bounced: ["Bounced", "bad"], failed: ["Failed", "bad"], queued: ["Queued", "sky"], running: ["Sending", "sky"], retrying: ["Retrying", "amber"], cancelled: ["Cancelled", "strike"] };
+  var CHIP = { mock_submitted: ["Practice form sent", "ok"], submitted: ["Form sent", "ok"], unconfirmed: ["Form not confirmed", "amber"], fell_back: ["Form couldn't be used", "amber"], prepared: ["Backup email (only if the form fails)", ""], mock_written: ["Test outbox", "ok"], provider_accepted: ["Accepted by email service", "ok"], delivered: ["Delivered", "ok"], bounced: ["Bounced", "bad"], failed: ["Failed", "bad"], queued: ["Queued", "sky"], running: ["Sending", "sky"], retrying: ["Retrying", "amber"], cancelled: ["Cancelled", "strike"] };
   var REF = { yes: "Yes", unclear: "Unclear", no: "No — contact directly" };
 
-  function load() { A.api("GET", "/api/admin/outreach").then(function (d) { data = d; render(); }); }
+  function load() { A.api("GET", "/api/admin/outreach").then(function (d) { data = d; render(); if (R.recipes) renderRecipes(); }); }
 
   function render() {
     var st = data.status;
@@ -22,7 +22,7 @@
     if (!data.actions.length) tb.appendChild(el("tr", null, [el("td", { colspan: "5", class: "muted", text: "No referrals yet." })]));
     data.actions.forEach(function (a) {
       var c = CHIP[a.status] || [a.status, ""];
-      var to = a.demoRedirect ? "Test inbox (meant for " + (a.intendedTo || "the organization") + ")" : (a.to || "—");
+      var to = a.channel === "form" ? (a.demoRedirect ? "Practice form (meant for their online form)" : "Their online form") : a.demoRedirect ? "Test inbox (meant for " + (a.intendedTo || "the organization") + ")" : (a.to || "—");
       var acts = el("td", null, [el("a", { class: "btn sm", href: "/admin/conversations/#" + a.session_id, text: "Conversation" })]);
       if (a.status === "failed") acts.appendChild(el("button", { type: "button", class: "btn sm", style: "margin-left:6px", text: "Retry", onclick: function () { A.api("POST", "/api/staff/actions/" + a.id + "/retry", {}).then(load); } }));
       tb.appendChild(el("tr", null, [el("td", { text: A.when(a.created_at) }), el("td", { text: a.orgName || a.orgId || "—" }), el("td", { text: to }),
@@ -56,6 +56,69 @@
     return el("div", { class: "row", style: "display:flex;gap:6px;flex-wrap:wrap;align-items:center" }, [sel, inp, save]);
   }
 
+  // ------------------------------------------------------------ online forms
+  var R = { list: [], sources: [], runner: false };
+  function loadRecipes() { A.api("GET", "/api/admin/outreach/recipes").then(function (d) { R = d; renderRecipes(); }); }
+  var STATUS = { draft: "Draft", test_approved: "Approved for testing", live_approved: "Approved for real", retired: "Retired" };
+  function renderRecipes() {
+    $("runner-note").textContent = R.runner ? "The safe browser is set up." : "The safe browser (Vercel Sandbox) isn't set up yet, so Inspect and Dry run won't work and every form job falls back to email or a staff task. See docs/outreach.md.";
+    var box = $("recipes"); box.textContent = "";
+    R.recipes.forEach(function (x) {
+      var r = x.recipe;
+      var d = el("details", { class: "card", style: "margin:0 0 10px" });
+      d.appendChild(el("summary", { text: x.name + " — " + (r ? STATUS[r.status] + " (version " + r.version + ")" : "no recipe") }));
+      d.appendChild(el("p", { class: "hint" }, [document.createTextNode("Form link in the directory: "), el("a", { href: x.formUrl, target: "_blank", rel: "noopener", text: x.formUrl })]));
+      var draft = r ? JSON.parse(JSON.stringify(r)) : { url: x.formUrl, allowDomains: [hostOf(x.formUrl)], fields: [], submit: { selector: "" }, success: { textIncludes: "" } };
+      delete draft.history; delete draft.status; delete draft.version; delete draft.orgId;
+      var ta = el("textarea", { rows: "14", style: "width:100%;font-family:monospace;font-size:13px", "aria-label": "Recipe for " + x.name });
+      ta.value = JSON.stringify(draft, null, 2);
+      var out = el("div", { class: "hint", role: "status" });
+      var btn = function (text, fn, cls) { return el("button", { type: "button", class: "btn sm" + (cls ? " " + cls : ""), style: "margin:4px 6px 4px 0", text: text, onclick: fn }); };
+      var parse = function () { try { return JSON.parse(ta.value); } catch (e) { out.textContent = "That isn't valid JSON: " + e.message; return null; } };
+      var show = function (res) {
+        out.textContent = "";
+        if (res.outcome) out.appendChild(el("p", { text: "Result: " + res.outcome + (res.detail ? " — " + res.detail : "") }));
+        if (res.fields) out.appendChild(el("p", { text: res.fields.length + " fields found. They've been put in the recipe with source \"skip\"; choose a source for each one you want filled, and remove the rest." }));
+        if (res.screenshot) out.appendChild(el("img", { src: "data:image/jpeg;base64," + res.screenshot, alt: "Picture of the form", style: "max-width:100%;border:1px solid #ccc;margin-top:6px" }));
+      };
+      d.appendChild(ta);
+      d.appendChild(el("div", null, [
+        btn("Inspect", function () {
+          var dr = parse(); if (!dr) return;
+          out.textContent = "Opening the form…";
+          A.api("POST", "/api/admin/outreach/recipes/" + x.orgId + "/inspect", { url: dr.url, allowDomains: dr.allowDomains }).then(function (res) {
+            if (res.fields) { dr.fields = res.fields.map(function (f) { return { selector: f.selector, kind: f.kind, label: f.label, required: f.required, source: "skip" }; }); ta.value = JSON.stringify(dr, null, 2); }
+            show(res); loadRecipes();
+          }).catch(function (e) { out.textContent = e.message; });
+        }),
+        btn("Draft with AI", function () {
+          var dr = parse(); if (!dr) return;
+          A.api("POST", "/api/admin/outreach/recipes/" + x.orgId + "/draft-ai", { fields: dr.fields }).then(function (res) { dr.fields = res.fields; ta.value = JSON.stringify(dr, null, 2); out.textContent = "Suggested sources filled in. Check each one before saving."; }).catch(function (e) { out.textContent = e.message; });
+        }),
+        btn("Save", function () {
+          var dr = parse(); if (!dr) return;
+          dr.fields = (dr.fields || []).filter(function (f) { return f.source && f.source !== "skip"; });
+          A.api("PUT", "/api/admin/outreach/recipes/" + x.orgId, dr).then(function (res) { out.textContent = res.problems.length ? "Saved as a draft. Still to fix: " + res.problems.join(" ") : "Saved as a draft. It can be approved for testing."; loadRecipes(); }).catch(function (e) { out.textContent = e.message; });
+        }),
+        btn("Approve for testing", function () { status("test_approved"); }),
+        btn("Dry run", function () { out.textContent = "Filling in the form with made-up details (not sending)…"; A.api("POST", "/api/admin/outreach/recipes/" + x.orgId + "/dry-run", {}).then(show).catch(function (e) { out.textContent = e.message; }); }),
+        btn("Approve for real", function () { status("live_approved"); }, "primary"),
+        btn("Retire", function () { status("retired"); })
+      ]));
+      d.appendChild(out);
+      function status(st) {
+        var body = { status: st };
+        if (/approved$/.test(st)) { var t = prompt("Type APPROVE to approve this recipe (" + STATUS[st] + ")."); if (t === null) return; body.confirm = t; }
+        A.api("POST", "/api/admin/outreach/recipes/" + x.orgId + "/status", body).then(function () { out.textContent = STATUS[st] + "."; loadRecipes(); }).catch(function (e) { out.textContent = e.message; });
+      }
+      box.appendChild(d);
+    });
+    var ul = $("practice"); ul.textContent = "";
+    ((data && data.practice) || []).forEach(function (p) { ul.appendChild(el("li", { text: A.when(p.at) + " — " + (p.detail.fullName || "?") + " · meant for " + (p.detail.intendedOrg || "?") + " · " + [p.detail.phone, p.detail.email].filter(Boolean).join(" · ") })); });
+    if (!ul.children.length) ul.appendChild(el("li", { text: "None yet." }));
+  }
+  function hostOf(u) { try { return new URL(u).host; } catch (e) { return ""; } }
+
   function $(id) { return document.getElementById(id); }
   $("sw-btn").addEventListener("click", function () {
     var on = !data.status.on;
@@ -65,4 +128,5 @@
   });
   $("org-filter").addEventListener("click", function (ev) { var b = ev.target.closest("button"); if (!b) return; filter = b.dataset.f; render(); });
   load();
+  loadRecipes();
 })();

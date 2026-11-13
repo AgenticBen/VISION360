@@ -7,6 +7,7 @@
 import { createHash } from "node:crypto";
 
 export const ORG_EMAIL_PURPOSE = "Ask the organization to contact the person, as the person agreed";
+export const ORG_FORM_PURPOSE = "Fill in the organization's online form so they contact the person, as the person agreed";
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));

@@ -153,6 +153,9 @@ export function openStore(file) {
   try { db.exec("ALTER TABLE sessions ADD COLUMN flow_id TEXT NOT NULL DEFAULT 'referral'"); } catch (e) { /* already there */ }
   try { db.exec("ALTER TABLE sessions ADD COLUMN flow_title TEXT"); } catch (e) { /* already there */ }
   try { db.exec("ALTER TABLE sessions ADD COLUMN flow_version TEXT"); } catch (e) { /* already there */ }
+  // Migration: what a staff task needs to finish a job by hand (e.g. the
+  // answers prepared for an organization's online form).
+  try { db.exec("ALTER TABLE staff_reviews ADD COLUMN detail_json TEXT"); } catch (e) { /* already there */ }
   const q = (sql) => db.prepare(sql);
   const bumpSessionOf = (actionId) =>
     q(`UPDATE sessions SET version=version+1 WHERE id=(SELECT session_id FROM actions WHERE id=?)`).run(actionId);
@@ -285,9 +288,12 @@ export function openStore(file) {
       return q(`SELECT id, type, status, attempts, provider, provider_receipt, error, revision, idempotency_key, created_at, updated_at FROM actions WHERE session_id=? ORDER BY created_at`).all(sessionId);
     },
     // Claim one due action with a lease so two workers never run it at once.
-    claimDueAction(leaseMs = 60000) {
+    // types: only these action types; skip: never these (form runs need the
+    // longer-running outreach function, so the turn's worker skips them).
+    claimDueAction(leaseMs = 60000, { types = null, skip = null } = {}) {
       const t = nowIso();
-      const row = q(`SELECT * FROM actions WHERE status IN ('queued','retrying') AND next_attempt_at <= ? AND (lease_until IS NULL OR lease_until < ?) ORDER BY created_at LIMIT 1`).get(t, t);
+      const f = (types ? ` AND type IN (${types.map(() => "?").join(",")})` : "") + (skip ? ` AND type NOT IN (${skip.map(() => "?").join(",")})` : "");
+      const row = q(`SELECT * FROM actions WHERE status IN ('queued','retrying') AND next_attempt_at <= ? AND (lease_until IS NULL OR lease_until < ?)${f} ORDER BY created_at LIMIT 1`).get(t, t, ...(types || []), ...(skip || []));
       if (!row) return null;
       const lease = new Date(Date.now() + leaseMs).toISOString();
       const ch = q(`UPDATE actions SET status='running', lease_until=?, attempts=attempts+1, updated_at=? WHERE id=? AND status IN ('queued','retrying')`).run(lease, t, row.id).changes;
@@ -310,9 +316,13 @@ export function openStore(file) {
       }
       return n;
     },
+    auditByEvent(event, limit = 20) {
+      return q(`SELECT at, actor, session_id, detail_json FROM audit_events WHERE event=? ORDER BY id DESC LIMIT ?`).all(event, limit)
+        .map((r) => ({ at: r.at, actor: r.actor, sessionId: r.session_id, detail: r.detail_json ? JSON.parse(r.detail_json) : null }));
+    },
     adminOutreach(sinceIso, limit = 500) {
       return q(`SELECT id, session_id, type, status, attempts, provider, error, payload_json, created_at, updated_at FROM actions WHERE type LIKE 'org_%' AND created_at >= ? ORDER BY created_at DESC LIMIT ?`).all(sinceIso, limit)
-        .map((r) => { const p = JSON.parse(r.payload_json || "{}"); return { ...r, payload_json: undefined, orgId: p.orgId || null, orgName: p.orgName || null, channel: p.channel || null, to: p.to || null, intendedTo: p.intendedTo || null, demoRedirect: !!p.demoRedirect }; });
+        .map((r) => { const p = JSON.parse(r.payload_json || "{}"); return { ...r, payload_json: undefined, orgId: p.orgId || null, orgName: p.orgName || null, channel: p.channel || null, to: p.to || null, intendedTo: p.intendedTo || null, demoRedirect: !!(p.demoRedirect || p.demo) }; });
     },
     cancelStaleActions(sessionId, revision) {
       return q(`UPDATE actions SET status='cancelled', error='Answers changed after this was authorised', updated_at=? WHERE session_id=? AND revision < ? AND status IN ('prepared','awaiting_authorization','queued','retrying')`)
@@ -320,15 +330,22 @@ export function openStore(file) {
     },
 
     // staff reviews -------------------------------------------------------
-    createStaffReview(sessionId, reason, contact, callbackOk, id = randomUUID()) {
+    createStaffReview(sessionId, reason, contact, callbackOk, id = null, detail = null) {
+      id = id || randomUUID();
       const t = nowIso();
-      q(`INSERT INTO staff_reviews (id, session_id, reason, contact_json, callback_ok, created_at, updated_at) VALUES (?,?,?,?,?,?,?)`)
-        .run(id, sessionId, reason, contact ? JSON.stringify(contact) : null, callbackOk ? 1 : 0, t, t);
+      q(`INSERT INTO staff_reviews (id, session_id, reason, contact_json, callback_ok, detail_json, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+        .run(id, sessionId, reason, contact ? JSON.stringify(contact) : null, callbackOk ? 1 : 0, detail ? JSON.stringify(detail) : null, t, t);
       return id;
+    },
+    // A prepared fallback (e.g. the email used if a form can't be filled) becomes due.
+    activateAction(id) {
+      const ch = q(`UPDATE actions SET status='queued', next_attempt_at=?, updated_at=? WHERE id=? AND status='prepared'`).run(nowIso(), nowIso(), id).changes;
+      if (ch) bumpSessionOf(id);
+      return ch > 0;
     },
     staffReviews(sessionId) {
       return q(`SELECT * FROM staff_reviews WHERE session_id=? ORDER BY created_at`).all(sessionId)
-        .map((r) => ({ ...r, contact: r.contact_json ? JSON.parse(r.contact_json) : null, contact_json: undefined }));
+        .map((r) => ({ ...r, contact: r.contact_json ? JSON.parse(r.contact_json) : null, contact_json: undefined, detail: r.detail_json ? JSON.parse(r.detail_json) : null, detail_json: undefined }));
     },
     allOpenReviews() {
       return q(`SELECT session_id, COUNT(*) n FROM staff_reviews WHERE status != 'closed' GROUP BY session_id`).all();

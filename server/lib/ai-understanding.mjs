@@ -38,7 +38,7 @@ const SYSTEM = [
   "Reply with JSON only, no prose.",
 ].join(" ");
 
-async function callModel(env, fetchImpl, messages) {
+export async function callModel(env, fetchImpl, messages) {
   const token = env.AI_GATEWAY_API_KEY || env.VERCEL_OIDC_TOKEN;
   const res = await fetchImpl(GATEWAY_URL, {
     method: "POST",

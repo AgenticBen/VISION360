@@ -37,7 +37,10 @@ export function channelFor(org, override) {
   return { channel: "none", email: null, why: "No email in the listing." };
 }
 
-export function createOutreachDirectory({ gh, settings, corpus, env, transportName, ttlMs = 30000 }) {
+// recipes / formsOn: approved form recipes, and whether the form runner is set
+// up. An organization with an approved recipe is contacted through its online
+// form (email stays as the fallback).
+export function createOutreachDirectory({ gh, settings, corpus, env, transportName, recipes = null, formsOn = () => false, ttlMs = 30000 }) {
   let cache = null;
 
   async function overrides() {
@@ -62,10 +65,15 @@ export function createOutreachDirectory({ gh, settings, corpus, env, transportNa
     const why = blocker(site);
     if (why) return { enabled: false, why };
     const ov = await overrides();
+    const live = outreachLive(env);
+    const forms = recipes && formsOn() ? await recipes.approved().catch(() => ({})) : {};
     const orgs = {};
     for (const org of corpus.organizations) {
       const c = channelFor(org, ov[org.id]);
-      if (c.channel !== "none") orgs[org.id] = { channel: c.channel, email: c.email };
+      const r = forms[org.id];
+      const formOk = r && org.accepts_third_party_referral !== "no" && (ov[org.id] || {}).channel !== "none" && (live ? r.status === "live_approved" : true);
+      if (formOk) orgs[org.id] = { channel: "form", email: c.channel === "email" ? c.email : null, recipe: { orgId: org.id, version: r.version, status: r.status, fields: (r.fields || []).map((f) => ({ label: f.label, source: f.source, selector: f.selector })) } };
+      else if (c.channel !== "none") orgs[org.id] = { channel: c.channel, email: c.email };
     }
     return { enabled: true, live: outreachLive(env), testInbox: outreachTestInbox(env) || "outreach-test@example.org", replyTo: env.V360_OUTREACH_REPLY_TO || null, orgs };
   }
@@ -73,9 +81,11 @@ export function createOutreachDirectory({ gh, settings, corpus, env, transportNa
   // Admin view: every organization with its channel and the reason.
   async function table() {
     const ov = await overrides();
+    const forms = recipes ? await recipes.approved().catch(() => ({})) : {};
     return corpus.organizations.map((org) => {
       const c = channelFor(org, ov[org.id]);
-      return { id: org.id, name: org.name, referral: org.accepts_third_party_referral, listedEmail: org.contacts.general_email || null, override: ov[org.id] || null, ...c };
+      const r = forms[org.id];
+      return { id: org.id, name: org.name, referral: org.accepts_third_party_referral, listedEmail: org.contacts.general_email || null, formUrl: org.contacts.intake_form_url || null, recipeStatus: r ? r.status : null, override: ov[org.id] || null, ...c };
     });
   }
 
@@ -94,7 +104,7 @@ export function createOutreachDirectory({ gh, settings, corpus, env, transportNa
 
   async function status() {
     const site = await settings.site().catch(() => ({ features: {} }));
-    return { on: !!(site.features && site.features.orgOutreach), live: outreachLive(env), testInbox: outreachTestInbox(env), transport: transportName(), blocker: blocker(site) };
+    return { on: !!(site.features && site.features.orgOutreach), live: outreachLive(env), testInbox: outreachTestInbox(env), transport: transportName(), blocker: blocker(site), formsOn: formsOn() };
   }
 
   return { forTurn, table, setOverride, status, invalidate: () => { cache = null; } };

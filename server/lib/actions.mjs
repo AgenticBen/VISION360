@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { ROOT_DIR } from "./corpus.mjs";
+import { TEST_FORM_ID } from "./form-recipes.mjs";
 
 const MAX_ATTEMPTS = 5;
 
@@ -68,8 +69,11 @@ export function createActions(ctx) {
   // Worker: claims one due action and runs it. Re-checks authorisation and the
   // answer revision immediately before acting, so a correction made after the
   // yes cancels the send.
-  async function runOnce() {
-    const action = store.claimDueAction();
+  // Form jobs need a longer-running function than a conversation turn, so the
+  // turn's worker skips them (formsHere is false there).
+  const formsHere = !env.V360_SERVERLESS || !!env.V360_FORM_WORKER;
+  async function runOnce(opts = {}) {
+    const action = store.claimDueAction(60000, { types: opts.types || null, skip: formsHere ? null : ["org_form_submit"] });
     if (!action) return null;
     if (ctx.markDirty) ctx.markDirty(action.session_id);
     const session = store.getSession(action.session_id);
@@ -89,6 +93,7 @@ export function createActions(ctx) {
       store.audit("worker", action.session_id, "action_cancelled", { actionId: action.id, problems });
       return { id: action.id, status: "cancelled" };
     }
+    if (action.type === "org_form_submit") return runForm(action, payload);
     try {
       const receipt = await transport.send({ to: payload.to, cc: payload.cc || null, replyTo: payload.replyTo || null, subject: payload.subject, text: payload.text, html: payload.html, idempotencyKey: action.idempotency_key, actionId: action.id });
       const status = transport.name === "outbox" ? "mock_written" : "provider_accepted";
@@ -112,10 +117,41 @@ export function createActions(ctx) {
     }
   }
 
-  async function drain(limit = 10) {
+  // One form job: fill the organization's online form from its approved
+  // recipe. If the form can't be used (bot check, changed page, runner not set
+  // up), the prepared email to the organization goes instead; with no email,
+  // a staff member gets a task with the answers ready to type in.
+  async function runForm(action, payload) {
+    const r = ctx.formRunner ? await ctx.formRunner.fill(payload) : { outcome: "not_set_up", detail: "Automatic form filling isn't set up yet." };
+    const org = payload.orgName || "the organization";
+    if (r.outcome === "submitted") {
+      const status = payload.demo ? "mock_submitted" : "submitted";
+      store.updateAction(action.id, { status, provider: "form", error: null, lease_until: null });
+      store.audit("worker", action.session_id, "action_" + status, { actionId: action.id, orgId: payload.orgId });
+      return { id: action.id, status };
+    }
+    if (r.outcome === "unconfirmed") {
+      // It may have gone through, so don't also email them: ask staff to check.
+      store.updateAction(action.id, { status: "unconfirmed", provider: "form", error: redact(String(r.detail || "")), lease_until: null });
+      store.createStaffReview(action.session_id, `Automatic: ${org}'s online form was submitted for the person, but the page didn't confirm it. Please check with ${org}.`, payload.person || null, !!payload.person, null, { orgId: payload.orgId, orgName: org, formUrl: payload.formUrl || null, tried: "online form", error: r.detail || null, fields: payload.staffFields || {} });
+      return { id: action.id, status: "unconfirmed" };
+    }
+    if ((r.outcome === "timeout" || r.outcome === "error") && action.attempts < 3) {
+      store.updateAction(action.id, { status: "retrying", error: redact(String(r.detail || r.outcome)), lease_until: null, next_attempt_at: new Date(Date.now() + 60000 * action.attempts).toISOString(), provider: "form" });
+      return { id: action.id, status: "retrying" };
+    }
+    const why = redact(String(r.detail || r.outcome));
+    store.updateAction(action.id, { status: "fell_back", provider: "form", error: why, lease_until: null });
+    store.audit("worker", action.session_id, "form_fell_back", { actionId: action.id, orgId: payload.orgId, outcome: r.outcome });
+    if (payload.fallbackActionId && store.activateAction(payload.fallbackActionId)) return { id: action.id, status: "fell_back", fallback: "email" };
+    store.createStaffReview(action.session_id, `Automatic: couldn't fill ${org}'s online form (${why.slice(0, 120)}). Please submit it for the person — the answers are ready below.`, payload.person || null, !!payload.person, null, { orgId: payload.orgId, orgName: org, formUrl: payload.formUrl || null, tried: "online form", error: why, fields: payload.staffFields || {} });
+    return { id: action.id, status: "fell_back", fallback: "staff" };
+  }
+
+  async function drain(limit = 10, opts = {}) {
     const out = [];
     for (let i = 0; i < limit; i++) {
-      const r = await runOnce();
+      const r = await runOnce(opts);
       if (!r) break;
       out.push(r);
     }
@@ -149,6 +185,12 @@ export function createActions(ctx) {
   // Destination rules per action type, checked again just before sending.
   function destinationProblem(type, auth, payload) {
     const to = String(payload.to || "").toLowerCase();
+    if (type === "org_form_submit") {
+      if (auth.destination !== `form:${payload.orgId}:${payload.recipeId}:v${payload.recipeVersion}`) return "form differs from what was authorised";
+      if (payload.recipeId === TEST_FORM_ID) return payload.demo && !outreachLive(env) ? null : "the practice form is only for the demo";
+      if (payload.recipeId !== payload.orgId) return "form differs from what was authorised";
+      return outreachLive(env) && !payload.demo ? null : "filling real organizations' forms isn't switched on (V360_OUTREACH_LIVE)";
+    }
     if (type === "org_referral_email") {
       const intended = String(payload.intendedTo || "").toLowerCase();
       if (auth.destination.toLowerCase() !== `org:${payload.orgId}:${intended}`) return "organization differs from what was authorised";
@@ -163,7 +205,7 @@ export function createActions(ctx) {
     try { return JSON.parse(store.getAction(a.id).payload_json).orgName || "the organization"; } catch { return "the organization"; }
   }
 
-  return { transportName, recipientAllowed, runOnce, drain, retry, recordDelivery, outreachLive: () => outreachLive(env), outreachTestInbox: () => outreachTestInbox(env) };
+  return { transportName, recipientAllowed, runOnce, drain, runForm, retry, recordDelivery, outreachLive: () => outreachLive(env), outreachTestInbox: () => outreachTestInbox(env) };
 }
 
 function redact(s) {

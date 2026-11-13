@@ -163,6 +163,18 @@
       "destination": "/api/v360?__path=/oauth/:path*"
     },
     {
+      "source": "/api/session/:id/outreach/run",
+      "destination": "/api/outreach?__path=/api/session/:id/outreach/run"
+    },
+    {
+      "source": "/api/admin/outreach",
+      "destination": "/api/outreach?__path=/api/admin/outreach"
+    },
+    {
+      "source": "/api/admin/outreach/:path*",
+      "destination": "/api/outreach?__path=/api/admin/outreach/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/v360?__path=/api/:path*"
     }
@@ -171,6 +183,10 @@
     "api/v360.mjs": {
       "includeFiles": "{site/data/**,site/quiz-engine.js,site/voice-phrases.js,server/**,admin/**}",
       "maxDuration": 30
+    },
+    "api/outreach.mjs": {
+      "includeFiles": "{site/data/**,site/quiz-engine.js,site/voice-phrases.js,server/**,admin/**,runner/**}",
+      "maxDuration": 120
     }
   },
   "redirects": [

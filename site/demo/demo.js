@@ -850,7 +850,7 @@
     p.orgs.forEach(function (o) {
       if (!o.channel) { list.appendChild(el("p", { class: "hint", text: o.rank + ". " + o.name + " — can't be contacted this way; their phone number is in your suggestions." })); return; }
       var box = el("input", { type: "checkbox", value: String(o.rank), id: "op-" + o.rank });
-      list.appendChild(el("label", { for: "op-" + o.rank }, [box, document.createTextNode(o.rank + ". " + o.name + " (by email)")]));
+      list.appendChild(el("label", { for: "op-" + o.rank }, [box, document.createTextNode(o.rank + ". " + o.name + (o.channel === "form" ? " (their online form)" : " (by email)"))]));
     });
     card.appendChild(list);
     card.appendChild(el("div", { class: "action-row" }, [
@@ -866,7 +866,7 @@
   function outreachConsentCard(c) {
     var card = el("section", { class: "card recap", "aria-labelledby": "oc-h" });
     card.appendChild(el("h3", { id: "oc-h", text: "Contact these organizations?" }));
-    card.appendChild(el("p", { text: "I'll email " + c.orgs.map(function (o) { return o.name; }).join(", ") + " and ask them to reach " + c.name + (c.phone ? " by phone at " + c.phone : "") + (c.phone && c.email ? " or" : "") + (c.email ? " by email at " + c.email : "") + ". They'll get your name and contact details only, not your answers about health, money or anything else personal." + (c.demo ? " This is a demo: the emails go to a test inbox, not the real organizations." : "") }));
+    card.appendChild(el("p", { text: "I'll contact " + c.orgs.map(function (o) { return o.name + (o.channel === "form" ? " (online form)" : " (email)"); }).join(", ") + " and ask them to reach " + c.name + (c.phone ? " by phone at " + c.phone : "") + (c.phone && c.email ? " or" : "") + (c.email ? " by email at " + c.email : "") + ". They'll get your name and contact details only, not your answers about health, money or anything else personal." + (c.demo ? " This is a demo: emails go to a test inbox and forms to a practice form, not the real organizations." : "") }));
     card.appendChild(el("div", { class: "action-row" }, [
       el("button", { type: "button", class: "btn btn-primary", text: "Yes, contact them", onclick: function () { sendTurn({ text: "yes" }, { text: "Yes, contact them" }); } }),
       el("button", { type: "button", class: "btn", text: "No, don't", onclick: function () { sendTurn({ text: "no" }, { text: "No, don't contact them" }); } }),
@@ -886,8 +886,24 @@
     bounced: ["bad", "the referral email bounced. A staff member has been asked to contact them for you."],
     cancelled: ["bad", "cancelled. Nothing was sent."],
   };
+  var FORM_TEXT = {
+    queued: ["wait", "about to fill in their online form."],
+    running: ["wait", "filling in their online form now…"],
+    retrying: ["wait", "their website didn't answer. Trying again shortly."],
+    submitted: ["ok", "their online form was sent."],
+    mock_submitted: ["mock", "the demo's practice form was filled in and sent. Nothing went to the organization."],
+    unconfirmed: ["wait", "the form was sent but their website didn't confirm it. A staff member will check."],
+    fell_back: ["wait", "their online form couldn't be used, so they're being contacted another way."],
+    cancelled: ["bad", "cancelled. Nothing was sent."],
+  };
   // The words for one action: the plan email, or a referral to one organization.
   function actionText(a, state) {
+    if (a.type === "org_form_submit") {
+      var fs = (state && state.outreach && state.outreach.sent) || [];
+      var fw = fs.filter(function (x) { return x.actionId === a.id; })[0];
+      var ft = FORM_TEXT[a.status] || ["wait", a.status];
+      return [ft[0], (fw ? fw.orgName : "Organization") + ": " + ft[1]];
+    }
     if (a.type === "org_referral_email") {
       var sent = (state && state.outreach && state.outreach.sent) || [];
       var who = sent.filter(function (x) { return x.actionId === a.id; })[0];
@@ -912,6 +928,7 @@
     if (!state || !state.actions || !state.actions.length) return;
     var box = el("div", { id: "action-box", role: "status" });
     state.actions.forEach(function (a) {
+      if (a.status === "prepared") return; // a backup email that only goes if a form can't be used
       var t = actionText(a, state);
       box.appendChild(el("p", { class: "action-status " + t[0], text: t[1] }));
     });
@@ -923,8 +940,12 @@
     if (actionTimer) return;
     var pending = function (s) { return s && s.actions && s.actions.some(function (a) { return ["queued", "running", "retrying"].indexOf(a.status) !== -1; }); };
     if (!pending(app.state)) return;
+    var lastRun = 0;
     actionTimer = setInterval(function () {
       if (app.ended) { clearInterval(actionTimer); actionTimer = null; return; }
+      // Online forms are filled by a separate, slower worker: nudge it while waiting.
+      var formsDue = (app.state.actions || []).some(function (a) { return a.type && a.type.indexOf("org_") === 0 && ["queued", "retrying"].indexOf(a.status) !== -1; });
+      if (formsDue && Date.now() - lastRun > 10000) { lastRun = Date.now(); api("POST", "/api/session/" + app.sessionId + "/outreach/run", {}).catch(function () {}); }
       api("GET", "/api/session/" + app.sessionId + "/state").then(function (j) {
         var before = JSON.stringify((app.state.actions || []).map(function (a) { return a.status; }));
         app.state = j.state;
@@ -932,7 +953,7 @@
         if (before !== after) {
           renderActions(j.state);
           j.state.actions.forEach(function (a) {
-            if (!app.seenActions[a.id + a.status] && ["provider_accepted", "mock_written", "failed", "cancelled", "bounced"].indexOf(a.status) !== -1) {
+            if (!app.seenActions[a.id + a.status] && ["provider_accepted", "mock_written", "failed", "cancelled", "bounced", "submitted", "mock_submitted", "fell_back", "unconfirmed"].indexOf(a.status) !== -1) {
               app.seenActions[a.id + a.status] = true;
               announce(actionText(a, j.state)[1], true);
             }

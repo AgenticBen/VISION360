@@ -40,6 +40,21 @@
   <div class="page-actions"><div class="seg" id="org-filter"><button type="button" aria-pressed="true" data-f="all">All</button><button type="button" aria-pressed="false" data-f="email">Can be emailed</button><button type="button" aria-pressed="false" data-f="none">Can't be contacted</button></div></div>
   <div class="table-wrap"><table class="t" id="org-table"><thead><tr><th>Organization</th><th>Takes referrals</th><th>Contacted by</th><th>Why</th><th>Change</th></tr></thead><tbody></tbody></table></div>
 </section>
+<section class="card" aria-labelledby="forms-h">
+  <h2 id="forms-h">Online forms</h2>
+  <p class="sub">For an organization with an online referral form, the assistant can fill it in for the person from an approved recipe: which field gets their name, phone and email, which button sends it, and how to tell it worked. Recipes only ever fill in names, contact details and fixed referral wording. If a form has a CAPTCHA or bot check, or the page has changed, the assistant stops and emails the organization instead (or a staff member gets a task with the answers ready).</p>
+  <p class="hint" id="runner-note"></p>
+  <ol class="hint">
+    <li><strong>Inspect</strong> opens the form in a safe browser and lists its fields. Nothing is typed or sent.</li>
+    <li>Pick what goes in each field (or <strong>Draft with AI</strong>, which only sees the field labels), then <strong>Save</strong>.</li>
+    <li><strong>Approve for testing</strong>: while outreach is in demo mode, form jobs fill the practice form, not this one.</li>
+    <li><strong>Dry run</strong> fills this form with made-up details without sending it, and shows a picture. Then <strong>Approve for real</strong>.</li>
+  </ol>
+  <div id="recipes"></div>
+  <h3>Practice form entries</h3>
+  <p class="sub">What the assistant sent to the <a href="/outreach-test-form/">practice form</a> in demo mode (made-up details).</p>
+  <ul id="practice" class="hint"></ul>
+</section>
 </main>
 </div>
 <script src="/admin/shell.js"></script>

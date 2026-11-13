@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Practice referral form — Vision 360 CONNECT demo</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 18px; line-height: 1.5; color: #16191d; background: #fff; margin: 0; padding: 16px; }
+  main { max-width: 40rem; margin: 0 auto; }
+  h1 { color: #051362; font-size: 1.6rem; }
+  .note { background: #fff2d6; border: 2px solid #8a5300; color: #5a3b00; padding: 8px 12px; border-radius: 6px; }
+  label { display: block; font-weight: 700; margin: 14px 0 4px; }
+  input, select, textarea { font: inherit; width: 100%; box-sizing: border-box; min-height: 44px; padding: 6px 10px; border: 2px solid #7f8992; border-radius: 8px; }
+  textarea { min-height: 6rem; }
+  button { font: inherit; font-weight: 700; min-height: 48px; margin-top: 18px; padding: 8px 20px; border-radius: 8px; border: 2px solid #051362; background: #051362; color: #fff; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  :focus-visible { outline: 3px solid #051362; outline-offset: 2px; }
+  .challenge { border: 2px dashed #991b1b; padding: 10px; margin-top: 16px; }
+  #done { font-size: 1.3rem; font-weight: 700; color: #0d4d18; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Practice referral form</h1>
+  <p class="note">This is the Vision 360 CONNECT demo's practice form. While contacting organizations is in demo mode, the assistant fills in this form instead of a real organization's form. Nothing here reaches any organization.</p>
+  <form id="f" novalidate>
+    <label for="full_name">Full name</label>
+    <input id="full_name" name="full_name" required autocomplete="off">
+    <label for="phone">Phone</label>
+    <input id="phone" name="phone" type="tel" autocomplete="off">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="off">
+    <label for="preferred">Best way to reach you</label>
+    <select id="preferred" name="preferred"><option value="phone">phone</option><option value="email">email</option></select>
+    <label for="referrer">Referred by</label>
+    <input id="referrer" name="referrer" autocomplete="off">
+    <label for="intended_org">Organization this was meant for</label>
+    <input id="intended_org" name="intended_org" autocomplete="off">
+    <label for="note">Anything else</label>
+    <textarea id="note" name="note"></textarea>
+    <div id="challenge"></div>
+    <button type="submit" id="submit">Send referral</button>
+  </form>
+  <p id="done" role="status" hidden></p>
+</main>
+<script>
+  (function () {
+    var f = document.getElementById("f");
+    // ?challenge=1 adds a pretend are-you-a-person test, so the demo can show what happens
+    // when a real form has one (the assistant stops and emails instead). Built
+    // here only when asked for, so the normal page has no such signs.
+    if (/[?&]challenge=1\b/.test(location.search)) {
+      var c = document.getElementById("challenge");
+      c.className = "challenge";
+      c.innerHTML = '<div class="g-' + 'recaptcha" data-sitekey="demo-only"></div><p>' + 'Verify you are ' + 'human before sending this form. (Practice only.)</p>';
+      document.getElementById("submit").disabled = true;
+    }
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var body = {};
+      ["full_name", "phone", "email", "preferred", "referrer", "intended_org", "note"].forEach(function (k) { body[k] = f.elements[k].value; });
+      fetch("/api/outreach/test-form", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { f.hidden = true; var d = document.getElementById("done"); d.hidden = false; d.textContent = (j && j.message) || "Thank you"; })
+        .catch(function () { alert("Couldn't send the practice form."); });
+    });
+  })();
+</script>
+</body>
+</html>

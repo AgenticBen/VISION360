@@ -12,7 +12,8 @@
 import { createHash } from "node:crypto";
 import { normalize, yesNo, strictConfirm, parseEmail, parsePhone, spellEmail, spellPhone, detectGlobal } from "./understand.mjs";
 import { joinList } from "./phrasing.mjs";
-import { buildOrgReferral, ORG_EMAIL_PURPOSE } from "./outreach-mail.mjs";
+import { buildOrgReferral, ORG_EMAIL_PURPOSE, ORG_FORM_PURPOSE } from "./outreach-mail.mjs";
+import { TEST_FORM_ID, formValues, staffFields } from "./form-recipes.mjs";
 
 const NUMBER_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8 };
 const STOP_RE = / (stop|cancel|don't|do not) (contacting|emailing|sending|contact|email|send) (them|the organizations|the organisations|those|anyone|the referrals|the emails) /;
@@ -112,8 +113,8 @@ export function createOutreachDialogue(h) {
     const list = pickList(session, info);
     const can = list.filter((x) => x.channel);
     const cannot = list.length - can.length;
-    const named = can.map((x) => `number ${x.rank}, ${x.name}`);
-    const parts = [`I can contact ${can.length === 1 ? "one of them" : can.length + " of them"} by email: ${joinList(named)}.`];
+    const named = can.map((x) => `number ${x.rank}, ${x.name}, ${x.channel === "form" ? "through their online form" : "by email"}`);
+    const parts = [`I can contact ${can.length === 1 ? "one of them" : can.length + " of them"}: ${joinList(named)}.`];
     if (cannot) parts.push(`${cannot === 1 ? "One other one" : cannot + " others"} I can't reach this way, so ${cannot === 1 ? "its phone number is" : "their phone numbers are"} on the screen and in your plan.`);
     parts.push(can.length === 1 ? "Shall I contact them?" : "Would you like me to contact all of them, or just some? Say all of them, or the numbers, like one and three.");
     return h.reply(session, parts, { expect: "outreach_pick", outreachPick: { orgs: list } });
@@ -124,25 +125,40 @@ export function createOutreachDialogue(h) {
     const o = session.state.outreach;
     const results = h.currentResults(session);
     const person = { name: o.name, helperName: o.helper || null, phone: o.phone || null, email: o.email || null, preferred: o.phone ? "phone" : "email" };
-    const targets = o.picks.map((rank) => results.matches.find((m) => m.rank === rank)).filter((m) => m && info.orgs[m.id]).map((m) => {
-      const intendedTo = info.orgs[m.id].email;
-      const demo = !info.live;
+    const demo = !info.live;
+    const emailTarget = (m, intendedTo) => {
       const mail = buildOrgReferral(m, person, { demo, intendedTo });
       return { orgId: m.id, orgName: m.name, channel: "email", intendedTo, to: demo ? info.testInbox : intendedTo, demoRedirect: demo, cc: !demo && person.email ? person.email : null, replyTo: info.replyTo || null, mail };
+    };
+    const targets = o.picks.map((rank) => results.matches.find((m) => m.rank === rank)).filter((m) => m && info.orgs[m.id]).map((m) => {
+      const c = info.orgs[m.id];
+      if (c.channel !== "form") return emailTarget(m, c.email);
+      // While outreach isn't live, every form job fills our own practice form.
+      const values = formValues(person, m);
+      const recipeId = demo ? TEST_FORM_ID : m.id;
+      const recipeVersion = demo ? 1 : c.recipe.version;
+      const form = { recipeId, recipeVersion, values, formUrl: m.contacts.intake_form_url || null, staffFields: staffFields({ fields: c.recipe.fields || [] }, values) };
+      form.hash = createHash("sha256").update(JSON.stringify({ orgId: m.id, recipeId, recipeVersion, values })).digest("hex");
+      return { orgId: m.id, orgName: m.name, channel: "form", demo, form, fallback: c.email ? emailTarget(m, c.email) : null };
     });
-    const hash = createHash("sha256").update(targets.map((t) => [t.orgId, t.to, t.mail.hash].join(":")).join("|")).digest("hex");
+    const hash = createHash("sha256").update(targets.map((t) => t.channel === "form" ? [t.orgId, "form", t.form.hash, t.fallback ? t.fallback.mail.hash : ""].join(":") : [t.orgId, t.to, t.mail.hash].join(":")).join("|")).digest("hex");
     return { targets, hash, results };
   }
 
   function consentText(session, info, targets) {
     const o = session.state.outreach;
     const how = [o.phone ? `by phone at ${o.phone}` : null, o.email ? `email at ${o.email}` : null].filter(Boolean).join(" or ");
-    const parts = [
-      `Here's exactly what I'll do. I'll email ${joinList(targets.map((t) => t.orgName))}:`,
-      `"I'm contacting you on behalf of ${o.name}. Based on what they told us, they may be eligible for your services. Please reach out ${how}."`,
-      "I won't share your answers about health, money or anything else personal.",
-    ];
-    if (!info.live) parts.push("Since this is a demo, these emails go to a test inbox, not the real organizations.");
+    const emails = targets.filter((t) => t.channel === "email");
+    const forms = targets.filter((t) => t.channel === "form");
+    const parts = ["Here's exactly what I'll do."];
+    if (emails.length) parts.push(`I'll email ${joinList(emails.map((t) => t.orgName))}:`, `"I'm contacting you on behalf of ${o.name}. Based on what they told us, they may be eligible for your services. Please reach out ${how}."`);
+    if (forms.length) {
+      parts.push(`I'll fill in the online form for ${joinList(forms.map((t) => t.orgName))} with your name and contact details${emails.length ? " and the same message" : `, saying you may be eligible and asking them to reach out ${how}`}.`);
+      const noEmail = forms.filter((t) => !t.fallback);
+      parts.push(noEmail.length === forms.length ? "If a form doesn't work, a Lions Services staff member will fill it in for you." : noEmail.length ? "If a form doesn't work, I'll email them instead, or a Lions Services staff member will fill it in." : "If a form doesn't work, I'll email them instead.");
+    }
+    parts.push("I won't share your answers about health, money or anything else personal.");
+    if (!info.live) parts.push(forms.length ? "Since this is a demo, emails go to a test inbox and forms go to a practice form, not the real organizations." : "Since this is a demo, these emails go to a test inbox, not the real organizations.");
     parts.push("Shall I go ahead?");
     return parts;
   }
@@ -153,7 +169,7 @@ export function createOutreachDialogue(h) {
     if (!targets.length) return leave(session, ["I can't reach any of those by email, so I haven't contacted anyone."]);
     st.outreach.step = "consent";
     st.outreach.consent = { revision: session.revision, hash, live: !!info.live };
-    return h.reply(session, consentText(session, info, targets), { expect: "consent", outreachConsent: { orgs: targets.map((t) => ({ id: t.orgId, name: t.orgName })), name: st.outreach.name, phone: st.outreach.phone || null, email: st.outreach.email || null, demo: !info.live } });
+    return h.reply(session, consentText(session, info, targets), { expect: "consent", outreachConsent: { orgs: targets.map((t) => ({ id: t.orgId, name: t.orgName, channel: t.channel })), name: st.outreach.name, phone: st.outreach.phone || null, email: st.outreach.email || null, demo: !info.live } });
   }
 
   function handle(session, text, info) {
@@ -234,7 +250,23 @@ export function createOutreachDialogue(h) {
       if (hash !== o.consent.hash || !!info.live !== o.consent.live) return leave(session, ["Something changed after I asked, so I haven't contacted anyone."]);
       const sent = [];
       let firstId = null;
+      const person = o.phone ? { method: "phone", value: o.phone, callerName: o.name } : { method: "email", value: o.email, callerName: o.name };
       for (const t of targets) {
+        if (t.channel === "form") {
+          // The email goes only if the form can't be used: kept "prepared" until then.
+          const fb = t.fallback ? session.work.enqueueAction(session, emailAction(t.fallback, results, "prepared")) : null;
+          const res = session.work.enqueueAction(session, {
+            type: "org_form_submit",
+            destination: `form:${t.orgId}:${t.form.recipeId}:v${t.form.recipeVersion}`,
+            purpose: ORG_FORM_PURPOSE,
+            recommendationId: results.recommendationId,
+            method: "explicit_yes",
+            payload: { orgId: t.orgId, orgName: t.orgName, channel: "form", demo: t.demo, recipeId: t.form.recipeId, recipeVersion: t.form.recipeVersion, formUrl: t.form.formUrl, values: t.form.values, staffFields: t.form.staffFields, person, fallbackActionId: fb ? fb.action.id : null, hash: t.form.hash },
+          });
+          if (!firstId) firstId = res.action.id;
+          if (!res.duplicate) sent.push({ actionId: res.action.id, orgId: t.orgId, orgName: t.orgName, channel: "form", demoRedirect: t.demo, fallbackActionId: fb ? fb.action.id : null });
+          continue;
+        }
         const res = session.work.enqueueAction(session, {
           type: "org_referral_email",
           destination: `org:${t.orgId}:${t.intendedTo}`,
@@ -251,19 +283,30 @@ export function createOutreachDialogue(h) {
       st.wrapStep = "staff";
       st.outreach = { done: true, revision: session.revision, sent: [...(o.sent || []), ...sent] };
       const lead = sent.length
-        ? [`Done. I'm contacting ${sent.length === 1 ? sent[0].orgName : sent.length + " organizations"} now. You'll see each one's status on the screen. If any can't be reached, a Lions Services staff member will follow up.`, !info.live ? "Since this is a demo, the emails go to a test inbox." : ""]
+        ? [`Done. I'm contacting ${sent.length === 1 ? sent[0].orgName : sent.length + " organizations"} now. You'll see each one's status on the screen. If any can't be reached, a Lions Services staff member will follow up.`, !info.live ? (sent.some((x) => x.channel === "form") ? "Since this is a demo, emails go to a test inbox and forms to a practice form." : "Since this is a demo, the emails go to a test inbox.") : ""]
         : ["I've already contacted them, so I haven't sent anything twice."];
       return h.reply(session, [...lead, h.staffQuestion(session)], { expect: "results", actionId: firstId });
     }
     return leave(session, []);
   }
 
-  // "Stop contacting them" after the yes: cancels any email not yet sent.
+  function emailAction(t, results, status) {
+    return {
+      type: "org_referral_email", status,
+      destination: `org:${t.orgId}:${t.intendedTo}`,
+      purpose: ORG_EMAIL_PURPOSE,
+      recommendationId: results.recommendationId,
+      method: "explicit_yes",
+      payload: { to: t.to, intendedTo: t.intendedTo, demoRedirect: t.demoRedirect, cc: t.cc, replyTo: t.replyTo, orgId: t.orgId, orgName: t.orgName, channel: "email", subject: t.mail.subject, text: t.mail.text, html: t.mail.html, hash: t.mail.hash },
+    };
+  }
+
+  // "Stop contacting them" after the yes: cancels anything not yet sent.
   function stopRequest(session, text) {
     if (!STOP_RE.test(normalize(text))) return null;
     const o = session.state.outreach;
     if (!o || !o.sent || !o.sent.length) return null;
-    const n = session.work.cancelActions(["org_referral_email"], "Stopped by the person");
+    const n = session.work.cancelActions(["org_referral_email", "org_form_submit"], "Stopped by the person");
     session.work.audit("caller", "outreach_stopped", { cancelled: n });
     return h.reply(session, [n ? `Okay, I've stopped. ${n === 1 ? "One email that hadn't gone out yet" : n + " emails that hadn't gone out yet"} won't be sent.` : "Those emails have already gone out, so there's nothing left to stop. A Lions Services staff member can let them know if you've changed your mind.", h.staffQuestion(session)], { expect: "results" });
   }
@@ -271,7 +314,8 @@ export function createOutreachDialogue(h) {
   function closeBit(session) {
     const o = session.state.outreach;
     if (!o || !o.sent || !o.sent.length) return null;
-    const live = session.work.actionsForSession().filter((a) => a.type === "org_referral_email" && !["cancelled", "failed"].includes(a.status)).length;
+    const all = session.work.actionsForSession();
+    const live = o.sent.filter((x) => { const a = all.find((y) => y.id === x.actionId); return a && !["cancelled", "failed"].includes(a.status); }).length;
     return live ? `I've asked ${live === 1 ? "one organization" : live + " organizations"} to contact you` : null;
   }
 
