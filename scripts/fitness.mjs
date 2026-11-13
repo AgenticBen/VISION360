@@ -201,7 +201,7 @@ const CHECKS = [
       else for (const t of TABLES) if (!lock[1].includes(`'${t}'`)) problems.push(`${t} isn't in the lock-down list`);
       if (/grant[^;]*screen_check[^;]*to\s+(anon|authenticated)/i.test(migs)) problems.push("a screen-check table is granted to anon or authenticated");
       const settings = readFileSync(path.join("server", "lib", "site-settings.mjs"), "utf8");
-      if (!/features: Object\.freeze\(\{ screenCheck: false \}\)/.test(settings)) problems.push("the screen check must be off by default (SITE_DEFAULTS.features.screenCheck = false)");
+      if (!/features: Object\.freeze\(\{ screenCheck: false[ ,]/.test(settings)) problems.push("the screen check must be off by default (SITE_DEFAULTS.features.screenCheck = false)");
       for (const f of walk("site")) {
         if (!/\.(js|html|json|css)$/.test(f)) continue;
         if (/screen_check(s|_steps|_reviews)\b/.test(readFileSync(f, "utf8"))) problems.push(`${f} names a screen-check table; results never reach the browser directly`);
@@ -232,6 +232,24 @@ const CHECKS = [
       }
       if (!(reg.flows || []).some((f) => f.group === "assistant" && f.routing && (!f.status || f.status === "published"))) problems.push("the Resource Assistant row needs a published workflow that suggests services");
       if (!(reg.flows || []).some((f) => f.group === "assessment" && !f.routing && (!f.status || f.status === "published"))) problems.push("the Vision Assessment row needs a published question-and-answer workflow");
+      return problems;
+    },
+  },
+  {
+    id: "FC20",
+    title: "Contacting organizations for people is off by default, stays a pure conversation step, and never says someone qualifies",
+    run: () => {
+      const problems = [];
+      const settings = readFileSync(path.join("server", "lib", "site-settings.mjs"), "utf8");
+      if (!/orgOutreach: false/.test(settings)) problems.push("contacting organizations must be off by default (SITE_DEFAULTS.features.orgOutreach = false)");
+      problems.push(...findAll([path.join("server", "lib", "dialogue-outreach.mjs")], [
+        /from\s+["']\.\/(store|actions|ai-understanding|tts|session-repo|api|outreach-directory)\.mjs["']/,
+        /from\s+["']node:(sqlite|fs|http|https)["']/,
+        /\bstore\./,
+        /\bfetch\(/,
+      ]));
+      const mail = readFileSync(path.join("server", "lib", "outreach-mail.mjs"), "utf8").replace(/^\s*\/\/.*$/gm, "");
+      if (/qualif/i.test(mail)) problems.push("server/lib/outreach-mail.mjs says someone qualifies; say they may be eligible");
       return problems;
     },
   },

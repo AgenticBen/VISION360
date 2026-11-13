@@ -302,6 +302,18 @@ export function openStore(file) {
       q(`UPDATE actions SET ${cols.map((c) => c + "=?").join(", ")}, updated_at=? WHERE id=?`).run(...cols.map((c) => fields[c]), nowIso(), id);
       bumpSessionOf(id);
     },
+    cancelActions(sessionId, types, reason) {
+      let n = 0;
+      for (const t of types) {
+        n += Number(q(`UPDATE actions SET status='cancelled', error=?, updated_at=? WHERE session_id=? AND type=? AND status IN ('prepared','awaiting_authorization','queued','retrying')`)
+          .run(reason || "Cancelled by the person", nowIso(), sessionId, t).changes || 0);
+      }
+      return n;
+    },
+    adminOutreach(sinceIso, limit = 500) {
+      return q(`SELECT id, session_id, type, status, attempts, provider, error, payload_json, created_at, updated_at FROM actions WHERE type LIKE 'org_%' AND created_at >= ? ORDER BY created_at DESC LIMIT ?`).all(sinceIso, limit)
+        .map((r) => { const p = JSON.parse(r.payload_json || "{}"); return { ...r, payload_json: undefined, orgId: p.orgId || null, orgName: p.orgName || null, channel: p.channel || null, to: p.to || null, intendedTo: p.intendedTo || null, demoRedirect: !!p.demoRedirect }; });
+    },
     cancelStaleActions(sessionId, revision) {
       return q(`UPDATE actions SET status='cancelled', error='Answers changed after this was authorised', updated_at=? WHERE session_id=? AND revision < ? AND status IN ('prepared','awaiting_authorization','queued','retrying')`)
         .run(nowIso(), sessionId, revision).changes;

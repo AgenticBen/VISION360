@@ -594,8 +594,10 @@
     else if (turn.expect === "yes_no") panel.appendChild(yesNoCard());
     else if (turn.expect === "go_back" && turn.steps) panel.appendChild(stepsCard(turn.steps));
     if (turn.consent) panel.appendChild(consentCard(turn.consent));
+    if (turn.outreachPick) panel.appendChild(outreachPickCard(turn.outreachPick));
+    if (turn.outreachConsent) panel.appendChild(outreachConsentCard(turn.outreachConsent));
     var results = turn.results || (state && state.results);
-    if (results && ["results", "email_address", "email_confirm_address", "email_consent", "staff_contact", "staff_confirm"].indexOf(state.phase) !== -1) {
+    if (results && ["results", "email_address", "email_confirm_address", "email_consent", "staff_contact", "staff_confirm", "outreach"].indexOf(state.phase) !== -1) {
       panel.appendChild(resultsSection(results));
     }
     renderActions(state);
@@ -838,7 +840,63 @@
     return card;
   }
 
+  // ------------------------------------------------- contacting organizations
+  // Which of the suggestions to contact: a checkbox each (all unticked), for
+  // the ones the assistant can reach; the others say why not.
+  function outreachPickCard(p) {
+    var card = el("section", { class: "card recap", "aria-labelledby": "op-h" });
+    card.appendChild(el("h3", { id: "op-h", text: "Which organizations should I contact for you?" }));
+    var list = el("div", { class: "multi" });
+    p.orgs.forEach(function (o) {
+      if (!o.channel) { list.appendChild(el("p", { class: "hint", text: o.rank + ". " + o.name + " — can't be contacted this way; their phone number is in your suggestions." })); return; }
+      var box = el("input", { type: "checkbox", value: String(o.rank), id: "op-" + o.rank });
+      list.appendChild(el("label", { for: "op-" + o.rank }, [box, document.createTextNode(o.rank + ". " + o.name + " (by email)")]));
+    });
+    card.appendChild(list);
+    card.appendChild(el("div", { class: "action-row" }, [
+      el("button", { type: "button", class: "btn btn-primary", text: "Contact the ones I ticked", onclick: function () {
+        var ticked = [].slice.call(card.querySelectorAll("input:checked")).map(function (i) { return i.value; });
+        if (!ticked.length) { announce("Tick at least one organization first, or choose don't contact anyone.", true); return; }
+        sendTurn({ text: "numbers " + ticked.join(" and ") }, { text: "Contact number" + (ticked.length > 1 ? "s " : " ") + ticked.join(" and ") });
+      } }),
+      el("button", { type: "button", class: "btn", text: "Don't contact anyone", onclick: function () { sendTurn({ text: "no thanks" }, { text: "Don't contact anyone" }); } }),
+    ]));
+    return card;
+  }
+  function outreachConsentCard(c) {
+    var card = el("section", { class: "card recap", "aria-labelledby": "oc-h" });
+    card.appendChild(el("h3", { id: "oc-h", text: "Contact these organizations?" }));
+    card.appendChild(el("p", { text: "I'll email " + c.orgs.map(function (o) { return o.name; }).join(", ") + " and ask them to reach " + c.name + (c.phone ? " by phone at " + c.phone : "") + (c.phone && c.email ? " or" : "") + (c.email ? " by email at " + c.email : "") + ". They'll get your name and contact details only, not your answers about health, money or anything else personal." + (c.demo ? " This is a demo: the emails go to a test inbox, not the real organizations." : "") }));
+    card.appendChild(el("div", { class: "action-row" }, [
+      el("button", { type: "button", class: "btn btn-primary", text: "Yes, contact them", onclick: function () { sendTurn({ text: "yes" }, { text: "Yes, contact them" }); } }),
+      el("button", { type: "button", class: "btn", text: "No, don't", onclick: function () { sendTurn({ text: "no" }, { text: "No, don't contact them" }); } }),
+    ]));
+    return card;
+  }
+
   // -------------------------------------------------------------- actions
+  var ORG_TEXT = {
+    queued: ["wait", "waiting to send the referral email."],
+    running: ["wait", "sending the referral email now…"],
+    retrying: ["wait", "the email service didn't answer. Trying again shortly."],
+    provider_accepted: ["ok", "referral email accepted by the email service (that doesn't prove it arrived)."],
+    delivered: ["ok", "referral email delivered."],
+    mock_written: ["mock", "referral email written to the demo's local test outbox. Nothing went to the organization."],
+    failed: ["bad", "couldn't send the referral email. A staff member has been asked to contact them for you."],
+    bounced: ["bad", "the referral email bounced. A staff member has been asked to contact them for you."],
+    cancelled: ["bad", "cancelled. Nothing was sent."],
+  };
+  // The words for one action: the plan email, or a referral to one organization.
+  function actionText(a, state) {
+    if (a.type === "org_referral_email") {
+      var sent = (state && state.outreach && state.outreach.sent) || [];
+      var who = sent.filter(function (x) { return x.actionId === a.id; })[0];
+      var t = ORG_TEXT[a.status] || ["wait", a.status];
+      var demo = who && who.demoRedirect && ["provider_accepted", "delivered"].indexOf(a.status) !== -1 ? " (Demo: sent to the test inbox instead of the organization.)" : "";
+      return [t[0], (who ? who.orgName : "Organization") + ": " + t[1] + demo];
+    }
+    return ACTION_TEXT[a.status] || ["wait", "Email: " + a.status];
+  }
   var ACTION_TEXT = {
     queued: ["wait", "Email: queued — waiting to be handed to the email service."],
     running: ["wait", "Email: sending now…"],
@@ -854,7 +912,7 @@
     if (!state || !state.actions || !state.actions.length) return;
     var box = el("div", { id: "action-box", role: "status" });
     state.actions.forEach(function (a) {
-      var t = ACTION_TEXT[a.status] || ["wait", "Email: " + a.status];
+      var t = actionText(a, state);
       box.appendChild(el("p", { class: "action-status " + t[0], text: t[1] }));
     });
     $("panel").appendChild(box);
@@ -874,9 +932,9 @@
         if (before !== after) {
           renderActions(j.state);
           j.state.actions.forEach(function (a) {
-            if (!app.seenActions[a.id + a.status] && ACTION_TEXT[a.status] && ["provider_accepted", "mock_written", "failed", "cancelled"].indexOf(a.status) !== -1) {
+            if (!app.seenActions[a.id + a.status] && ["provider_accepted", "mock_written", "failed", "cancelled", "bounced"].indexOf(a.status) !== -1) {
               app.seenActions[a.id + a.status] = true;
-              announce(ACTION_TEXT[a.status][1], true);
+              announce(actionText(a, j.state)[1], true);
             }
           });
         }

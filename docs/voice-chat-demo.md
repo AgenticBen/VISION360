@@ -70,3 +70,5 @@ Production deploys change the live directory site. Follow `CLAUDE.md`: run check
 ## Not done in this demo
 
 Telephone access, assisted form-filling, real participant data, and production release gates (privacy and HIPAA review, vendor agreements, retention sign-off, staff ownership, routing approval by Lions Services).
+
+Contacting organizations for the person (Admin › Outreach, `server/lib/dialogue-outreach.mjs`) is built but stays in demo mode until those gates are passed: with `V360_OUTREACH_LIVE` unset, every referral email goes to the test inbox, labelled with the organization it was meant for. The person must hear an exact read-back (organizations, name, contact details) and say a clear yes; each referral is a separate action tied to the answer revision, so a correction or "stop contacting them" cancels anything not yet sent. Organizations get the person's name and contact details only, and the wording is "may be eligible", never "qualifies".

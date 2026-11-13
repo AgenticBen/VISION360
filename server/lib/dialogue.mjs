@@ -23,6 +23,7 @@ import { corpusView, flowMeta } from "./corpus.mjs";
 import { buildResults, resultsSpeech } from "./results.mjs";
 import { buildPlan } from "./plan.mjs";
 import { normalizeDisplay, emailStyle } from "./email-style.mjs";
+import { createOutreachDialogue } from "./dialogue-outreach.mjs";
 import { who, askOpen, askWithChoices, sectionIntro, ack, recapLine, screenLabel, greetingText, joinList, noConcernTopic } from "./phrasing.mjs";
 
 export const POLICY_VERSION = "dialogue-2026-11-04.1";
@@ -146,6 +147,18 @@ export function createDialogue(ctx) {
   // Optional AI readings for the current turn, passed in explicitly by the
   // turn service (never stored on the session). Empty when AI is off.
   let turnAi = {};
+  // Which organizations can be contacted for the person this turn (and whether
+  // for real or via the demo test inbox), passed in by the turn service.
+  let turnOutreach = { enabled: false };
+  const outreach = createOutreachDialogue({ reply, currentResults, staffQuestion, whoFor });
+
+  // After the email question: offer to contact organizations if any can be
+  // reached, otherwise go on to the staff question. Returns what to ask.
+  function nextAfterEmail(session) {
+    if (outreach.offerable(session, turnOutreach)) { session.state.wrapStep = "outreach"; return outreach.offerText(); }
+    session.state.wrapStep = "staff";
+    return staffQuestion(session);
+  }
 
   function answersOf(session) {
     const corpus = C(session);
@@ -266,6 +279,7 @@ export function createDialogue(ctx) {
       actions: session.work.actionsForSession().map(publicAction),
       staffRequested: session.work.staffReviews().some((r) => r.reason.startsWith("Requested")),
       email: session.state.email ? { address: session.state.email.address || null, step: session.state.email.step } : null,
+      outreach: outreach.snapshot(session),
       corpusVersion: session.corpus_version,
       policyVersion: POLICY_VERSION,
       lastAssistant: session.state.lastAssistant,
@@ -434,6 +448,8 @@ export function createDialogue(ctx) {
     const name = st.names.caller;
     const bits = [];
     if (session.work.actionsForSession().some((a) => a.type === "email_plan" && !["cancelled", "failed"].includes(a.status))) bits.push("your plan is on its way by email");
+    const asked = outreach.closeBit(session);
+    if (asked) bits.push(asked);
     if (session.work.staffReviews().some((r) => r.reason.startsWith("Requested"))) bits.push("your request is with the Lions Services team");
     st.phase = "closed";
     st.wrapStep = "done";
@@ -567,7 +583,8 @@ export function createDialogue(ctx) {
   // input: {text, choice?: {questionId, value}, action?, revision?, mode}
   function handle(session, input) {
     turnAi = (input && input.interpretations) || {};
-    try { return handleTurn(session, input); } finally { turnAi = {}; }
+    turnOutreach = (input && input.outreach) || { enabled: false };
+    try { return handleTurn(session, input); } finally { turnAi = {}; turnOutreach = { enabled: false }; }
   }
 
   function handleTurn(session, input) {
@@ -729,6 +746,7 @@ export function createDialogue(ctx) {
       case "email_consent": return handleEmail(session, text);
       case "staff_contact":
       case "staff_confirm": return handleStaff(session, text);
+      case "outreach": return outreach.handle(session, text, turnOutreach);
       case "closed": return reply(session, ["This session has ended. Start a new one to begin again."], { expect: "ended" });
       default: return askNext(session);
     }
@@ -762,6 +780,7 @@ export function createDialogue(ctx) {
   function wrapQuestion(session) {
     const st = session.state;
     if (st.wrapStep === "email") return "Would you like me to email you this plan?";
+    if (st.wrapStep === "outreach") return outreach.offerText();
     if (st.wrapStep === "staff") return staffQuestion(session);
     if (st.wrapStep === "anything") return anythingElse();
     return "You can ask me about any of the suggestions, or say you're all done.";
@@ -1074,9 +1093,10 @@ export function createDialogue(ctx) {
     }
     if (!results) return startRecap(session, ["Your answers changed, so I need to check them with you again."]);
     if (g.email) return beginEmail(session);
-    if (g.noEmail) {
-      st.wrapStep = "staff";
-      return reply(session, ["That's fine — you don't need email. Everything is on the screen.", staffQuestion(session)], { expect: "results" });
+    const stop = outreach.stopRequest(session, text);
+    if (stop) return stop;
+    if (g.noEmail && st.wrapStep !== "outreach") {
+      return reply(session, ["That's fine — you don't need email. Everything is on the screen.", nextAfterEmail(session)], { expect: "results" });
     }
     // "Tell me about number 2" / by name
     const n = normalize(text);
@@ -1106,7 +1126,11 @@ export function createDialogue(ctx) {
     switch (st.wrapStep) {
       case "email":
         if (yn === "yes") return beginEmail(session);
-        if (yn === "no" || done) { st.wrapStep = "staff"; return reply(session, ["No problem — everything stays on the screen.", staffQuestion(session)], { expect: "results" }); }
+        if (yn === "no" || done) return reply(session, ["No problem — everything stays on the screen.", nextAfterEmail(session)], { expect: "results" });
+        break;
+      case "outreach":
+        if (yn === "yes") return outreach.begin(session, turnOutreach);
+        if (yn === "no" || done) { st.wrapStep = "staff"; st.outreach = { done: true, revision: session.revision, sent: (st.outreach && st.outreach.sent) || [] }; return reply(session, ["Okay.", staffQuestion(session)], { expect: "results" }); }
         break;
       case "staff":
         if (yn === "yes") return beginStaff(session);
@@ -1136,8 +1160,8 @@ export function createDialogue(ctx) {
 
   function leaveEmail(session, lead) {
     const st = session.state;
-    st.phase = "results"; st.email = null; st.wrapStep = "staff";
-    return reply(session, [...lead, staffQuestion(session)], { expect: "results" });
+    st.phase = "results"; st.email = null;
+    return reply(session, [...lead, nextAfterEmail(session)], { expect: "results" });
   }
 
   function handleEmail(session, text) {
@@ -1205,10 +1229,9 @@ export function createDialogue(ctx) {
       const res = session.work.enqueueEmail(session, { recipient: st.email.address, plan, recommendationId: results.recommendationId, method: "explicit_yes" });
       const addr = st.email.address;
       st.phase = "results";
-      st.wrapStep = "staff";
       st.email = { step: "queued", address: addr, actionId: res.action.id };
       const mockNote = ctx.actions.transportName() === "outbox" ? " Since this demo isn't connected to a real email service yet, it'll go to a test outbox rather than your inbox." : "";
-      return reply(session, [res.duplicate ? "That email was already queued, so I haven't sent a second copy." : `Done — I'm sending your plan to ${addr}.${mockNote}`, staffQuestion(session)], { expect: "results", actionId: res.action.id });
+      return reply(session, [res.duplicate ? "That email was already queued, so I haven't sent a second copy." : `Done — I'm sending your plan to ${addr}.${mockNote}`, nextAfterEmail(session)], { expect: "results", actionId: res.action.id });
     }
     return reply(session, ["Let's carry on."], { expect: "results" });
   }
@@ -1275,7 +1298,7 @@ export function createDialogue(ctx) {
       st.email.consentInterrupted = true;
       return true;
     }
-    return false;
+    return outreach.interrupted(session, turnId);
   }
 
   function greeting(session) {

@@ -15,7 +15,7 @@ function fail(status, message) {
   return e;
 }
 
-export function createTurnService({ corpus, store, repo, dialogue, actions, env, aiFetch = globalThis.fetch }) {
+export function createTurnService({ corpus, store, repo, dialogue, actions, env, outreach = null, aiFetch = globalThis.fetch }) {
   // Optional AI help, only where the rules can't tell. Returns explicit
   // readings for the dialogue; failures fall back to the rules silently.
   async function interpret(session, input) {
@@ -48,7 +48,7 @@ export function createTurnService({ corpus, store, repo, dialogue, actions, env,
   // replying there; locally the dev server's worker loop also picks it up.
   async function runWorker(awaitIt) {
     if (env.V360_INLINE_WORKER === "off") return;
-    const job = actions.drain(5).catch((e) => console.error("worker error", e.message));
+    const job = actions.drain(10).catch((e) => console.error("worker error", e.message));
     if (awaitIt) await job;
   }
 
@@ -80,11 +80,16 @@ export function createTurnService({ corpus, store, repo, dialogue, actions, env,
       mode,
     };
     input.interpretations = await interpret(s, input);
+    // Which organizations the assistant may contact for the person (only
+    // needed once the suggestions are on screen).
+    input.outreach = outreach && ["results", "outreach", "email_address", "email_confirm_address", "email_consent"].includes(s.state.phase)
+      ? await outreach.forTurn().catch(() => ({ enabled: false }))
+      : { enabled: false };
     const reply = dialogue.handle(s, input);
     await repo.save(s);
     if (!reply.actionId) return { reply, session: s };
     if (env.V360_SERVERLESS) {
-      // The email was handled before replying, so show its real status.
+      // The emails were handled before replying, so show their real status.
       await runWorker(true);
       return { reply, session: await repo.load(s.id) };
     }

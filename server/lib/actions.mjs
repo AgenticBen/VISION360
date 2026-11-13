@@ -20,11 +20,29 @@ function sha(s) {
 }
 
 export const EMAIL_PURPOSE = "Send the confirmed referral plan to the person";
+export { ORG_EMAIL_PURPOSE } from "./outreach-mail.mjs";
 
 // The same person, address, plan and answer revision always give the same
 // key, so a retried "yes" can never queue a second email.
 export function emailIdempotencyKey(sessionId, recipient, planHash, revision) {
   return sha([sessionId, "email_plan", recipient.toLowerCase(), planHash, revision].join("|"));
+}
+// The same rule for any action type (one key per type, destination, content and revision).
+export function actionIdempotencyKey(sessionId, type, destination, hash, revision) {
+  if (type === "email_plan") return emailIdempotencyKey(sessionId, destination, hash, revision);
+  return sha([sessionId, type, String(destination).toLowerCase(), hash, revision].join("|"));
+}
+
+// Emails to organizations reach the real organization only when this is on.
+// Until then they go to the demo test inbox, marked with who they were for.
+export function outreachLive(env) {
+  return String(env.V360_OUTREACH_LIVE || "").toLowerCase() === "on";
+}
+// Where demo emails to organizations go instead of the organization.
+export function outreachTestInbox(env) {
+  if (env.V360_OUTREACH_TEST_INBOX) return String(env.V360_OUTREACH_TEST_INBOX).trim();
+  const exact = String(env.V360_EMAIL_ALLOWLIST || "").split(",").map((s) => s.trim()).find((e) => e && !e.startsWith("@"));
+  return exact || null;
 }
 
 export function createActions(ctx) {
@@ -62,7 +80,8 @@ export function createActions(ctx) {
     if (!session) problems.push("session missing");
     if (!auth) problems.push("no authorisation");
     if (auth && auth.payload_hash !== payload.hash) problems.push("payload differs from what was authorised");
-    if (auth && auth.destination.toLowerCase() !== String(payload.to).toLowerCase()) problems.push("recipient differs from what was authorised");
+    const destProblem = auth ? destinationProblem(action.type, auth, payload) : null;
+    if (destProblem) problems.push(destProblem);
     if (session && session.revision !== action.revision) problems.push("answers changed after authorisation");
     if (!rec || rec.id !== payload.recommendationId) problems.push("recommendation is no longer current");
     if (problems.length) {
@@ -71,7 +90,7 @@ export function createActions(ctx) {
       return { id: action.id, status: "cancelled" };
     }
     try {
-      const receipt = await transport.send({ to: payload.to, subject: payload.subject, text: payload.text, html: payload.html, idempotencyKey: action.idempotency_key, actionId: action.id });
+      const receipt = await transport.send({ to: payload.to, cc: payload.cc || null, replyTo: payload.replyTo || null, subject: payload.subject, text: payload.text, html: payload.html, idempotencyKey: action.idempotency_key, actionId: action.id });
       const status = transport.name === "outbox" ? "mock_written" : "provider_accepted";
       store.updateAction(action.id, { status, provider: transport.name, provider_receipt: receipt, error: null, lease_until: null });
       store.audit("worker", action.session_id, "action_" + status, { actionId: action.id, provider: transport.name });
@@ -81,7 +100,9 @@ export function createActions(ctx) {
       const msg = redact(String(e && e.message || e));
       if (attempts >= MAX_ATTEMPTS || e.permanent) {
         store.updateAction(action.id, { status: "failed", error: msg, lease_until: null, provider: transport.name });
-        store.createStaffReview(action.session_id, "Automatic: email plan failed to send — " + msg.slice(0, 120), null, false);
+        store.createStaffReview(action.session_id, action.type === "org_referral_email"
+          ? `Automatic: couldn't reach ${payload.orgName || "an organization"} by email — ` + msg.slice(0, 120) + ". Please contact them for the person."
+          : "Automatic: email plan failed to send — " + msg.slice(0, 120), null, false);
         store.audit("worker", action.session_id, "action_failed", { actionId: action.id });
         return { id: action.id, status: "failed" };
       }
@@ -118,13 +139,31 @@ export function createActions(ctx) {
       store.audit("provider", a.session_id, "action_delivered", { actionId: a.id });
     } else {
       store.updateAction(a.id, { status: "bounced", error: redact(String(detail || outcome)).slice(0, 200) });
-      store.createStaffReview(a.session_id, "Automatic: the emailed plan " + (outcome === "complained" ? "was marked as spam" : "bounced") + " — please follow up another way", null, false);
+      const what = a.type === "org_referral_email" ? `The referral email to ${orgNameOf(a)}` : "The emailed plan";
+      store.createStaffReview(a.session_id, "Automatic: " + what.charAt(0).toLowerCase() + what.slice(1) + " " + (outcome === "complained" ? "was marked as spam" : "bounced") + " — please follow up another way", null, false);
       store.audit("provider", a.session_id, "action_" + outcome, { actionId: a.id });
     }
     return a.session_id;
   }
 
-  return { transportName, recipientAllowed, runOnce, drain, retry, recordDelivery };
+  // Destination rules per action type, checked again just before sending.
+  function destinationProblem(type, auth, payload) {
+    const to = String(payload.to || "").toLowerCase();
+    if (type === "org_referral_email") {
+      const intended = String(payload.intendedTo || "").toLowerCase();
+      if (auth.destination.toLowerCase() !== `org:${payload.orgId}:${intended}`) return "organization differs from what was authorised";
+      if (to === intended) return outreachLive(env) ? null : "emails to organizations aren't switched on (V360_OUTREACH_LIVE)";
+      if (payload.demoRedirect && !outreachLive(env) && recipientAllowed(payload.to).ok) return null;
+      return "recipient differs from what was authorised";
+    }
+    return auth.destination.toLowerCase() !== to ? "recipient differs from what was authorised" : null;
+  }
+
+  function orgNameOf(a) {
+    try { return JSON.parse(store.getAction(a.id).payload_json).orgName || "the organization"; } catch { return "the organization"; }
+  }
+
+  return { transportName, recipientAllowed, runOnce, drain, retry, recordDelivery, outreachLive: () => outreachLive(env), outreachTestInbox: () => outreachTestInbox(env) };
 }
 
 function redact(s) {
@@ -136,14 +175,14 @@ function pickTransport(env) {
   if (wantResend) {
     return {
       name: "resend",
-      async send({ to, subject, text, html, idempotencyKey }) {
+      async send({ to, cc, replyTo, subject, text, html, idempotencyKey }) {
         if (!env.RESEND_API_KEY || !env.V360_EMAIL_FROM) {
           const e = new Error("Email provider is not configured (RESEND_API_KEY / V360_EMAIL_FROM)"); e.permanent = true; throw e;
         }
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": idempotencyKey.slice(0, 64) },
-          body: JSON.stringify({ from: env.V360_EMAIL_FROM, to: [to], subject, text, html }),
+          body: JSON.stringify({ from: env.V360_EMAIL_FROM, to: [to], ...(cc ? { cc: [cc] } : {}), ...(replyTo ? { reply_to: replyTo } : {}), subject, text, html }),
           signal: AbortSignal.timeout(15000),
         });
         const body = await res.json().catch(() => ({}));
@@ -159,12 +198,12 @@ function pickTransport(env) {
   const dir = env.V360_OUTBOX_DIR || path.join(ROOT_DIR, ".data", "outbox");
   return {
     name: "outbox",
-    async send({ to, subject, text, html, actionId }) {
+    async send({ to, cc, replyTo, subject, text, html, actionId }) {
       mkdirSync(dir, { recursive: true });
       const file = path.join(dir, `${actionId}.eml`);
       const boundary = "v360-" + actionId;
       const eml = [
-        `To: ${to}`, `From: Vision 360 CONNECT demo <demo@localhost>`, `Subject: ${subject}`, "MIME-Version: 1.0",
+        `To: ${to}`, ...(cc ? [`Cc: ${cc}`] : []), ...(replyTo ? [`Reply-To: ${replyTo}`] : []), `From: Vision 360 CONNECT demo <demo@localhost>`, `Subject: ${subject}`, "MIME-Version: 1.0",
         `X-V360-Notice: LOCAL TEST OUTBOX - NOT SENT`,
         `Content-Type: multipart/alternative; boundary="${boundary}"`, "",
         `--${boundary}`, "Content-Type: text/plain; charset=utf-8", "", text, "",

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Outreach — VISION360 admin</title>
+<link rel="icon" type="image/png" href="/brand/favicon.png">
+<link rel="stylesheet" href="/brand/brand.css">
+<link rel="stylesheet" href="/admin/admin.css">
+<link rel="stylesheet" href="/whats-new.css">
+</head>
+<body class="admin">
+<div class="admin-layout">
+<main class="admin-main" id="main">
+<header class="page-head">
+  <div>
+    <p class="eyebrow">People</p>
+    <h1>Outreach</h1>
+    <p class="sub">After their suggestions, the Resource Assistant can offer to contact organizations for the person. It only does so after reading back exactly what it will send and hearing a clear yes. Organizations get the person's name and contact details, never their answers.</p>
+  </div>
+</header>
+
+<section class="card" aria-labelledby="sw-h">
+  <h2 id="sw-h">Offer to contact organizations</h2>
+  <p id="sw-state" class="sub">Loading…</p>
+  <div class="page-actions"><button type="button" class="btn" id="sw-btn" disabled>…</button></div>
+  <p class="hint" id="sw-live"></p>
+</section>
+
+<section class="card" aria-labelledby="sent-h">
+  <h2 id="sent-h">Referrals sent for people (last 30 days)</h2>
+  <div class="table-wrap"><table class="t" id="sent-table"><thead><tr><th>When</th><th>Organization</th><th>Sent to</th><th>Status</th><th></th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section class="card" aria-labelledby="orgs-h">
+  <h2 id="orgs-h">How each organization is contacted</h2>
+  <p class="sub">“Auto” uses the listing's email when it is one plain address. Organizations whose listing says to contact them directly are never emailed. Choose an address for the ones that need one, or turn contact off.</p>
+  <div class="page-actions"><div class="seg" id="org-filter"><button type="button" aria-pressed="true" data-f="all">All</button><button type="button" aria-pressed="false" data-f="email">Can be emailed</button><button type="button" aria-pressed="false" data-f="none">Can't be contacted</button></div></div>
+  <div class="table-wrap"><table class="t" id="org-table"><thead><tr><th>Organization</th><th>Takes referrals</th><th>Contacted by</th><th>Why</th><th>Change</th></tr></thead><tbody></tbody></table></div>
+</section>
+</main>
+</div>
+<script src="/admin/shell.js"></script>
+<script src="/admin/outreach/outreach.js"></script>
+<script src="/request-button.js"></script>
+<script src="/whats-new.js" data-page="admin-outreach" defer></script>
+</body>
+</html>

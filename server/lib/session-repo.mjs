@@ -10,7 +10,7 @@
 // same for chat, voice and (later) phone, and means a hosted database can
 // replace SQLite by implementing load/save, without touching conversation code.
 import { randomUUID } from "node:crypto";
-import { emailIdempotencyKey, EMAIL_PURPOSE } from "./actions.mjs";
+import { actionIdempotencyKey, EMAIL_PURPOSE } from "./actions.mjs";
 import { nowIso } from "./store.mjs";
 
 const CANCELLABLE = ["prepared", "awaiting_authorization", "queued", "retrying"];
@@ -96,22 +96,37 @@ export function createSessionWork({ sessionId, answers, recommendations, actions
       op("cancelStaleActions", revision);
       return n;
     },
-    // Records the person's explicit consent and queues the email, once.
-    enqueueEmail(session, { recipient, plan, recommendationId, method }) {
-      const idempotencyKey = emailIdempotencyKey(session.id, recipient, plan.hash, session.revision);
+    // Records the person's explicit consent for one action and queues it, once.
+    // destination is what was agreed (an address, or org:<id>:<address>);
+    // payload.hash is what was agreed to send.
+    enqueueAction(session, { type, destination, purpose, payload, recommendationId, method, status = "queued" }) {
+      const idempotencyKey = actionIdempotencyKey(session.id, type, destination, payload.hash, session.revision);
       const existing = st.actions.find((a) => a.idempotency_key === idempotencyKey);
       if (existing) {
-        op("audit", "caller", "action_duplicate_ignored", { actionId: existing.id, type: "email_plan" });
+        op("audit", "caller", "action_duplicate_ignored", { actionId: existing.id, type });
         return { action: { ...existing }, duplicate: true };
       }
       const authorizationId = randomUUID();
       const t = nowIso();
-      const action = { id: randomUUID(), type: "email_plan", status: "queued", attempts: 0, provider: null, provider_receipt: null, error: null, revision: session.revision, idempotency_key: idempotencyKey, created_at: t, updated_at: t };
+      const action = { id: randomUUID(), type, status, attempts: 0, provider: null, provider_receipt: null, error: null, revision: session.revision, idempotency_key: idempotencyKey, created_at: t, updated_at: t };
       st.actions.push(action);
-      op("saveAuthorization", { id: authorizationId, sessionId: session.id, actionType: "email_plan", destination: recipient, payloadHash: plan.hash, purpose: EMAIL_PURPOSE, revision: session.revision, recommendationId, method });
-      op("enqueueAction", { id: action.id, sessionId: session.id, type: "email_plan", idempotencyKey, authorizationId, revision: session.revision, payload: { to: recipient, subject: plan.subject, text: plan.text, html: plan.html, hash: plan.hash, recommendationId } });
-      op("audit", "caller", "action_authorized", { actionId: action.id, type: "email_plan" });
+      op("saveAuthorization", { id: authorizationId, sessionId: session.id, actionType: type, destination, payloadHash: payload.hash, purpose, revision: session.revision, recommendationId, method });
+      op("enqueueAction", { id: action.id, sessionId: session.id, type, status, idempotencyKey, authorizationId, revision: session.revision, payload: { ...payload, recommendationId } });
+      op("audit", "caller", "action_authorized", { actionId: action.id, type });
       return { action: { ...action }, duplicate: false };
+    },
+    // Records the person's explicit consent and queues the plan email, once.
+    enqueueEmail(session, { recipient, plan, recommendationId, method }) {
+      return this.enqueueAction(session, { type: "email_plan", destination: recipient, purpose: EMAIL_PURPOSE, recommendationId, method, payload: { to: recipient, subject: plan.subject, text: plan.text, html: plan.html, hash: plan.hash } });
+    },
+    // "Stop contacting them": cancels these types if they haven't started.
+    cancelActions(types, reason) {
+      let n = 0;
+      for (const a of st.actions) {
+        if (types.includes(a.type) && CANCELLABLE.includes(a.status)) { a.status = "cancelled"; a.error = reason; n++; }
+      }
+      op("cancelActions", types, reason);
+      return n;
     },
 
     staffReviews() {
@@ -141,6 +156,7 @@ function applyOp(store, sessionId, { name, args }) {
     case "saveRecommendation": return store.saveRecommendation(sessionId, ...args);
     case "markRecommendationsStale": return store.markRecommendationsStale(sessionId);
     case "cancelStaleActions": return store.cancelStaleActions(sessionId, args[0]);
+    case "cancelActions": return store.cancelActions(sessionId, args[0], args[1]);
     case "saveAuthorization": return store.saveAuthorization(args[0]);
     case "enqueueAction": return store.enqueueAction(args[0]);
     case "createStaffReview": return store.createStaffReview(sessionId, ...args);

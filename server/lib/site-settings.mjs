@@ -6,7 +6,7 @@
 //                        (scrypt hash, never the password) and the key that
 //                        signs admin sign-in cookies. Changing the password
 //                        makes a new key, which signs everyone out.
-//   settings/site.json  { mainFlow, assessmentFlow, voice: { elevenlabs }, features: { screenCheck } }
+//   settings/site.json  { mainFlow, assessmentFlow, voice: { elevenlabs }, features: { screenCheck, orgOutreach } }
 //                        what is live in each row of the admin Workflows page:
 //                        mainFlow runs from Resource Assistant in the site menu
 //                        (/demo/); the Vision Assessment item (/assessment/)
@@ -22,7 +22,7 @@ import { hashPassword } from "./auth.mjs";
 
 export const AUTH_FILE = "settings/auth.json";
 export const SITE_FILE = "settings/site.json";
-export const SITE_DEFAULTS = Object.freeze({ mainFlow: "referral", assessmentFlow: "vision-assessment", voice: Object.freeze({ elevenlabs: false }), features: Object.freeze({ screenCheck: false }) });
+export const SITE_DEFAULTS = Object.freeze({ mainFlow: "referral", assessmentFlow: "vision-assessment", voice: Object.freeze({ elevenlabs: false }), features: Object.freeze({ screenCheck: false, orgOutreach: false }) });
 export const MIN_PASSWORD = 8;
 
 export function createSiteSettings({ gh, env = {}, ttlMs = 30000 }) {
@@ -74,7 +74,7 @@ export function createSiteSettings({ gh, env = {}, ttlMs = 30000 }) {
       assessmentFlow: typeof doc.assessmentFlow === "string" && doc.assessmentFlow ? doc.assessmentFlow : SITE_DEFAULTS.assessmentFlow,
       voice: { elevenlabs: !!(doc.voice && doc.voice.elevenlabs) },
       // Only an explicit true turns a feature on.
-      features: { screenCheck: !!(doc.features && doc.features.screenCheck === true) },
+      features: { screenCheck: !!(doc.features && doc.features.screenCheck === true), orgOutreach: !!(doc.features && doc.features.orgOutreach === true) },
     };
   }
 
@@ -84,6 +84,7 @@ export function createSiteSettings({ gh, env = {}, ttlMs = 30000 }) {
       if (patch.assessmentFlow !== undefined) d.assessmentFlow = String(patch.assessmentFlow);
       if (patch.voice && patch.voice.elevenlabs !== undefined) d.voice = { ...(d.voice || {}), elevenlabs: !!patch.voice.elevenlabs };
       if (patch.features && patch.features.screenCheck !== undefined) d.features = { ...(d.features || {}), screenCheck: patch.features.screenCheck === true };
+      if (patch.features && patch.features.orgOutreach !== undefined) d.features = { ...(d.features || {}), orgOutreach: patch.features.orgOutreach === true };
       d.updatedAt = new Date().toISOString();
     }, "Site settings changed", {});
     cache.delete(SITE_FILE);

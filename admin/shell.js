@@ -17,11 +17,12 @@
     plug: '<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/>',
     back: '<path d="m15 18-6-6 6-6"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
-    collapse: '<path d="M4 6h16M4 12h10M4 18h16"/>'
+    collapse: '<path d="M4 6h16M4 12h10M4 18h16"/>',
+    send: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>'
   };
   var NAV = [
     { title: "Overview", items: [["/admin/", "Dashboard", "dashboard"]] },
-    { title: "People", items: [["/admin/conversations/", "Conversations", "chat"], ["/admin/screen-checks/", "Screen checks", "eye"], ["/admin/emails/", "Email tracker", "mail"], ["/admin/feedback/", "Feedback", "star"]] },
+    { title: "People", items: [["/admin/conversations/", "Conversations", "chat"], ["/admin/screen-checks/", "Screen checks", "eye"], ["/admin/emails/", "Email tracker", "mail"], ["/admin/outreach/", "Outreach", "send"], ["/admin/feedback/", "Feedback", "star"]] },
     { title: "Build", items: [["/admin/workflows/", "Workflows", "flow"], ["/admin/data/", "Raw data", "data"]] },
     { title: "Money", items: [["/admin/costs/", "Estimated costs", "money"]] },
     { title: "Settings", items: [["/admin/requests/", "Requests", "target"], ["/admin/changelog/", "Change log", "log"], ["/admin/settings/", "Settings & connectors", "plug"]] }

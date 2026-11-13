@@ -27,6 +27,8 @@ import { createOAuth } from "./oauth.mjs";
 import { verifyWebhook, deliveryEvent } from "./email-webhook.mjs";
 import { supabaseConfigured, supabaseKeyProblem, createSupabaseSessions, createDurableSessions } from "./supabase-sessions.mjs";
 import { createSiteSettings } from "./site-settings.mjs";
+import { createOutreachDirectory } from "./outreach-directory.mjs";
+import { createOutreachRoutes } from "./outreach-routes.mjs";
 import { serveAdmin } from "./admin-pages.mjs";
 import { qrSvg } from "./qr.mjs";
 import * as check from "./screen-check.mjs";
@@ -163,7 +165,11 @@ export async function createApp(opts = {}) {
   async function pullRecent(days = 30) {
     if (durable) await durable.pullRecent(new Date(Date.now() - days * 864e5).toISOString());
   }
-  const turns = createTurnService({ corpus, store, repo, dialogue, actions: ctx.actions, env, aiFetch });
+  const outreachDir = createOutreachDirectory({ gh, settings, corpus, env, transportName: () => ctx.actions.transportName() });
+  ctx.outreach = outreachDir;
+  const turns = createTurnService({ corpus, store, repo, dialogue, actions: ctx.actions, env, outreach: outreachDir, aiFetch });
+
+  const outreachRoutes = createOutreachRoutes({ store, settings, outreach: outreachDir, requests, h: { requireStaff: (r) => requireStaff(r), requireSameSite: (r) => requireSameSite(r), readJson: (r) => readJson(r), send: (...a) => send(...a), httpError, limiter, maskEmail: (t) => maskEmail(t) } });
 
   const locks = new Map();
 
@@ -831,6 +837,7 @@ export async function createApp(opts = {}) {
         await requests.logChange({ title: "Admin password changed", summary: "The admin password was changed. Everyone else was signed out.", kind: "app" }).catch(() => {});
         return send(res, 200, { ok: true, changedAt: out.changedAt }, { "Set-Cookie": staffCookie(signSession(b.secret, ADMIN_USER), isSecure(req)) });
       }
+      if (p.startsWith("/api/admin/outreach")) return await outreachRoutes(req, res, p, method, ip);
       // ---------------- site settings (main workflow, voice switch) ----------
       if (p === "/api/admin/settings" && (method === "GET" || method === "PUT")) {
         const u = await requireStaff(req);

@@ -63,6 +63,9 @@ After deployment, check that `/api/health` reports the deployed `commit` and tha
 | `ELEVENLABS_API_KEY` | Natural voice. Also needs the switch on Money › Estimated costs. Optional: `ELEVENLABS_VOICE_ID`, `V360_COST_PER_1K_TTS_CHARS`. |
 | `V360_RETENTION_DAYS` | Optional. Unset: conversations are kept until an admin deletes them. A number turns on automatic deletion after that many days. |
 | `CRON_SECRET` | Optional: only Vercel's scheduler may call `/api/cron/tick` (daily: due emails, retention purge). |
+| `V360_OUTREACH_LIVE` | `on` lets the assistant's referral emails reach the real organizations (Admin › Outreach must also be switched on). Leave it unset until the privacy and partner approvals are done: until then every referral email goes to the demo test inbox, marked with the organization it was meant for. |
+| `V360_OUTREACH_TEST_INBOX` | Where demo referral emails go. Defaults to the first exact address in `V360_EMAIL_ALLOWLIST`. |
+| `V360_OUTREACH_REPLY_TO` | Optional: the Lions Services inbox organizations reply to. |
 
 The publish path (pull request → `verify` → auto-merge → deploy → verify-live) was checked end to end on 2026-11-07 with a `publish/selftest-20261107` pull request.
 
